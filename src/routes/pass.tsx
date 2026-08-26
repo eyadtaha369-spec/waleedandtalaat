@@ -1,17 +1,22 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
+import { Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Logo } from "@/components/Brand";
 import { Badge } from "@/components/ui/badge";
-import { cairoNow, prettyDate, toDateKey } from "@/lib/schedule";
+import { Button } from "@/components/ui/button";
+import { cairoNow, morningWindow, prettyDate, returnWindow, toDateKey } from "@/lib/schedule";
 
 export const Route = createFileRoute("/pass")({
   head: () => ({
     meta: [
       { title: "Digital boarding pass — Waleed & Talaat" },
-      { name: "description", content: "Your QR boarding pass with route, package trips and today's booking status." },
+      {
+        name: "description",
+        content: "Your QR boarding pass with route, package trips and today's booking status.",
+      },
       { property: "og:title", content: "Digital boarding pass — Waleed & Talaat" },
       { property: "og:description", content: "Scan-ready shuttle boarding pass." },
     ],
@@ -19,16 +24,15 @@ export const Route = createFileRoute("/pass")({
   component: PassPage,
 });
 
+type Booking = { kind: string; slot: string; service_date: string; pickup_stop: string | null };
+
 function PassPage() {
   const { user, profile, loading } = useAuth();
   const navigate = useNavigate();
   const [today] = useState(() => toDateKey(cairoNow()));
-  const [tomorrow] = useState(() => {
-    const d = cairoNow();
-    d.setDate(d.getDate() + 1);
-    return toDateKey(d);
-  });
-  const [status, setStatus] = useState<{ kind: string; slot: string; service_date: string }[]>([]);
+  const mw = useMemo(() => morningWindow(), []);
+  const rw = useMemo(() => returnWindow(), []);
+  const [bookings, setBookings] = useState<Booking[]>([]);
 
   useEffect(() => {
     if (!loading && !user) void navigate({ to: "/auth" });
@@ -38,15 +42,21 @@ function PassPage() {
     if (!user) return;
     void supabase
       .from("bookings")
-      .select("kind,slot,service_date")
-      .in("service_date", [today, tomorrow])
-      .then(({ data }) => setStatus(data ?? []));
-  }, [user, today, tomorrow]);
+      .select("kind,slot,service_date,pickup_stop")
+      .in("service_date", [mw.serviceDate, rw.serviceDate])
+      .then(({ data }) => setBookings((data as Booking[]) ?? []));
+  }, [user, mw.serviceDate, rw.serviceDate]);
 
   if (!profile) {
     return <main className="mx-auto max-w-lg px-4 py-16 text-muted-foreground">Loading…</main>;
   }
 
+  const morningBooking = bookings.find(
+    (b) => b.kind === "morning" && b.service_date === mw.serviceDate,
+  );
+  const returnBooking = bookings.find(
+    (b) => b.kind === "return" && b.service_date === rw.serviceDate,
+  );
   const payload = JSON.stringify({ v: 1, id: profile.id, name: profile.full_name });
 
   return (
@@ -84,11 +94,33 @@ function PassPage() {
           </div>
         </div>
 
-        <div className="flex justify-center border-y border-dashed border-border bg-secondary/60 p-6">
-          <div className="rounded-2xl bg-white p-4">
-            <QRCodeSVG value={payload} size={196} level="M" />
+        {!morningBooking && !returnBooking ? (
+          <div className="flex flex-col items-center gap-3 border-y border-dashed border-border bg-secondary/60 p-8 text-center">
+            <Lock className="text-muted-foreground size-6" />
+            <p className="text-sm font-medium">No active booking yet</p>
+            <p className="text-xs text-muted-foreground">
+              Your QR code appears here once you reserve a morning or return seat.
+            </p>
+            <Link to="/dashboard">
+              <Button size="sm" className="btn-gold mt-1">
+                Go to bookings
+              </Button>
+            </Link>
           </div>
-        </div>
+        ) : (
+          <div className="divide-y divide-dashed divide-border border-y border-dashed border-border">
+            {morningBooking && (
+              <PassQr
+                title="Morning departure"
+                detail={`${morningBooking.slot}${morningBooking.pickup_stop ? ` · ${morningBooking.pickup_stop}` : ""}`}
+                payload={payload}
+              />
+            )}
+            {returnBooking && (
+              <PassQr title="Early return" detail={returnBooking.slot} payload={payload} />
+            )}
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-4 p-6 text-sm">
           <Cell
@@ -99,26 +131,24 @@ function PassPage() {
                 : "Full term"
             }
           />
-          <Cell label="Standard return" value="04:00 PM" />
-          <Cell
-            label="Morning"
-            value={
-              status.find((s) => s.kind === "morning")
-                ? `${status.find((s) => s.kind === "morning")!.slot} ✓`
-                : "Not booked"
-            }
-          />
-          <Cell
-            label="Early return"
-            value={
-              status.find((s) => s.kind === "return" && s.service_date === today)
-                ? `${status.find((s) => s.kind === "return" && s.service_date === today)!.slot} ✓`
-                : "Not booked"
-            }
-          />
+          <Cell label="Standard return" value="04:00 PM · no booking needed" />
         </div>
       </div>
     </main>
+  );
+}
+
+function PassQr({ title, detail, payload }: { title: string; detail: string; payload: string }) {
+  return (
+    <div className="flex flex-col items-center gap-3 bg-secondary/60 p-6">
+      <div className="text-center">
+        <p className="text-xs tracking-widest text-muted-foreground uppercase">{title}</p>
+        <p className="text-sm font-semibold">{detail}</p>
+      </div>
+      <div className="rounded-2xl bg-white p-4">
+        <QRCodeSVG value={payload} size={172} level="M" />
+      </div>
+    </div>
   );
 }
 

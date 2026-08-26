@@ -1,8 +1,8 @@
 // Supabase Edge Function: scan-pass
-// POST { student_id, slot } -> { status: "booked" | "not_booked" | "scanned_earlier", ... }
-// Thin, auth-forwarding wrapper around the scan_pass() Postgres RPC, which
-// does the real work (staff check, booking lookup, scan log, trip
-// deduction) atomically in one transaction.
+// POST { student_id, slot } for a subscriber, or { guest_token } for a
+// daily-pass guest -> { status: "booked" | "not_booked" | "scanned_earlier", ... }
+// Thin, auth-forwarding wrapper around the scan_pass() / scan_guest_pass()
+// Postgres RPCs, which do the real work atomically in one transaction.
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -19,14 +19,25 @@ Deno.serve(async (req) => {
     const url = Deno.env.get("SUPABASE_URL")!;
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
 
-    const { student_id, slot } = (await req.json()) as { student_id?: string; slot?: string };
-    if (!student_id || !slot) return json({ error: "student_id and slot are required" }, 400);
+    const { student_id, slot, guest_token } = (await req.json()) as {
+      student_id?: string;
+      slot?: string;
+      guest_token?: string;
+    };
 
-    // Call the RPC as the signed-in caller (staff check happens inside
-    // scan_pass via auth.uid() + is_staff()) — never with the service role.
     const client = createClient(url, anonKey, {
       global: { headers: { Authorization: authHeader } },
     });
+
+    if (guest_token) {
+      const { data, error } = await client.rpc("scan_guest_pass", { p_token: guest_token });
+      if (error) return json({ error: error.message }, 400);
+      return json(data);
+    }
+
+    if (!student_id || !slot) {
+      return json({ error: "student_id and slot (or guest_token) are required" }, 400);
+    }
 
     const { data, error } = await client.rpc("scan_pass", { p_student_id: student_id, p_slot: slot });
     if (error) return json({ error: error.message }, 400);

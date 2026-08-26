@@ -3,11 +3,11 @@
 //
 // Corresponds to spec endpoint /api/admin/daily-pass/action.
 // - Calls decide_daily_pass_request() RPC (staff-gated, does the DB work)
-// - On approval: builds the public QR pass URL and sends a WhatsApp
-//   confirmation with the link
-// - On rejection: sends a polite WhatsApp rejection notice
+// - Builds a wa.me link with the confirmation/rejection message
+//   pre-filled. Sending is manual: the admin clicks the link, WhatsApp
+//   opens with the chat and text ready, and they press Send themselves.
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { approvalMessage, rejectionMessage, sendWhatsApp } from "../_shared/whatsapp.ts";
+import { approvalMessage, buildWhatsAppLink, rejectionMessage } from "../_shared/whatsapp.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -43,18 +43,12 @@ Deno.serve(async (req) => {
     if (error) return json({ error: error.message }, 400);
     if (data?.error) return json(data, 404);
 
-    let whatsapp: { ok: boolean; error?: string } = { ok: false };
-    if (action === "approved") {
-      const passUrl = `${SITE_URL}/guest-pass/${data.pass_token}`;
-      whatsapp = await sendWhatsApp(
-        data.phone,
-        approvalMessage(data.full_name, data.route, data.slot, passUrl),
-      );
-    } else {
-      whatsapp = await sendWhatsApp(data.phone, rejectionMessage(data.full_name, data.route, data.slot));
-    }
+    const message =
+      action === "approved"
+        ? approvalMessage(data.full_name, data.route, data.slot, `${SITE_URL}/guest-pass/${data.pass_token}`)
+        : rejectionMessage(data.full_name, data.route, data.slot);
 
-    return json({ ...data, whatsapp_sent: whatsapp.ok, whatsapp_error: whatsapp.error });
+    return json({ ...data, whatsapp_url: buildWhatsAppLink(data.phone, message) });
   } catch (err) {
     return json({ error: err instanceof Error ? err.message : "Unexpected error" }, 500);
   }

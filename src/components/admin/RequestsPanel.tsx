@@ -45,16 +45,17 @@ export function RequestsPanel() {
       toast.error(data?.error ?? error?.message ?? "Could not update request");
       return;
     }
-    if (action === "approved") {
-      toast.success(
-        data.whatsapp_sent
-          ? "Approved — WhatsApp pass sent"
-          : "Approved, but WhatsApp message failed to send",
-      );
-    } else {
-      toast.success(data.whatsapp_sent ? "Rejected — WhatsApp notice sent" : "Rejected");
-    }
     void load();
+    if (data.whatsapp_url) {
+      // Opens WhatsApp Web/App with the chat and message pre-filled —
+      // the admin reviews it and presses Send themselves.
+      window.open(data.whatsapp_url, "_blank", "noopener,noreferrer");
+    }
+    toast.success(
+      action === "approved"
+        ? "Approved — WhatsApp opened with the pass link, ready to send"
+        : "Rejected — WhatsApp opened with the notice, ready to send",
+    );
   };
 
   const pending = requests.filter((r) => r.status === "pending");

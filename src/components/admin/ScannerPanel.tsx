@@ -3,10 +3,9 @@ import { Html5Qrcode } from "html5-qrcode";
 import { toast } from "sonner";
 import { CheckCircle2, ScanLine, XCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ALL_SLOTS, cairoNow, MORNING_SLOTS, toDateKey } from "@/lib/schedule";
+import { ALL_SLOTS } from "@/lib/schedule";
 
 const SCANNER_ELEMENT_ID = "wt-qr-scanner";
 
@@ -17,10 +16,10 @@ type ScanResult = {
   fullName: string;
   route: string | null;
   photoUrl: string | null;
+  tripsRemaining: number | null;
 };
 
 export function ScannerPanel() {
-  const { user } = useAuth();
   const [slot, setSlot] = useState<string>(ALL_SLOTS[0]);
   const [scanning, setScanning] = useState(false);
   const [result, setResult] = useState<ScanResult | null>(null);
@@ -61,65 +60,31 @@ export function ScannerPanel() {
   };
 
   const handleScan = async (decodedText: string) => {
-    if (lockRef.current || !user) return;
+    if (lockRef.current) return;
     lockRef.current = true;
 
     try {
       const payload = JSON.parse(decodedText) as { id?: string };
       if (!payload.id) throw new Error("bad payload");
 
-      const today = toDateKey(cairoNow());
+      // Server does everything atomically: staff check, booking lookup,
+      // scan log, and trip deduction for package students. The client
+      // never decides "is this booked" itself.
+      const { data, error } = await supabase.functions.invoke("scan-pass", {
+        body: { student_id: payload.id, slot },
+      });
 
-      const [{ data: profile }, { data: priorScans }, { data: optOut }] = await Promise.all([
-        supabase
-          .from("profiles")
-          .select("id,full_name,route,photo_url")
-          .eq("id", payload.id)
-          .maybeSingle(),
-        supabase.from("scans").select("id").eq("student_id", payload.id).eq("service_date", today),
-        supabase
-          .from("opt_outs")
-          .select("id")
-          .eq("student_id", payload.id)
-          .eq("service_date", today),
-      ]);
-
-      if (!profile) {
-        toast.error("No student found for this QR code.");
-        lockRef.current = false;
+      if (error || data?.error) {
+        toast.error(data?.error ?? error?.message ?? "Scan failed");
         return;
       }
 
-      const alreadyScanned = (priorScans ?? []).length > 0;
-
-      let isBooked = false;
-      if (slot === "04:00 PM") {
-        isBooked = (optOut ?? []).length === 0;
-      } else {
-        const kind = (MORNING_SLOTS as readonly string[]).includes(slot) ? "morning" : "return";
-        const { data: booking } = await supabase
-          .from("bookings")
-          .select("id")
-          .eq("student_id", payload.id)
-          .eq("service_date", today)
-          .eq("kind", kind)
-          .eq("slot", slot)
-          .maybeSingle();
-        isBooked = !!booking;
-      }
-
-      await supabase.from("scans").insert({
-        student_id: payload.id,
-        scanned_by: user.id,
-        service_date: today,
-        slot,
-      });
-
       setResult({
-        status: alreadyScanned ? "scanned_earlier" : isBooked ? "booked" : "not_booked",
-        fullName: profile.full_name,
-        route: profile.route,
-        photoUrl: profile.photo_url,
+        status: data.status as ScanStatus,
+        fullName: data.full_name,
+        route: data.route,
+        photoUrl: data.photo_url,
+        tripsRemaining: data.trips_remaining ?? null,
       });
     } catch {
       toast.error("Unrecognized QR code.");
@@ -215,7 +180,10 @@ function ResultCard({ result }: { result: ScanResult }) {
       )}
       <div className="flex-1">
         <p className="text-lg font-bold">{result.fullName}</p>
-        <p className="text-sm text-muted-foreground">{result.route ?? "—"}</p>
+        <p className="text-sm text-muted-foreground">
+          {result.route ?? "—"}
+          {result.tripsRemaining !== null && ` · ${result.tripsRemaining} trips left`}
+        </p>
       </div>
       <Badge className={c.className}>
         <Icon className="me-1 size-3.5" /> {c.label}

@@ -15,6 +15,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as DailyPassRouteImport } from './routes/daily-pass'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as PassRouteImport } from './routes/pass'
+import { Route as GuestPassTokenRouteImport } from './routes/guest-pass/$token'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -46,6 +47,11 @@ const PassRoute = PassRouteImport.update({
   path: '/pass',
   getParentRoute: () => rootRouteImport,
 } as any)
+const GuestPassTokenRoute = GuestPassTokenRouteImport.update({
+  id: '/guest-pass/$token',
+  path: '/guest-pass/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -54,6 +60,7 @@ export interface FileRoutesByFullPath {
   '/daily-pass': typeof DailyPassRoute
   '/dashboard': typeof DashboardRoute
   '/pass': typeof PassRoute
+  '/guest-pass/$token': typeof GuestPassTokenRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -62,6 +69,7 @@ export interface FileRoutesByTo {
   '/daily-pass': typeof DailyPassRoute
   '/dashboard': typeof DashboardRoute
   '/pass': typeof PassRoute
+  '/guest-pass/$token': typeof GuestPassTokenRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -71,12 +79,27 @@ export interface FileRoutesById {
   '/daily-pass': typeof DailyPassRoute
   '/dashboard': typeof DashboardRoute
   '/pass': typeof PassRoute
+  '/guest-pass/$token': typeof GuestPassTokenRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/admin' | '/auth' | '/daily-pass' | '/dashboard' | '/pass'
+  fullPaths:
+    | '/'
+    | '/admin'
+    | '/auth'
+    | '/daily-pass'
+    | '/dashboard'
+    | '/pass'
+    | '/guest-pass/$token'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/auth' | '/daily-pass' | '/dashboard' | '/pass'
+  to:
+    | '/'
+    | '/admin'
+    | '/auth'
+    | '/daily-pass'
+    | '/dashboard'
+    | '/pass'
+    | '/guest-pass/$token'
   id:
     | '__root__'
     | '/'
@@ -85,6 +108,7 @@ export interface FileRouteTypes {
     | '/daily-pass'
     | '/dashboard'
     | '/pass'
+    | '/guest-pass/$token'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -94,6 +118,7 @@ export interface RootRouteChildren {
   DailyPassRoute: typeof DailyPassRoute
   DashboardRoute: typeof DashboardRoute
   PassRoute: typeof PassRoute
+  GuestPassTokenRoute: typeof GuestPassTokenRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -140,6 +165,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PassRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/guest-pass/$token': {
+      id: '/guest-pass/$token'
+      path: '/guest-pass/$token'
+      fullPath: '/guest-pass/$token'
+      preLoaderRoute: typeof GuestPassTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -150,6 +182,7 @@ const rootRouteChildren: RootRouteChildren = {
   DailyPassRoute: DailyPassRoute,
   DashboardRoute: DashboardRoute,
   PassRoute: PassRoute,
+  GuestPassTokenRoute: GuestPassTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

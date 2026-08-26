@@ -35,15 +35,25 @@ export function RequestsPanel() {
     void load();
   }, []);
 
-  const decide = async (id: string, status: "approved" | "rejected") => {
+  const decide = async (id: string, action: "approved" | "rejected") => {
     setBusyId(id);
-    const { error } = await supabase.from("daily_pass_requests").update({ status }).eq("id", id);
+    const { data, error } = await supabase.functions.invoke("admin-daily-pass-action", {
+      body: { request_id: id, action },
+    });
     setBusyId(null);
-    if (error) {
-      toast.error(error.message);
+    if (error || data?.error) {
+      toast.error(data?.error ?? error?.message ?? "Could not update request");
       return;
     }
-    toast.success(status === "approved" ? "Request approved" : "Request rejected");
+    if (action === "approved") {
+      toast.success(
+        data.whatsapp_sent
+          ? "Approved — WhatsApp pass sent"
+          : "Approved, but WhatsApp message failed to send",
+      );
+    } else {
+      toast.success(data.whatsapp_sent ? "Rejected — WhatsApp notice sent" : "Rejected");
+    }
     void load();
   };
 

@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { AvatarUploader } from "@/components/AvatarUploader";
 import {
   MORNING_SLOTS,
   RETURN_SLOTS,
@@ -22,7 +23,11 @@ export const Route = createFileRoute("/dashboard")({
   head: () => ({
     meta: [
       { title: "My bookings — Waleed & Talaat Shuttle" },
-      { name: "description", content: "Reserve your morning departure and early return seat on the Alexandria to Alamein shuttle." },
+      {
+        name: "description",
+        content:
+          "Reserve your morning departure and early return seat on the Alexandria to Alamein shuttle.",
+      },
       { property: "og:title", content: "My bookings — Waleed & Talaat Shuttle" },
       { property: "og:description", content: "Reserve your daily shuttle seat." },
     ],
@@ -136,6 +141,7 @@ function Dashboard() {
   return (
     <main className="mx-auto max-w-5xl px-4 py-8">
       <div className="surface-navy shadow-luxe flex flex-wrap items-center gap-4 rounded-3xl p-6">
+        <AvatarUploader />
         <div>
           <p className="text-xs tracking-[0.25em] uppercase opacity-70">Welcome back</p>
           <h1 className="text-2xl font-bold">{profile.full_name || "Student"}</h1>
@@ -195,7 +201,11 @@ function Dashboard() {
                 value={morningSlot}
                 onChange={setMorningSlot}
               />
-              <Button className="btn-gold w-full" disabled={busy} onClick={() => void book("morning")}>
+              <Button
+                className="btn-gold w-full"
+                disabled={busy}
+                onClick={() => void book("morning")}
+              >
                 Reserve morning seat
               </Button>
             </div>
@@ -219,7 +229,11 @@ function Dashboard() {
           ) : rw.open ? (
             <div className="space-y-4">
               <SlotPicker options={[...RETURN_SLOTS]} value={returnSlot} onChange={setReturnSlot} />
-              <Button className="btn-gold w-full" disabled={busy} onClick={() => void book("return")}>
+              <Button
+                className="btn-gold w-full"
+                disabled={busy}
+                onClick={() => void book("return")}
+              >
                 Reserve return seat
               </Button>
             </div>
@@ -244,7 +258,9 @@ function Dashboard() {
                 disabled={busy || !ow.open}
                 onClick={() => void toggleOptOut()}
               >
-                {optedOut ? "Undo — I will use the 4:00 PM bus" : "I won't use the 4:00 PM bus today"}
+                {optedOut
+                  ? "Undo — I will use the 4:00 PM bus"
+                  : "I won't use the 4:00 PM bus today"}
               </Button>
               <span className="text-xs text-muted-foreground">
                 {ow.open ? "Available until 3:30 PM" : "Closed for today (after 3:30 PM)"}

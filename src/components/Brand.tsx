@@ -1,14 +1,13 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { LogOut, Menu } from "lucide-react";
 import { useState } from "react";
-import logo from "@/assets/logo.jpg.asset.json";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 
 export function Logo({ size = 44 }: { size?: number }) {
   return (
     <img
-      src={logo.url}
+      src="/logo.jpg"
       alt="Waleed & Talaat crest"
       width={size}
       height={size}

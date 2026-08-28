@@ -3,6 +3,7 @@ import { Html5Qrcode } from "html5-qrcode";
 import { toast } from "sonner";
 import { CheckCircle2, ScanLine, XCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { SmartAvatar } from "@/components/SmartAvatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ALL_SLOTS } from "@/lib/schedule";
@@ -168,17 +169,13 @@ function ResultCard({ result }: { result: ScanResult }) {
 
   return (
     <div className="mt-4 flex items-center gap-4 rounded-2xl border border-border p-5">
-      {result.photoUrl ? (
-        <img
-          src={result.photoUrl}
-          alt={result.fullName}
-          className="size-16 rounded-xl border-gilded object-cover"
+      <div className="size-16 shrink-0 overflow-hidden rounded-xl border-gilded">
+        <SmartAvatar
+          photoUrl={result.photoUrl}
+          name={result.fullName}
+          className="size-full text-xl"
         />
-      ) : (
-        <div className="border-gilded flex size-16 items-center justify-center rounded-xl bg-secondary text-xl font-bold">
-          {result.fullName.charAt(0)}
-        </div>
-      )}
+      </div>
       <div className="flex-1">
         <p className="text-lg font-bold">{result.fullName}</p>
         <p className="text-sm text-muted-foreground">

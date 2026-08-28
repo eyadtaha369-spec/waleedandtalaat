@@ -1,4 +1,5 @@
 import { useAuth } from "@/hooks/useAuth";
+import { SmartAvatar } from "@/components/SmartAvatar";
 
 /**
  * Read-only profile photo. Students can no longer upload or change
@@ -9,16 +10,12 @@ export function ProfileAvatar() {
   const { profile } = useAuth();
 
   return (
-    <div className="shrink-0">
-      <div className="size-16 overflow-hidden rounded-2xl border-gilded">
-        {profile?.photo_url ? (
-          <img src={profile.photo_url} alt="" className="size-full object-cover" />
-        ) : (
-          <div className="flex size-full items-center justify-center bg-secondary text-xl font-bold">
-            {(profile?.full_name || "?").charAt(0)}
-          </div>
-        )}
-      </div>
+    <div className="size-16 shrink-0 overflow-hidden rounded-2xl border-gilded">
+      <SmartAvatar
+        photoUrl={profile?.photo_url}
+        name={profile?.full_name ?? ""}
+        className="size-full text-xl"
+      />
     </div>
   );
 }

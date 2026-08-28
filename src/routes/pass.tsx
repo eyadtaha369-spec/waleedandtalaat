@@ -5,6 +5,7 @@ import { Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Logo } from "@/components/Brand";
+import { SmartAvatar } from "@/components/SmartAvatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cairoNow, morningWindow, prettyDate, returnWindow, toDateKey } from "@/lib/schedule";
@@ -72,17 +73,13 @@ function PassPage() {
         </div>
 
         <div className="flex items-center gap-4 p-6">
-          {profile.photo_url ? (
-            <img
-              src={profile.photo_url}
-              alt={profile.full_name}
-              className="size-20 rounded-2xl border-gilded object-cover"
+          <div className="size-20 shrink-0 overflow-hidden rounded-2xl border-gilded">
+            <SmartAvatar
+              photoUrl={profile.photo_url}
+              name={profile.full_name}
+              className="size-full text-2xl"
             />
-          ) : (
-            <div className="border-gilded flex size-20 items-center justify-center rounded-2xl bg-secondary text-2xl font-bold">
-              {(profile.full_name || "?").charAt(0)}
-            </div>
-          )}
+          </div>
           <div>
             <h1 className="text-xl font-bold">{profile.full_name}</h1>
             <p className="text-sm text-muted-foreground">

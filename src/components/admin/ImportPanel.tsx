@@ -4,6 +4,7 @@ import * as XLSX from "xlsx";
 import { toast } from "sonner";
 import { Download, Upload, UserPlus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { SmartAvatar } from "@/components/SmartAvatar";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -221,11 +222,13 @@ export function ImportPanel() {
                   <TableRow key={r.username}>
                     <TableCell>
                       {r.photo_url ? (
-                        <img
-                          src={r.photo_url}
-                          alt=""
-                          className="size-8 rounded-full object-cover"
-                        />
+                        <div className="size-8 overflow-hidden rounded-full">
+                          <SmartAvatar
+                            photoUrl={r.photo_url}
+                            name={r.full_name}
+                            className="size-full text-[10px]"
+                          />
+                        </div>
                       ) : (
                         "—"
                       )}

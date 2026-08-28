@@ -286,6 +286,16 @@ export type Database = {
           is_active: boolean;
         }[];
       };
+      list_students_for_credentials: {
+        Args: Record<string, never>;
+        Returns: {
+          user_id: string;
+          full_name: string;
+          phone: string | null;
+          username: string | null;
+          email: string;
+        }[];
+      };
       update_staff_user: {
         Args: { p_user_id: string; p_full_name: string; p_phone: string; p_role: string };
         Returns: Json;

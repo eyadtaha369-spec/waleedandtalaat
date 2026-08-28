@@ -34,5 +34,30 @@ export function generateTempPassword(length = 10): string {
 
 export const SUBSCRIPTION_TYPES = [
   { value: "full_term", label: "Full Term" },
-  { value: "package", label: "70-Trip Package" },
+  { value: "70_trips", label: "70-Trip Package" },
+  { value: "weekly", label: "Weekly" },
+  { value: "top_student_offer", label: "Top Student Offer" },
 ] as const;
+
+/** Normalizes a local Egyptian number like "01012345678" to "201012345678". */
+export function toWhatsAppNumber(phone: string): string {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.startsWith("20")) return digits;
+  if (digits.startsWith("0")) return `20${digits.slice(1)}`;
+  return digits;
+}
+
+/** Builds a wa.me link with login credentials pre-filled, ready for the admin to review and send. */
+export function credentialsWhatsAppLink(opts: {
+  full_name: string;
+  phone: string;
+  email: string;
+  temp_password: string;
+}): string {
+  const message =
+    `Hi ${opts.full_name}! Your Waleed & Talaat account is ready ✅\n` +
+    `Login email: ${opts.email}\n` +
+    `Password: ${opts.temp_password}\n\n` +
+    `Sign in at ${typeof window !== "undefined" ? window.location.origin : ""}/auth`;
+  return `https://wa.me/${toWhatsAppNumber(opts.phone)}?text=${encodeURIComponent(message)}`;
+}

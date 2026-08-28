@@ -14,8 +14,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { generateTempPassword, generateUsername } from "@/lib/credentials";
+import { generateTempPassword, generateUsername, credentialsWhatsAppLink } from "@/lib/credentials";
 import { edgeFunctionErrorMessage } from "@/lib/functionsError";
+import { RecoverCredentialsPanel } from "@/components/admin/RecoverCredentialsPanel";
 import { normalizeRouteName } from "@/lib/routeAliases";
 import { normalizePhotoUrl } from "@/lib/driveImage";
 import {
@@ -47,23 +48,6 @@ type ImportResult = {
   status: "created" | "failed";
   error?: string;
 };
-
-/** Normalizes a local Egyptian number like "01012345678" to "201012345678". */
-function toWhatsAppNumber(phone: string): string {
-  const digits = phone.replace(/\D/g, "");
-  if (digits.startsWith("20")) return digits;
-  if (digits.startsWith("0")) return `20${digits.slice(1)}`;
-  return digits;
-}
-
-function credentialsWhatsAppLink(r: ImportResult): string {
-  const message =
-    `Hi ${r.full_name}! Your Waleed & Talaat account is ready ✅\n` +
-    `Login email: ${r.email}\n` +
-    `Password: ${r.temp_password}\n\n` +
-    `Sign in at ${window.location.origin}/auth`;
-  return `https://wa.me/${toWhatsAppNumber(r.phone)}?text=${encodeURIComponent(message)}`;
-}
 
 /** Pulls a value out of a row by trying several possible header spellings, in order. */
 function pick(row: Record<string, unknown>, keys: string[]): string {
@@ -283,10 +267,8 @@ export function ImportPanel() {
                             href={credentialsWhatsAppLink({
                               full_name: r.full_name,
                               phone: r.phone,
-                              username: r.username,
                               email: `${r.username}@wt-shuttle.app`,
                               temp_password: r.temp_password,
-                              status: "created",
                             })}
                             target="_blank"
                             rel="noopener noreferrer"
@@ -308,6 +290,8 @@ export function ImportPanel() {
           </Table>
         </section>
       )}
+
+      <RecoverCredentialsPanel />
     </div>
   );
 }

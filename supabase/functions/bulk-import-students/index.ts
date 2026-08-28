@@ -16,6 +16,7 @@ type ImportRow = {
   phone: string;
   route: string;
   pickup_stop?: string;
+  photo_url?: string;
   subscription_type: "full_term" | "package";
   trips_total: number;
   username: string;
@@ -72,6 +73,7 @@ Deno.serve(async (req) => {
           phone: row.phone,
           route: row.route,
           pickup_stop: row.pickup_stop ?? null,
+          photo_url: row.photo_url ?? null,
           subscription_type: row.subscription_type,
           trips_total: row.trips_total,
         },

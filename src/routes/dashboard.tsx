@@ -7,7 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { AvatarUploader } from "@/components/AvatarUploader";
+import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { useRoutes } from "@/hooks/useRoutes";
 import {
   MORNING_SLOTS,
@@ -145,7 +145,7 @@ function Dashboard() {
   return (
     <main className="mx-auto max-w-5xl px-4 py-8">
       <div className="surface-navy shadow-luxe flex flex-wrap items-center gap-4 rounded-3xl p-6">
-        <AvatarUploader />
+        <ProfileAvatar />
         <div>
           <p className="text-xs tracking-[0.25em] uppercase opacity-70">Welcome back</p>
           <h1 className="text-2xl font-bold">{profile.full_name || "Student"}</h1>

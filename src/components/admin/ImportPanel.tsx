@@ -40,12 +40,30 @@ type ParsedRow = {
 
 type ImportResult = {
   full_name: string;
+  phone: string;
   username: string;
   email: string;
   temp_password: string;
   status: "created" | "failed";
   error?: string;
 };
+
+/** Normalizes a local Egyptian number like "01012345678" to "201012345678". */
+function toWhatsAppNumber(phone: string): string {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.startsWith("20")) return digits;
+  if (digits.startsWith("0")) return `20${digits.slice(1)}`;
+  return digits;
+}
+
+function credentialsWhatsAppLink(r: ImportResult): string {
+  const message =
+    `Hi ${r.full_name}! Your Waleed & Talaat account is ready ✅\n` +
+    `Login email: ${r.email}\n` +
+    `Password: ${r.temp_password}\n\n` +
+    `Sign in at ${window.location.origin}/auth`;
+  return `https://wa.me/${toWhatsAppNumber(r.phone)}?text=${encodeURIComponent(message)}`;
+}
 
 /** Pulls a value out of a row by trying several possible header spellings, in order. */
 function pick(row: Record<string, unknown>, keys: string[]): string {
@@ -158,6 +176,7 @@ export function ImportPanel() {
     const csv = Papa.unparse(
       results.map((r) => ({
         Name: r.full_name,
+        Phone: r.phone,
         Username: r.username,
         "Login Email": r.email,
         "Temporary Password": r.temp_password,
@@ -216,6 +235,7 @@ export function ImportPanel() {
               <TableRow>
                 <TableHead>Photo</TableHead>
                 <TableHead>Name</TableHead>
+                <TableHead>Phone</TableHead>
                 <TableHead>Route</TableHead>
                 <TableHead>Plan</TableHead>
                 <TableHead>Username</TableHead>
@@ -242,6 +262,7 @@ export function ImportPanel() {
                       )}
                     </TableCell>
                     <TableCell className="font-medium">{r.full_name}</TableCell>
+                    <TableCell className="whitespace-nowrap">{r.phone || "—"}</TableCell>
                     <TableCell>{r.route || "—"}</TableCell>
                     <TableCell>
                       {(() => {
@@ -258,7 +279,21 @@ export function ImportPanel() {
                     {results.length > 0 && (
                       <TableCell>
                         {outcome?.status === "created" ? (
-                          <span className="text-success">Created</span>
+                          <a
+                            href={credentialsWhatsAppLink({
+                              full_name: r.full_name,
+                              phone: r.phone,
+                              username: r.username,
+                              email: `${r.username}@wt-shuttle.app`,
+                              temp_password: r.temp_password,
+                              status: "created",
+                            })}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-success underline underline-offset-2"
+                          >
+                            Send on WhatsApp
+                          </a>
                         ) : outcome ? (
                           <span className="text-destructive">Failed</span>
                         ) : (

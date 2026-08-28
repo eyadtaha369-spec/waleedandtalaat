@@ -56,6 +56,7 @@ Deno.serve(async (req) => {
 
     const results: Array<{
       full_name: string;
+      phone: string;
       username: string;
       email: string;
       temp_password: string;
@@ -84,6 +85,7 @@ Deno.serve(async (req) => {
       if (createError || !created.user) {
         results.push({
           full_name: row.full_name,
+          phone: row.phone,
           username: row.username,
           email,
           temp_password: row.temp_password,
@@ -100,6 +102,7 @@ Deno.serve(async (req) => {
 
       results.push({
         full_name: row.full_name,
+        phone: row.phone,
         username: row.username,
         email,
         temp_password: row.temp_password,

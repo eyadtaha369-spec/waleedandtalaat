@@ -17,6 +17,7 @@ import {
 import { generateTempPassword, generateUsername, credentialsWhatsAppLink } from "@/lib/credentials";
 import { edgeFunctionErrorMessage } from "@/lib/functionsError";
 import { RecoverCredentialsPanel } from "@/components/admin/RecoverCredentialsPanel";
+import { withUtf8Bom, excelTextCell } from "@/lib/csvExport";
 import { normalizeRouteName } from "@/lib/routeAliases";
 import { normalizePhotoUrl } from "@/lib/driveImage";
 import {
@@ -160,14 +161,14 @@ export function ImportPanel() {
     const csv = Papa.unparse(
       results.map((r) => ({
         Name: r.full_name,
-        Phone: r.phone,
+        Phone: excelTextCell(r.phone),
         Username: r.username,
         "Login Email": r.email,
         "Temporary Password": r.temp_password,
         Status: r.status,
       })),
     );
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const blob = new Blob([withUtf8Bom(csv)], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
     link.download = "waleed-talaat-new-accounts.csv";

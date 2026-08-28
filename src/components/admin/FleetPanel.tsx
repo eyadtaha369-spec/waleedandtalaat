@@ -4,6 +4,7 @@ import { Bus, Download } from "lucide-react";
 import Papa from "papaparse";
 import { supabase } from "@/integrations/supabase/client";
 import { edgeFunctionErrorMessage } from "@/lib/functionsError";
+import { withUtf8Bom } from "@/lib/csvExport";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -56,7 +57,7 @@ export function FleetPanel() {
         "Recommended bus": r.recommended_bus,
       })),
     );
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const blob = new Blob([withUtf8Bom(csv)], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
     link.download = "fleet-allocation.csv";

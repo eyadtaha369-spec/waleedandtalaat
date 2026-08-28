@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/table";
 import { generateTempPassword, credentialsWhatsAppLink } from "@/lib/credentials";
 import { edgeFunctionErrorMessage } from "@/lib/functionsError";
+import { withUtf8Bom, excelTextCell } from "@/lib/csvExport";
 
 type Student = {
   user_id: string;
@@ -86,14 +87,14 @@ export function RecoverCredentialsPanel() {
     const csv = Papa.unparse(
       results.map((r) => ({
         Name: r.full_name,
-        Phone: r.phone ?? "",
+        Phone: excelTextCell(r.phone ?? ""),
         Username: r.username ?? "",
         "Login Email": r.email,
         "New Password": r.new_password,
         Status: r.status,
       })),
     );
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const blob = new Blob([withUtf8Bom(csv)], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
     link.download = "waleed-talaat-recovered-credentials.csv";

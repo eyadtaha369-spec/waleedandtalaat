@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { KeyRound, Pencil, Power, ShieldCheck, UserPlus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,6 +49,7 @@ const emptyCreateForm: {
 };
 
 export function UsersPanel() {
+  const { user: currentUser } = useAuth();
   const [users, setUsers] = useState<StaffUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -138,6 +140,10 @@ export function UsersPanel() {
   };
 
   const toggleActive = async (u: StaffUser) => {
+    if (u.user_id === currentUser?.id) {
+      toast.error("You can't deactivate your own account — ask another admin to do it.");
+      return;
+    }
     setBusy(true);
     const { data, error } = await supabase.functions.invoke("manage-staff", {
       body: { action: "set_active", user_id: u.user_id, active: !u.is_active },
@@ -225,7 +231,12 @@ export function UsersPanel() {
                     <Button
                       size="sm"
                       variant="ghost"
-                      disabled={busy}
+                      disabled={busy || u.user_id === currentUser?.id}
+                      title={
+                        u.user_id === currentUser?.id
+                          ? "You can't deactivate your own account"
+                          : undefined
+                      }
                       onClick={() => void toggleActive(u)}
                     >
                       <Power className="size-4" />

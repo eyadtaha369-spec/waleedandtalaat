@@ -272,6 +272,21 @@ export type Database = {
           recommended_bus: string;
         }[];
       };
+      list_staff_users: {
+        Args: Record<string, never>;
+        Returns: {
+          user_id: string;
+          full_name: string;
+          phone: string | null;
+          email: string;
+          role: string;
+          is_active: boolean;
+        }[];
+      };
+      update_staff_user: {
+        Args: { p_user_id: string; p_full_name: string; p_phone: string; p_role: string };
+        Returns: Json;
+      };
       decide_daily_pass_request: {
         Args: { p_request_id: string; p_action: string };
         Returns: Json;

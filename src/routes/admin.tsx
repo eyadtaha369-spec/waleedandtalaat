@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { toast } from "sonner";
-import { Bus, ClipboardList, ScanLine, Upload, Users } from "lucide-react";
+import { Bus, ClipboardList, ScanLine, ShieldCheck, Upload, Users } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScannerPanel } from "@/components/admin/ScannerPanel";
@@ -9,6 +9,7 @@ import { ManifestsPanel } from "@/components/admin/ManifestsPanel";
 import { RequestsPanel } from "@/components/admin/RequestsPanel";
 import { ImportPanel } from "@/components/admin/ImportPanel";
 import { FleetPanel } from "@/components/admin/FleetPanel";
+import { UsersPanel } from "@/components/admin/UsersPanel";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -68,7 +69,7 @@ function AdminPage() {
       </div>
 
       <Tabs defaultValue="scanner" className="mt-6">
-        <TabsList className="grid w-full grid-cols-2 gap-1 sm:grid-cols-5">
+        <TabsList className="grid w-full grid-cols-2 gap-1 sm:grid-cols-6">
           <TabsTrigger value="scanner">
             <ScanLine className="size-4" /> Scanner
           </TabsTrigger>
@@ -83,6 +84,9 @@ function AdminPage() {
           </TabsTrigger>
           <TabsTrigger value="import">
             <Upload className="size-4" /> Import
+          </TabsTrigger>
+          <TabsTrigger value="users">
+            <ShieldCheck className="size-4" /> Users
           </TabsTrigger>
         </TabsList>
 
@@ -100,6 +104,9 @@ function AdminPage() {
         </TabsContent>
         <TabsContent value="import" className="mt-5">
           <ImportPanel />
+        </TabsContent>
+        <TabsContent value="users" className="mt-5">
+          <UsersPanel />
         </TabsContent>
       </Tabs>
     </main>

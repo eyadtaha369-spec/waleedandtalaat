@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { prettyDate } from "@/lib/schedule";
+import { edgeFunctionErrorMessage } from "@/lib/functionsError";
 
 type Request = {
   id: string;
@@ -43,7 +44,9 @@ export function RequestsPanel() {
     });
     setBusyId(null);
     if (error || data?.error) {
-      toast.error(data?.error ?? error?.message ?? "Could not update request");
+      toast.error(
+        data?.error ?? (await edgeFunctionErrorMessage(error, "Could not update request")),
+      );
       return;
     }
     void load();

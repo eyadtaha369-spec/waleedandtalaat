@@ -22,6 +22,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { generateTempPassword } from "@/lib/credentials";
+import { edgeFunctionErrorMessage } from "@/lib/functionsError";
 
 type StaffUser = {
   user_id: string;
@@ -87,7 +88,7 @@ export function UsersPanel() {
     });
     setBusy(false);
     if (error || data?.error) {
-      toast.error(data?.error ?? error?.message ?? "Could not create user");
+      toast.error(data?.error ?? (await edgeFunctionErrorMessage(error, "Could not create user")));
       return;
     }
     toast.success(`${createForm.role === "admin" ? "Admin" : "Supervisor"} account created`);
@@ -128,7 +129,9 @@ export function UsersPanel() {
     });
     setBusy(false);
     if (error || data?.error) {
-      toast.error(data?.error ?? error?.message ?? "Could not reset password");
+      toast.error(
+        data?.error ?? (await edgeFunctionErrorMessage(error, "Could not reset password")),
+      );
       return;
     }
     toast.success(`New password for ${u.full_name}: ${newPassword}`, { duration: 15000 });
@@ -141,7 +144,9 @@ export function UsersPanel() {
     });
     setBusy(false);
     if (error || data?.error) {
-      toast.error(data?.error ?? error?.message ?? "Could not update status");
+      toast.error(
+        data?.error ?? (await edgeFunctionErrorMessage(error, "Could not update status")),
+      );
       return;
     }
     toast.success(u.is_active ? "Account deactivated" : "Account reactivated");

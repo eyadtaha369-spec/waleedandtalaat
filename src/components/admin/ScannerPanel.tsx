@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ALL_SLOTS } from "@/lib/schedule";
+import { edgeFunctionErrorMessage } from "@/lib/functionsError";
 
 const SCANNER_ELEMENT_ID = "wt-qr-scanner";
 
@@ -75,7 +76,7 @@ export function ScannerPanel() {
       });
 
       if (error || data?.error) {
-        toast.error(data?.error ?? error?.message ?? "Scan failed");
+        toast.error(data?.error ?? (await edgeFunctionErrorMessage(error, "Scan failed")));
         return;
       }
 

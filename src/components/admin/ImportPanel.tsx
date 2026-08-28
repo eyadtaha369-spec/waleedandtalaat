@@ -13,6 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { generateTempPassword, generateUsername } from "@/lib/credentials";
+import { edgeFunctionErrorMessage } from "@/lib/functionsError";
 
 type ParsedRow = {
   full_name: string;
@@ -85,7 +86,12 @@ export function ImportPanel() {
     });
     setBusy(false);
     if (error) {
-      toast.error(error.message || "Import failed. Is the bulk-import-students function deployed?");
+      toast.error(
+        await edgeFunctionErrorMessage(
+          error,
+          "Import failed. Is the bulk-import-students function deployed?",
+        ),
+      );
       return;
     }
     const created = (data?.results as ImportResult[]) ?? [];

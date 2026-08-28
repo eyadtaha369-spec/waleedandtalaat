@@ -10,6 +10,7 @@ export type Profile = {
   route: string | null;
   pickup_stop: string | null;
   subscription_type: string;
+  payment_status: string;
   trips_total: number;
   trips_remaining: number;
   photo_url: string | null;

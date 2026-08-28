@@ -17,7 +17,8 @@ type ImportRow = {
   route: string;
   pickup_stop?: string;
   photo_url?: string;
-  subscription_type: "full_term" | "package";
+  subscription_type: "full_term" | "70_trips" | "weekly" | "top_student_offer";
+  payment_status: "paid_full" | "installment_pending";
   trips_total: number;
   username: string;
   temp_password: string;
@@ -75,6 +76,7 @@ Deno.serve(async (req) => {
           pickup_stop: row.pickup_stop ?? null,
           photo_url: row.photo_url ?? null,
           subscription_type: row.subscription_type,
+          payment_status: row.payment_status,
           trips_total: row.trips_total,
         },
       });

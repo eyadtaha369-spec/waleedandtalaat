@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { useRoutes } from "@/hooks/useRoutes";
+import { subscriptionBadge } from "@/lib/subscription";
 import {
   MORNING_SLOTS,
   RETURN_SLOTS,
@@ -152,13 +153,19 @@ function Dashboard() {
           <p className="mt-1 text-sm opacity-80">
             {profile.route ?? "No route set"} · {profile.pickup_stop ?? "No stop set"}
           </p>
+          <Badge
+            className={`mt-2 ${subscriptionBadge(profile.subscription_type, profile.payment_status).className}`}
+          >
+            {subscriptionBadge(profile.subscription_type, profile.payment_status).emoji}{" "}
+            {subscriptionBadge(profile.subscription_type, profile.payment_status).label}
+          </Badge>
         </div>
         <div className="border-gilded ms-auto rounded-2xl px-5 py-3 text-center">
           <p className="text-xs opacity-70 uppercase">
-            {profile.subscription_type === "package" ? "Package trips" : "Subscription"}
+            {profile.subscription_type === "70_trips" ? "Trips remaining" : "Subscription"}
           </p>
           <p className="text-gilded text-xl font-bold">
-            {profile.subscription_type === "package"
+            {profile.subscription_type === "70_trips"
               ? `${profile.trips_remaining}/${profile.trips_total}`
               : "Full term"}
           </p>

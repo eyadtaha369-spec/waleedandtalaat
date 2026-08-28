@@ -9,6 +9,7 @@ import { SmartAvatar } from "@/components/SmartAvatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cairoNow, morningWindow, prettyDate, returnWindow, toDateKey } from "@/lib/schedule";
+import { subscriptionBadge } from "@/lib/subscription";
 
 export const Route = createFileRoute("/pass")({
   head: () => ({
@@ -119,11 +120,22 @@ function PassPage() {
           </div>
         )}
 
+        <div className="px-6 pt-4">
+          <Badge
+            className={
+              subscriptionBadge(profile.subscription_type, profile.payment_status).className
+            }
+          >
+            {subscriptionBadge(profile.subscription_type, profile.payment_status).emoji}{" "}
+            {subscriptionBadge(profile.subscription_type, profile.payment_status).label}
+          </Badge>
+        </div>
+
         <div className="grid grid-cols-2 gap-4 p-6 text-sm">
           <Cell
-            label={profile.subscription_type === "package" ? "Trips remaining" : "Subscription"}
+            label={profile.subscription_type === "70_trips" ? "Trips remaining" : "Subscription"}
             value={
-              profile.subscription_type === "package"
+              profile.subscription_type === "70_trips"
                 ? `${profile.trips_remaining}/${profile.trips_total}`
                 : "Full term"
             }

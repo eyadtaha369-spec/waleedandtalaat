@@ -18,6 +18,12 @@ import { generateTempPassword, generateUsername } from "@/lib/credentials";
 import { edgeFunctionErrorMessage } from "@/lib/functionsError";
 import { normalizeRouteName } from "@/lib/routeAliases";
 import { normalizePhotoUrl } from "@/lib/driveImage";
+import {
+  mapSubscriptionChoice,
+  subscriptionBadge,
+  type PaymentStatus,
+  type SubscriptionType,
+} from "@/lib/subscription";
 
 type ParsedRow = {
   full_name: string;
@@ -25,7 +31,8 @@ type ParsedRow = {
   route: string;
   photo_url: string;
   pickup_stop: string;
-  subscription_type: "full_term" | "package";
+  subscription_type: SubscriptionType;
+  payment_status: PaymentStatus;
   trips_total: number;
   username: string;
   temp_password: string;
@@ -39,11 +46,6 @@ type ImportResult = {
   status: "created" | "failed";
   error?: string;
 };
-
-function normalizeSubscription(raw: string): "full_term" | "package" {
-  const v = raw.trim().toLowerCase();
-  return v.includes("package") || v.includes("70") ? "package" : "full_term";
-}
 
 /** Pulls a value out of a row by trying several possible header spellings, in order. */
 function pick(row: Record<string, unknown>, keys: string[]): string {
@@ -60,14 +62,18 @@ function rowsToParsed(data: Record<string, unknown>[]): ParsedRow[] {
     .map((r, i) => {
       const name = pick(r, ["اسم الطالب", "Name", "Full Name"]);
       const rawRoute = pick(r, ["الخط", "Route"]);
+      const planRaw = pick(r, ["برجاء", "Subscription Type"]);
+      const plan = mapSubscriptionChoice(planRaw);
+      const explicitTrips = Number(pick(r, ["Initial Trips Count", "Trips"]) || 0) || 0;
       return {
         full_name: name,
         phone: pick(r, ["رقم الطالب", "WhatsApp Number", "Phone"]),
         route: normalizeRouteName(rawRoute),
         photo_url: normalizePhotoUrl(pick(r, ["4x6 صورة شخصية", "Photo URL", "photo_url"])),
         pickup_stop: pick(r, ["Pickup Stop"]),
-        subscription_type: normalizeSubscription(pick(r, ["Subscription Type"]) || "full_term"),
-        trips_total: Number(pick(r, ["Initial Trips Count", "Trips"]) || 0) || 0,
+        subscription_type: plan.subscription_type,
+        payment_status: plan.payment_status,
+        trips_total: explicitTrips || plan.trips_total || 0,
         username: generateUsername(name, i),
         temp_password: generateTempPassword(),
       };
@@ -173,8 +179,9 @@ export function ImportPanel() {
         <p className="mt-1 text-sm text-muted-foreground">
           Upload the roster sheet (.xlsx or .csv) with columns: <code dir="rtl">اسم الطالب</code>,{" "}
           <code dir="rtl">رقم الطالب</code>, <code dir="rtl">4x6 صورة شخصية</code>,{" "}
-          <code dir="rtl">الخط</code>. Payment, installment and receipt columns are ignored
-          automatically.
+          <code dir="rtl">الخط</code>, and <code dir="rtl">برجاء</code> for the subscription plan
+          (سداد كامل / قسط / عرض الدحيحة / 70 رحلة / اسبوعي). Payment amount, receipt and other
+          columns are ignored automatically.
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <input
@@ -210,6 +217,7 @@ export function ImportPanel() {
                 <TableHead>Photo</TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead>Route</TableHead>
+                <TableHead>Plan</TableHead>
                 <TableHead>Username</TableHead>
                 <TableHead>Temp password</TableHead>
                 {results.length > 0 && <TableHead>Status</TableHead>}
@@ -235,6 +243,16 @@ export function ImportPanel() {
                     </TableCell>
                     <TableCell className="font-medium">{r.full_name}</TableCell>
                     <TableCell>{r.route || "—"}</TableCell>
+                    <TableCell>
+                      {(() => {
+                        const b = subscriptionBadge(r.subscription_type, r.payment_status);
+                        return (
+                          <span className="whitespace-nowrap">
+                            {b.emoji} {b.label}
+                          </span>
+                        );
+                      })()}
+                    </TableCell>
                     <TableCell className="font-mono text-xs">{r.username}</TableCell>
                     <TableCell className="font-mono text-xs">{r.temp_password}</TableCell>
                     {results.length > 0 && (

@@ -120,6 +120,7 @@ export type Database = {
           pickup_stop: string | null;
           route: string | null;
           subscription_type: string;
+          payment_status: string;
           trips_remaining: number;
           trips_total: number;
           username: string | null;
@@ -133,6 +134,7 @@ export type Database = {
           pickup_stop?: string | null;
           route?: string | null;
           subscription_type?: string;
+          payment_status?: string;
           trips_remaining?: number;
           trips_total?: number;
           username?: string | null;
@@ -146,6 +148,7 @@ export type Database = {
           pickup_stop?: string | null;
           route?: string | null;
           subscription_type?: string;
+          payment_status?: string;
           trips_remaining?: number;
           trips_total?: number;
           username?: string | null;

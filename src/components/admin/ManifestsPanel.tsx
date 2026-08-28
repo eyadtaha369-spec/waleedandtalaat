@@ -18,13 +18,17 @@ type Row = {
   full_name: string;
   route: string | null;
   pickup_stop: string | null;
+  payment_status: string;
 };
+
+type PaymentFilter = "all" | "paid_full" | "installment_pending";
 
 export function ManifestsPanel() {
   const today = useMemo(() => toDateKey(cairoNow()), []);
   const [slot, setSlot] = useState<string>(ALL_SLOTS[0]);
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
+  const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>("all");
 
   useEffect(() => {
     void load(slot);
@@ -41,7 +45,7 @@ export function ManifestsPanel() {
       const excluded = new Set((optedOut ?? []).map((o) => o.student_id));
       const { data: profiles } = await supabase
         .from("profiles")
-        .select("id,full_name,route,pickup_stop")
+        .select("id,full_name,route,pickup_stop,payment_status")
         .order("route");
       setRows(
         (profiles ?? [])
@@ -51,6 +55,7 @@ export function ManifestsPanel() {
             full_name: p.full_name,
             route: p.route,
             pickup_stop: p.pickup_stop,
+            payment_status: p.payment_status,
           })),
       );
     } else {
@@ -66,21 +71,27 @@ export function ManifestsPanel() {
 
       const ids = (bookings ?? []).map((b) => b.student_id);
       const { data: profiles } = ids.length
-        ? await supabase.from("profiles").select("id,full_name").in("id", ids)
+        ? await supabase.from("profiles").select("id,full_name,payment_status").in("id", ids)
         : { data: [] };
-      const nameById = new Map((profiles ?? []).map((p) => [p.id, p.full_name]));
+      const profileById = new Map((profiles ?? []).map((p) => [p.id, p]));
 
       setRows(
         (bookings ?? []).map((b) => ({
           student_id: b.student_id,
-          full_name: nameById.get(b.student_id) ?? "—",
+          full_name: profileById.get(b.student_id)?.full_name ?? "—",
           route: b.route,
           pickup_stop: b.pickup_stop,
+          payment_status: profileById.get(b.student_id)?.payment_status ?? "paid_full",
         })),
       );
     }
     setLoading(false);
   };
+
+  const filteredRows = rows.filter(
+    (r) => paymentFilter === "all" || r.payment_status === paymentFilter,
+  );
+  const installmentCount = rows.filter((r) => r.payment_status === "installment_pending").length;
 
   return (
     <section className="rounded-3xl border border-border bg-card p-6">
@@ -98,22 +109,36 @@ export function ManifestsPanel() {
         </TabsList>
 
         <TabsContent value={slot} className="mt-5">
-          <div className="mb-4 flex items-center gap-2">
+          <div className="mb-4 flex flex-wrap items-center gap-2">
             <Badge className="btn-gold">
-              <Users className="me-1 size-3.5" /> {rows.length} passenger
-              {rows.length === 1 ? "" : "s"}
+              <Users className="me-1 size-3.5" /> {filteredRows.length} passenger
+              {filteredRows.length === 1 ? "" : "s"}
             </Badge>
+            {installmentCount > 0 && (
+              <Badge className="bg-warning text-warning-foreground">
+                🟡 {installmentCount} قسط
+              </Badge>
+            )}
             {slot === "04:00 PM" && (
               <span className="text-xs text-muted-foreground">
                 All subscribed students not opted out today
               </span>
             )}
+            <select
+              className="ms-auto h-8 rounded-md border border-input bg-background px-2 text-xs"
+              value={paymentFilter}
+              onChange={(e) => setPaymentFilter(e.target.value as PaymentFilter)}
+            >
+              <option value="all">All payment statuses</option>
+              <option value="paid_full">Paid in full</option>
+              <option value="installment_pending">Installment pending (قسط)</option>
+            </select>
           </div>
 
           {loading ? (
             <p className="text-sm text-muted-foreground">Loading manifest…</p>
-          ) : rows.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No passengers for this slot yet.</p>
+          ) : filteredRows.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No passengers match this view.</p>
           ) : (
             <Table>
               <TableHeader>
@@ -121,14 +146,22 @@ export function ManifestsPanel() {
                   <TableHead>Name</TableHead>
                   <TableHead>Route</TableHead>
                   <TableHead>Stop</TableHead>
+                  <TableHead>Payment</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {rows.map((r) => (
+                {filteredRows.map((r) => (
                   <TableRow key={r.student_id}>
                     <TableCell className="font-medium">{r.full_name}</TableCell>
                     <TableCell>{r.route ?? "—"}</TableCell>
                     <TableCell>{r.pickup_stop ?? "—"}</TableCell>
+                    <TableCell>
+                      {r.payment_status === "installment_pending" ? (
+                        <Badge className="bg-warning text-warning-foreground">🟡 قسط</Badge>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">Paid</span>
+                      )}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

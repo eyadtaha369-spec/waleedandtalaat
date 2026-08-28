@@ -1,13 +1,14 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { toast } from "sonner";
-import { ClipboardList, ScanLine, Upload, Users } from "lucide-react";
+import { Bus, ClipboardList, ScanLine, Upload, Users } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScannerPanel } from "@/components/admin/ScannerPanel";
 import { ManifestsPanel } from "@/components/admin/ManifestsPanel";
 import { RequestsPanel } from "@/components/admin/RequestsPanel";
 import { ImportPanel } from "@/components/admin/ImportPanel";
+import { FleetPanel } from "@/components/admin/FleetPanel";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -24,7 +25,7 @@ export const Route = createFileRoute("/admin")({
 });
 
 function AdminPage() {
-  const { user, isStaff, loading } = useAuth();
+  const { user, isStaff, isAdmin, loading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -43,20 +44,39 @@ function AdminPage() {
     return <main className="mx-auto max-w-6xl px-4 py-16 text-muted-foreground">Loading…</main>;
   }
 
+  // Supervisors are restricted to the QR scanner only — no tabs, no
+  // approvals, no manifests, no user setup. Admins get everything.
+  if (!isAdmin) {
+    return (
+      <main className="mx-auto max-w-6xl px-4 py-8">
+        <div className="surface-navy shadow-luxe rounded-3xl p-6">
+          <p className="text-xs tracking-[0.25em] uppercase opacity-70">Supervisor</p>
+          <h1 className="text-2xl font-bold">Boarding scanner</h1>
+        </div>
+        <div className="mt-6">
+          <ScannerPanel />
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="mx-auto max-w-6xl px-4 py-8">
       <div className="surface-navy shadow-luxe rounded-3xl p-6">
-        <p className="text-xs tracking-[0.25em] uppercase opacity-70">Supervisor dashboard</p>
+        <p className="text-xs tracking-[0.25em] uppercase opacity-70">Admin dashboard</p>
         <h1 className="text-2xl font-bold">Boarding &amp; fleet control</h1>
       </div>
 
       <Tabs defaultValue="scanner" className="mt-6">
-        <TabsList className="grid w-full grid-cols-2 gap-1 sm:grid-cols-4">
+        <TabsList className="grid w-full grid-cols-2 gap-1 sm:grid-cols-5">
           <TabsTrigger value="scanner">
             <ScanLine className="size-4" /> Scanner
           </TabsTrigger>
           <TabsTrigger value="manifests">
             <Users className="size-4" /> Manifests
+          </TabsTrigger>
+          <TabsTrigger value="fleet">
+            <Bus className="size-4" /> Fleet
           </TabsTrigger>
           <TabsTrigger value="requests">
             <ClipboardList className="size-4" /> Requests
@@ -71,6 +91,9 @@ function AdminPage() {
         </TabsContent>
         <TabsContent value="manifests" className="mt-5">
           <ManifestsPanel />
+        </TabsContent>
+        <TabsContent value="fleet" className="mt-5">
+          <FleetPanel />
         </TabsContent>
         <TabsContent value="requests" className="mt-5">
           <RequestsPanel />

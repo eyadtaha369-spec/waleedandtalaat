@@ -42,9 +42,9 @@ Deno.serve(async (req) => {
       return json({ error: "Not authenticated" }, 401);
     }
     const admin = createClient(url, serviceKey);
-    const { data: isStaff } = await admin.rpc("is_staff", { _user_id: user.id });
-    if (!isStaff) {
-      return json({ error: "Staff access required" }, 403);
+    const { data: isAdmin } = await admin.rpc("is_admin", { _user_id: user.id });
+    if (!isAdmin) {
+      return json({ error: "Admin access required" }, 403);
     }
 
     const { students } = (await req.json()) as { students: ImportRow[] };

@@ -8,13 +8,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ROUTES } from "@/lib/schedule";
+import { useRoutes } from "@/hooks/useRoutes";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
       { title: "Sign in — Waleed & Talaat Shuttle" },
-      { name: "description", content: "Student and supervisor sign in for the Waleed & Talaat shuttle service." },
+      {
+        name: "description",
+        content: "Student and supervisor sign in for the Waleed & Talaat shuttle service.",
+      },
       { property: "og:title", content: "Sign in — Waleed & Talaat Shuttle" },
       { property: "og:description", content: "Access your shuttle bookings and boarding pass." },
     ],
@@ -25,12 +28,22 @@ export const Route = createFileRoute("/auth")({
 function AuthPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { routes, stopsByRoute } = useRoutes();
   const [busy, setBusy] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
-  const [route, setRoute] = useState<string>(ROUTES[0]);
+  const [route, setRoute] = useState<string>("");
+  const [pickupStop, setPickupStop] = useState<string>("");
+
+  useEffect(() => {
+    if (!route && routes.length > 0) {
+      setRoute(routes[0]!);
+      setPickupStop(stopsByRoute[routes[0]!]?.[0] ?? "");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [routes]);
 
   useEffect(() => {
     if (user) void navigate({ to: "/dashboard" });
@@ -52,7 +65,13 @@ function AuthPage() {
       password,
       options: {
         emailRedirectTo: `${window.location.origin}/dashboard`,
-        data: { full_name: fullName, phone, route, subscription_type: "full_term" },
+        data: {
+          full_name: fullName,
+          phone,
+          route,
+          pickup_stop: pickupStop,
+          subscription_type: "full_term",
+        },
       },
     });
     setBusy(false);
@@ -91,10 +110,25 @@ function AuthPage() {
               <select
                 className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                 value={route}
-                onChange={(e) => setRoute(e.target.value)}
+                onChange={(e) => {
+                  setRoute(e.target.value);
+                  setPickupStop(stopsByRoute[e.target.value]?.[0] ?? "");
+                }}
               >
-                {ROUTES.map((r) => (
+                {routes.map((r) => (
                   <option key={r}>{r}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label>Pickup stop</Label>
+              <select
+                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                value={pickupStop}
+                onChange={(e) => setPickupStop(e.target.value)}
+              >
+                {(stopsByRoute[route] ?? []).map((s) => (
+                  <option key={s}>{s}</option>
                 ))}
               </select>
             </div>

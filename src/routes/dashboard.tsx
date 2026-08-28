@@ -8,11 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { AvatarUploader } from "@/components/AvatarUploader";
+import { useRoutes } from "@/hooks/useRoutes";
 import {
   MORNING_SLOTS,
   RETURN_SLOTS,
-  ROUTES,
-  STOPS,
   morningWindow,
   optOutWindow,
   prettyDate,
@@ -47,6 +46,7 @@ type Booking = {
 function Dashboard() {
   const { user, profile, loading } = useAuth();
   const navigate = useNavigate();
+  const { stopsByRoute } = useRoutes();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [optedOut, setOptedOut] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -55,21 +55,25 @@ function Dashboard() {
   const rw = useMemo(() => returnWindow(), []);
   const ow = useMemo(() => optOutWindow(), []);
 
-  const [route, setRoute] = useState<string>(ROUTES[0]);
-  const [stop, setStop] = useState<string>(STOPS[ROUTES[0]]![0]!);
+  const [stop, setStop] = useState<string>("");
   const [morningSlot, setMorningSlot] = useState<string>(MORNING_SLOTS[0]);
   const [returnSlot, setReturnSlot] = useState<string>(RETURN_SLOTS[0]);
+  const stopsForMyRoute = profile?.route ? (stopsByRoute[profile.route] ?? []) : [];
 
   useEffect(() => {
     if (!loading && !user) void navigate({ to: "/auth" });
   }, [loading, user, navigate]);
 
   useEffect(() => {
-    if (profile?.route && STOPS[profile.route]) {
-      setRoute(profile.route);
-      setStop(profile.pickup_stop ?? STOPS[profile.route]![0]!);
+    if (profile?.route) {
+      const stops = stopsByRoute[profile.route] ?? [];
+      setStop(
+        profile.pickup_stop && stops.includes(profile.pickup_stop)
+          ? profile.pickup_stop
+          : (stops[0] ?? ""),
+      );
     }
-  }, [profile]);
+  }, [profile, stopsByRoute]);
 
   const reload = async () => {
     if (!user) return;
@@ -104,7 +108,7 @@ function Dashboard() {
       kind,
       slot: kind === "morning" ? morningSlot : returnSlot,
       service_date: kind === "morning" ? mw.serviceDate : rw.serviceDate,
-      route,
+      route: profile?.route ?? null,
       pickup_stop: kind === "morning" ? stop : null,
     };
     const { error } = await supabase
@@ -181,19 +185,18 @@ function Dashboard() {
             />
           ) : mw.open ? (
             <div className="space-y-4">
-              <SelectField
-                label="Route"
-                value={route}
-                options={[...ROUTES]}
-                onChange={(v) => {
-                  setRoute(v);
-                  setStop(STOPS[v]![0]!);
-                }}
-              />
+              <div className="rounded-xl border border-border bg-secondary/50 px-3 py-2">
+                <p className="text-[11px] tracking-widest text-muted-foreground uppercase">
+                  Your route
+                </p>
+                <p className="text-sm font-semibold">
+                  {profile.route ?? "No route assigned — contact admin"}
+                </p>
+              </div>
               <SelectField
                 label="Departure stop"
                 value={stop}
-                options={STOPS[route] ?? []}
+                options={stopsForMyRoute}
                 onChange={setStop}
               />
               <SlotPicker
@@ -203,7 +206,7 @@ function Dashboard() {
               />
               <Button
                 className="btn-gold w-full"
-                disabled={busy}
+                disabled={busy || !profile.route}
                 onClick={() => void book("morning")}
               >
                 Reserve morning seat

@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { z } from "zod";
 import { toast } from "sonner";
 import { CheckCircle2, Hourglass } from "lucide-react";
@@ -7,13 +7,18 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ALL_SLOTS, ROUTES } from "@/lib/schedule";
+import { useRoutes } from "@/hooks/useRoutes";
+import { ALL_SLOTS } from "@/lib/schedule";
 
 export const Route = createFileRoute("/daily-pass")({
   head: () => ({
     meta: [
       { title: "Daily pass request — Waleed & Talaat" },
-      { name: "description", content: "Not a subscriber? Request a one-day seat on the Alexandria to Alamein shuttle — no account needed." },
+      {
+        name: "description",
+        content:
+          "Not a subscriber? Request a one-day seat on the Alexandria to Alamein shuttle — no account needed.",
+      },
       { property: "og:title", content: "Daily pass request — Waleed & Talaat" },
       { property: "og:description", content: "Request a one-day shuttle seat, no account needed." },
     ],
@@ -30,18 +35,32 @@ const schema = z.object({
     .max(20)
     .regex(/^[0-9+\s-]+$/, "Digits only"),
   route: z.string().min(1),
+  pickup_stop: z.string().min(1, "Select your pickup stop"),
   slot: z.string().min(1),
 });
 
 function DailyPass() {
+  const { routes, stopsByRoute } = useRoutes();
   const [form, setForm] = useState({
     full_name: "",
     phone: "",
-    route: ROUTES[0] as string,
+    route: "",
+    pickup_stop: "",
     slot: ALL_SLOTS[0] as string,
   });
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
+
+  useEffect(() => {
+    if (!form.route && routes.length > 0) {
+      setForm((f) => ({
+        ...f,
+        route: routes[0]!,
+        pickup_stop: stopsByRoute[routes[0]!]?.[0] ?? "",
+      }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [routes]);
 
   const submit = async () => {
     const parsed = schema.safeParse(form);
@@ -59,14 +78,17 @@ function DailyPass() {
         {sent ? (
           <div className="text-center">
             <Hourglass className="text-accent mx-auto size-10" />
-            <h1 className="mt-4 text-xl font-bold">Your daily pass request is pending admin approval.</h1>
+            <h1 className="mt-4 text-xl font-bold">
+              Your daily pass request is pending admin approval.
+            </h1>
             <p className="mt-2 text-sm text-muted-foreground">
-              A supervisor will confirm your seat on WhatsApp shortly. Please keep your phone nearby.
+              A supervisor will confirm your seat on WhatsApp shortly. Please keep your phone
+              nearby.
             </p>
             <div className="mt-6 rounded-2xl border border-border bg-secondary p-4 text-start text-sm">
               <p className="font-semibold">{form.full_name}</p>
               <p className="text-muted-foreground">
-                {form.route} · {form.slot}
+                {form.route} · {form.pickup_stop} · {form.slot}
               </p>
             </div>
             <Button variant="ghost" className="mt-5" onClick={() => setSent(false)}>
@@ -102,10 +124,28 @@ function DailyPass() {
                 <select
                   className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                   value={form.route}
-                  onChange={(e) => setForm({ ...form, route: e.target.value })}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      route: e.target.value,
+                      pickup_stop: stopsByRoute[e.target.value]?.[0] ?? "",
+                    })
+                  }
                 >
-                  {ROUTES.map((r) => (
+                  {routes.map((r) => (
                     <option key={r}>{r}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label>Pickup stop</Label>
+                <select
+                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  value={form.pickup_stop}
+                  onChange={(e) => setForm({ ...form, pickup_stop: e.target.value })}
+                >
+                  {(stopsByRoute[form.route] ?? []).map((s) => (
+                    <option key={s}>{s}</option>
                   ))}
                 </select>
               </div>

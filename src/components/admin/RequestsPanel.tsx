@@ -11,6 +11,7 @@ type Request = {
   full_name: string;
   phone: string;
   route: string;
+  pickup_stop: string | null;
   slot: string;
   service_date: string;
   status: string;
@@ -25,7 +26,7 @@ export function RequestsPanel() {
     setLoading(true);
     const { data } = await supabase
       .from("daily_pass_requests")
-      .select("id,full_name,phone,route,slot,service_date,status")
+      .select("id,full_name,phone,route,pickup_stop,slot,service_date,status")
       .order("created_at", { ascending: false });
     setRequests((data as Request[]) ?? []);
     setLoading(false);
@@ -83,7 +84,9 @@ export function RequestsPanel() {
                 <div className="flex-1">
                   <p className="font-semibold">{r.full_name}</p>
                   <p className="text-sm text-muted-foreground">
-                    {r.phone} · {r.route} · {r.slot} · {prettyDate(r.service_date)}
+                    {r.phone} · {r.route}
+                    {r.pickup_stop ? ` · ${r.pickup_stop}` : ""} · {r.slot} ·{" "}
+                    {prettyDate(r.service_date)}
                   </p>
                 </div>
                 <Button

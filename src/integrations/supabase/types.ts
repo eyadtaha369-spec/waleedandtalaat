@@ -48,6 +48,7 @@ export type Database = {
           id: string;
           phone: string;
           route: string;
+          pickup_stop: string | null;
           service_date: string;
           slot: string;
           status: string;
@@ -58,6 +59,7 @@ export type Database = {
           id?: string;
           phone: string;
           route: string;
+          pickup_stop?: string | null;
           service_date?: string;
           slot: string;
           status?: string;
@@ -68,10 +70,23 @@ export type Database = {
           id?: string;
           phone?: string;
           route?: string;
+          pickup_stop?: string | null;
           service_date?: string;
           slot?: string;
           status?: string;
         };
+        Relationships: [];
+      };
+      routes: {
+        Row: { id: string; name: string; display_order: number };
+        Insert: { id?: string; name: string; display_order?: number };
+        Update: { id?: string; name?: string; display_order?: number };
+        Relationships: [];
+      };
+      stops: {
+        Row: { id: string; route_id: string; name: string; display_order: number };
+        Insert: { id?: string; route_id: string; name: string; display_order?: number };
+        Update: { id?: string; route_id?: string; name?: string; display_order?: number };
         Relationships: [];
       };
       opt_outs: {
@@ -189,6 +204,7 @@ export type Database = {
           full_name: string;
           phone: string;
           route: string;
+          pickup_stop: string | null;
           slot: string;
           service_date: string;
           pass_token: string;
@@ -203,6 +219,7 @@ export type Database = {
           full_name: string;
           phone: string;
           route: string;
+          pickup_stop?: string | null;
           slot: string;
           service_date: string;
           pass_token?: string;
@@ -217,6 +234,7 @@ export type Database = {
           full_name?: string;
           phone?: string;
           route?: string;
+          pickup_stop?: string | null;
           slot?: string;
           service_date?: string;
           pass_token?: string;
@@ -240,7 +258,20 @@ export type Database = {
         Returns: boolean;
       };
       is_staff: { Args: { _user_id: string }; Returns: boolean };
+      is_admin: { Args: { _user_id: string }; Returns: boolean };
       scan_pass: { Args: { p_student_id: string; p_slot: string }; Returns: Json };
+      scan_guest_pass: { Args: { p_token: string }; Returns: Json };
+      fleet_manifest_report: {
+        Args: { p_date: string | null };
+        Returns: {
+          route: string;
+          morning_scans: number;
+          early_return_passengers: number;
+          opted_out_count: number;
+          remaining_for_4pm: number;
+          recommended_bus: string;
+        }[];
+      };
       decide_daily_pass_request: {
         Args: { p_request_id: string; p_action: string };
         Returns: Json;
@@ -250,6 +281,7 @@ export type Database = {
         Returns: {
           full_name: string;
           route: string;
+          pickup_stop: string | null;
           slot: string;
           service_date: string;
           is_scanned: boolean;

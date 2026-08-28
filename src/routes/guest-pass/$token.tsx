@@ -20,6 +20,7 @@ export const Route = createFileRoute("/guest-pass/$token")({
 type GuestPass = {
   full_name: string;
   route: string;
+  pickup_stop: string | null;
   slot: string;
   service_date: string;
   is_scanned: boolean;
@@ -70,7 +71,8 @@ function GuestPassPage() {
         <div className="p-6">
           <h1 className="text-xl font-bold">{pass.full_name}</h1>
           <p className="text-sm text-muted-foreground">
-            {pass.route} · {pass.slot}
+            {pass.route}
+            {pass.pickup_stop ? ` · ${pass.pickup_stop}` : ""} · {pass.slot}
           </p>
         </div>
 

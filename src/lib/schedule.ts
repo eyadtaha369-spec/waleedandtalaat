@@ -1,25 +1,7 @@
 export const TIMEZONE = "Africa/Cairo";
 
-export const ROUTES = [
-  "Sidi Gaber",
-  "Miami",
-  "Smouha",
-  "Agami",
-  "Borg El Arab",
-  "El Mandara",
-] as const;
-
-export const STOPS: Record<string, string[]> = {
-  "Sidi Gaber": ["Sidi Gaber Station", "Cleopatra", "Roushdy"],
-  Miami: ["Miami Bridge", "Asafra", "Sidi Bishr"],
-  Smouha: ["Green Plaza", "Smouha Club", "Victor Emanuel"],
-  Agami: ["Bitash", "Hanoville", "El Max"],
-  "Borg El Arab": ["Borg El Arab Gate", "New Borg City"],
-  "El Mandara": ["Mandara Bahary", "El Montaza"],
-};
-
 export const MORNING_SLOTS = ["06:00 AM", "08:00 AM"] as const;
-export const RETURN_SLOTS = ["12:30 PM", "01:30 PM"] as const;
+export const RETURN_SLOTS = ["12:30 PM", "01:30 PM", "02:30 PM"] as const;
 export const ALL_SLOTS = [...MORNING_SLOTS, ...RETURN_SLOTS, "04:00 PM"] as const;
 
 /** Current wall-clock time in Alexandria, as a plain Date in local fields. */

@@ -185,6 +185,9 @@ end;
 $$;
 
 -- get_guest_pass now also exposes pickup_stop for the public pass page.
+-- Must drop first: CREATE OR REPLACE can't change a function's return
+-- columns (OUT parameters), only REPLACE its body.
+drop function if exists public.get_guest_pass(uuid);
 create or replace function public.get_guest_pass(p_token uuid)
 returns table (
   full_name text, route text, pickup_stop text, slot text, service_date date, is_scanned boolean

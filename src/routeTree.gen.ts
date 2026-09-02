@@ -15,6 +15,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as DailyPassRouteImport } from './routes/daily-pass'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as PassRouteImport } from './routes/pass'
+import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as AdminInstallmentsRouteImport } from './routes/admin/installments'
 import { Route as GuestPassTokenRouteImport } from './routes/guest-pass/$token'
 
@@ -48,6 +49,11 @@ const PassRoute = PassRouteImport.update({
   path: '/pass',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminInstallmentsRoute = AdminInstallmentsRouteImport.update({
   id: '/installments',
   path: '/installments',
@@ -68,16 +74,17 @@ export interface FileRoutesByFullPath {
   '/pass': typeof PassRoute
   '/admin/installments': typeof AdminInstallmentsRoute
   '/guest-pass/$token': typeof GuestPassTokenRoute
+  '/admin/': typeof AdminIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRoute
   '/daily-pass': typeof DailyPassRoute
   '/dashboard': typeof DashboardRoute
   '/pass': typeof PassRoute
   '/admin/installments': typeof AdminInstallmentsRoute
   '/guest-pass/$token': typeof GuestPassTokenRoute
+  '/admin': typeof AdminIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -89,6 +96,7 @@ export interface FileRoutesById {
   '/pass': typeof PassRoute
   '/admin/installments': typeof AdminInstallmentsRoute
   '/guest-pass/$token': typeof GuestPassTokenRoute
+  '/admin/': typeof AdminIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -101,16 +109,17 @@ export interface FileRouteTypes {
     | '/pass'
     | '/admin/installments'
     | '/guest-pass/$token'
+    | '/admin/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/admin'
     | '/auth'
     | '/daily-pass'
     | '/dashboard'
     | '/pass'
     | '/admin/installments'
     | '/guest-pass/$token'
+    | '/admin'
   id:
     | '__root__'
     | '/'
@@ -121,6 +130,7 @@ export interface FileRouteTypes {
     | '/pass'
     | '/admin/installments'
     | '/guest-pass/$token'
+    | '/admin/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -177,6 +187,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PassRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/installments': {
       id: '/admin/installments'
       path: '/installments'
@@ -196,10 +213,12 @@ declare module '@tanstack/react-router' {
 
 interface AdminRouteChildren {
   AdminInstallmentsRoute: typeof AdminInstallmentsRoute
+  AdminIndexRoute: typeof AdminIndexRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminInstallmentsRoute: AdminInstallmentsRoute,
+  AdminIndexRoute: AdminIndexRoute,
 }
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)

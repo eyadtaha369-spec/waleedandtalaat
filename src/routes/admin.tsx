@@ -1,8 +1,9 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { toast } from "sonner";
-import { Bus, ClipboardList, ScanLine, ShieldCheck, Upload, Users } from "lucide-react";
+import { Bus, ClipboardList, ScanLine, ShieldCheck, Upload, Users, Wallet } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScannerPanel } from "@/components/admin/ScannerPanel";
 import { ManifestsPanel } from "@/components/admin/ManifestsPanel";
@@ -63,9 +64,16 @@ function AdminPage() {
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8">
-      <div className="surface-navy shadow-luxe rounded-3xl p-6">
-        <p className="text-xs tracking-[0.25em] uppercase opacity-70">Admin dashboard</p>
-        <h1 className="text-2xl font-bold">Boarding &amp; fleet control</h1>
+      <div className="surface-navy shadow-luxe flex flex-wrap items-center justify-between gap-4 rounded-3xl p-6">
+        <div>
+          <p className="text-xs tracking-[0.25em] uppercase opacity-70">Admin dashboard</p>
+          <h1 className="text-2xl font-bold">Boarding &amp; fleet control</h1>
+        </div>
+        <Link to="/admin/installments">
+          <Button className="btn-gold">
+            <Wallet className="size-4" /> Installments
+          </Button>
+        </Link>
       </div>
 
       <Tabs defaultValue="scanner" className="mt-6">

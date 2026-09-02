@@ -19,6 +19,9 @@ type ImportRow = {
   photo_url?: string;
   subscription_type: "full_term" | "70_trips" | "weekly" | "top_student_offer";
   payment_status: "paid_full" | "installment_pending";
+  installment_status?: "none" | "pending_second" | "completed";
+  initial_amount_paid?: number;
+  payment_method?: string;
   trips_total: number;
   username: string;
   temp_password: string;
@@ -78,6 +81,9 @@ Deno.serve(async (req) => {
           photo_url: row.photo_url ?? null,
           subscription_type: row.subscription_type,
           payment_status: row.payment_status,
+          installment_status: row.installment_status ?? "none",
+          initial_amount_paid: row.initial_amount_paid ?? null,
+          payment_method: row.payment_method ?? null,
           trips_total: row.trips_total,
         },
       });

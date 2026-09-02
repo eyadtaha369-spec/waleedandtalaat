@@ -23,6 +23,7 @@ import { normalizePhotoUrl } from "@/lib/driveImage";
 import {
   mapSubscriptionChoice,
   subscriptionBadge,
+  type InstallmentStatus,
   type PaymentStatus,
   type SubscriptionType,
 } from "@/lib/subscription";
@@ -35,6 +36,9 @@ type ParsedRow = {
   pickup_stop: string;
   subscription_type: SubscriptionType;
   payment_status: PaymentStatus;
+  installment_status: InstallmentStatus;
+  initial_amount_paid: number;
+  payment_method: string;
   trips_total: number;
   username: string;
   temp_password: string;
@@ -76,6 +80,13 @@ function rowsToParsed(data: Record<string, unknown>[]): ParsedRow[] {
         pickup_stop: pick(r, ["Pickup Stop"]),
         subscription_type: plan.subscription_type,
         payment_status: plan.payment_status,
+        installment_status: plan.installment_status,
+        initial_amount_paid: Number(pick(r, ["المبلغ المدفوع", "Initial Amount Paid"]) || 0) || 0,
+        payment_method: pick(r, [
+          "برجاء اختيار طريقة التسديد التي سددت بها ",
+          "برجاء اختيار طريقة التسديد التي سددت بها",
+          "Payment Method",
+        ]),
         trips_total: explicitTrips || plan.trips_total || 0,
         username: generateUsername(name, i),
         temp_password: generateTempPassword(),

@@ -1,25 +1,51 @@
 export type SubscriptionType = "full_term" | "70_trips" | "weekly" | "top_student_offer";
 export type PaymentStatus = "paid_full" | "installment_pending";
+export type InstallmentStatus = "none" | "pending_second" | "completed";
 
 /**
  * Maps the roster sheet's "برجاء" (plan choice) column to our stored
- * subscription_type + payment_status, plus a trips_total override for
- * plans that come with a fixed trip count.
+ * subscription_type + payment_status + installment_status, plus a
+ * trips_total override for plans that come with a fixed trip count.
  */
 export function mapSubscriptionChoice(raw: string): {
   subscription_type: SubscriptionType;
   payment_status: PaymentStatus;
+  installment_status: InstallmentStatus;
   trips_total?: number;
 } {
   const v = raw.trim();
-  if (v === "قسط") return { subscription_type: "full_term", payment_status: "installment_pending" };
-  if (v === "سداد كامل") return { subscription_type: "full_term", payment_status: "paid_full" };
+  if (v === "قسط")
+    return {
+      subscription_type: "full_term",
+      payment_status: "installment_pending",
+      installment_status: "pending_second",
+    };
+  if (v === "سداد كامل")
+    return {
+      subscription_type: "full_term",
+      payment_status: "paid_full",
+      installment_status: "none",
+    };
   if (v === "عرض الدحيحة")
-    return { subscription_type: "top_student_offer", payment_status: "paid_full" };
+    return {
+      subscription_type: "top_student_offer",
+      payment_status: "paid_full",
+      installment_status: "none",
+    };
   if (v === "70 رحلة")
-    return { subscription_type: "70_trips", payment_status: "paid_full", trips_total: 70 };
-  if (v === "اسبوعي") return { subscription_type: "weekly", payment_status: "paid_full" };
-  return { subscription_type: "full_term", payment_status: "paid_full" };
+    return {
+      subscription_type: "70_trips",
+      payment_status: "paid_full",
+      installment_status: "none",
+      trips_total: 70,
+    };
+  if (v === "اسبوعي")
+    return { subscription_type: "weekly", payment_status: "paid_full", installment_status: "none" };
+  return {
+    subscription_type: "full_term",
+    payment_status: "paid_full",
+    installment_status: "none",
+  };
 }
 
 export const SUBSCRIPTION_BADGES: Record<
@@ -76,4 +102,22 @@ export function subscriptionBadge(subscriptionType: string, paymentStatus: strin
   const st = (SUBSCRIPTION_BADGES[subscriptionType as SubscriptionType] ??
     SUBSCRIPTION_BADGES.full_term)!;
   return st[paymentStatus as PaymentStatus] ?? st.paid_full;
+}
+
+export function installmentReminderLink(opts: {
+  full_name: string;
+  phone: string;
+  amount: number;
+}): string {
+  const message =
+    `مرحباً ${opts.full_name} 👋\n` +
+    `هذه رسالة تذكير بخصوص القسط الثاني المتبقي (${opts.amount} ج.م) لاشتراك النقل مع وليد وطلعت.\n` +
+    `برجاء سداد القسط في أقرب وقت لضمان استمرار الخدمة. شكراً لتعاونكم 🙏`;
+  const digits = opts.phone.replace(/\D/g, "");
+  const number = digits.startsWith("20")
+    ? digits
+    : digits.startsWith("0")
+      ? `20${digits.slice(1)}`
+      : digits;
+  return `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
 }

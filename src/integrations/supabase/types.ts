@@ -121,6 +121,10 @@ export type Database = {
           route: string | null;
           subscription_type: string;
           payment_status: string;
+          initial_amount_paid: number;
+          second_installment_amount: number | null;
+          payment_method: string | null;
+          installment_status: string;
           trips_remaining: number;
           trips_total: number;
           username: string | null;
@@ -135,6 +139,10 @@ export type Database = {
           route?: string | null;
           subscription_type?: string;
           payment_status?: string;
+          initial_amount_paid?: number;
+          second_installment_amount?: number | null;
+          payment_method?: string | null;
+          installment_status?: string;
           trips_remaining?: number;
           trips_total?: number;
           username?: string | null;
@@ -149,9 +157,37 @@ export type Database = {
           route?: string | null;
           subscription_type?: string;
           payment_status?: string;
+          initial_amount_paid?: number;
+          second_installment_amount?: number | null;
+          payment_method?: string | null;
+          installment_status?: string;
           trips_remaining?: number;
           trips_total?: number;
           username?: string | null;
+        };
+        Relationships: [];
+      };
+      installment_collections: {
+        Row: {
+          id: string;
+          student_id: string;
+          amount: number;
+          confirmed_by: string | null;
+          confirmed_at: string;
+        };
+        Insert: {
+          id?: string;
+          student_id: string;
+          amount: number;
+          confirmed_by?: string | null;
+          confirmed_at?: string;
+        };
+        Update: {
+          id?: string;
+          student_id?: string;
+          amount?: number;
+          confirmed_by?: string | null;
+          confirmed_at?: string;
         };
         Relationships: [];
       };
@@ -295,6 +331,23 @@ export type Database = {
           username: string | null;
           email: string;
         }[];
+      };
+      list_installment_students: {
+        Args: Record<string, never>;
+        Returns: {
+          user_id: string;
+          full_name: string;
+          phone: string | null;
+          route: string | null;
+          initial_amount_paid: number;
+          second_installment_amount: number | null;
+          payment_method: string | null;
+          installment_status: string;
+        }[];
+      };
+      confirm_second_installment: {
+        Args: { p_student_id: string };
+        Returns: Json;
       };
       update_staff_user: {
         Args: { p_user_id: string; p_full_name: string; p_phone: string; p_role: string };

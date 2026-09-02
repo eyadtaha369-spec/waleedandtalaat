@@ -15,6 +15,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as DailyPassRouteImport } from './routes/daily-pass'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as PassRouteImport } from './routes/pass'
+import { Route as AdminInstallmentsRouteImport } from './routes/admin/installments'
 import { Route as GuestPassTokenRouteImport } from './routes/guest-pass/$token'
 
 const IndexRoute = IndexRouteImport.update({
@@ -47,6 +48,11 @@ const PassRoute = PassRouteImport.update({
   path: '/pass',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminInstallmentsRoute = AdminInstallmentsRouteImport.update({
+  id: '/installments',
+  path: '/installments',
+  getParentRoute: () => AdminRoute,
+} as any)
 const GuestPassTokenRoute = GuestPassTokenRouteImport.update({
   id: '/guest-pass/$token',
   path: '/guest-pass/$token',
@@ -55,30 +61,33 @@ const GuestPassTokenRoute = GuestPassTokenRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRoute
   '/daily-pass': typeof DailyPassRoute
   '/dashboard': typeof DashboardRoute
   '/pass': typeof PassRoute
+  '/admin/installments': typeof AdminInstallmentsRoute
   '/guest-pass/$token': typeof GuestPassTokenRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRoute
   '/daily-pass': typeof DailyPassRoute
   '/dashboard': typeof DashboardRoute
   '/pass': typeof PassRoute
+  '/admin/installments': typeof AdminInstallmentsRoute
   '/guest-pass/$token': typeof GuestPassTokenRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRoute
   '/daily-pass': typeof DailyPassRoute
   '/dashboard': typeof DashboardRoute
   '/pass': typeof PassRoute
+  '/admin/installments': typeof AdminInstallmentsRoute
   '/guest-pass/$token': typeof GuestPassTokenRoute
 }
 export interface FileRouteTypes {
@@ -90,6 +99,7 @@ export interface FileRouteTypes {
     | '/daily-pass'
     | '/dashboard'
     | '/pass'
+    | '/admin/installments'
     | '/guest-pass/$token'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -99,6 +109,7 @@ export interface FileRouteTypes {
     | '/daily-pass'
     | '/dashboard'
     | '/pass'
+    | '/admin/installments'
     | '/guest-pass/$token'
   id:
     | '__root__'
@@ -108,12 +119,13 @@ export interface FileRouteTypes {
     | '/daily-pass'
     | '/dashboard'
     | '/pass'
+    | '/admin/installments'
     | '/guest-pass/$token'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AdminRoute: typeof AdminRoute
+  AdminRoute: typeof AdminRouteWithChildren
   AuthRoute: typeof AuthRoute
   DailyPassRoute: typeof DailyPassRoute
   DashboardRoute: typeof DashboardRoute
@@ -165,6 +177,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PassRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/installments': {
+      id: '/admin/installments'
+      path: '/installments'
+      fullPath: '/admin/installments'
+      preLoaderRoute: typeof AdminInstallmentsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/guest-pass/$token': {
       id: '/guest-pass/$token'
       path: '/guest-pass/$token'
@@ -175,9 +194,19 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AdminRouteChildren {
+  AdminInstallmentsRoute: typeof AdminInstallmentsRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminInstallmentsRoute: AdminInstallmentsRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AdminRoute: AdminRoute,
+  AdminRoute: AdminRouteWithChildren,
   AuthRoute: AuthRoute,
   DailyPassRoute: DailyPassRoute,
   DashboardRoute: DashboardRoute,

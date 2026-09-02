@@ -15,6 +15,7 @@ export type Database = {
           kind: string;
           pickup_stop: string | null;
           route: string | null;
+          sector: string | null;
           service_date: string;
           slot: string;
           student_id: string;
@@ -25,6 +26,7 @@ export type Database = {
           kind: string;
           pickup_stop?: string | null;
           route?: string | null;
+          sector?: string | null;
           service_date: string;
           slot: string;
           student_id: string;
@@ -35,6 +37,7 @@ export type Database = {
           kind?: string;
           pickup_stop?: string | null;
           route?: string | null;
+          sector?: string | null;
           service_date?: string;
           slot?: string;
           student_id?: string;

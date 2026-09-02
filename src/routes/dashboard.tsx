@@ -11,6 +11,12 @@ import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { useRoutes } from "@/hooks/useRoutes";
 import { subscriptionBadge } from "@/lib/subscription";
 import {
+  EarlyReturnSector,
+  SECTOR_LABELS,
+  EARLY_RETURN_ROUTE_NAME,
+  stopsForSector,
+} from "@/lib/earlyReturnSectors";
+import {
   MORNING_SLOTS,
   RETURN_SLOTS,
   morningWindow,
@@ -42,6 +48,7 @@ type Booking = {
   service_date: string;
   pickup_stop: string | null;
   route: string | null;
+  sector: string | null;
 };
 
 function Dashboard() {
@@ -59,6 +66,8 @@ function Dashboard() {
   const [stop, setStop] = useState<string>("");
   const [morningSlot, setMorningSlot] = useState<string>(MORNING_SLOTS[0]);
   const [returnSlot, setReturnSlot] = useState<string>(RETURN_SLOTS[0]);
+  const [returnSector, setReturnSector] = useState<EarlyReturnSector | "">("");
+  const [returnStop, setReturnStop] = useState<string>("");
   const stopsForMyRoute = profile?.route ? (stopsByRoute[profile.route] ?? []) : [];
 
   useEffect(() => {
@@ -81,7 +90,7 @@ function Dashboard() {
     const [{ data: b }, { data: o }] = await Promise.all([
       supabase
         .from("bookings")
-        .select("id,kind,slot,service_date,pickup_stop,route")
+        .select("id,kind,slot,service_date,pickup_stop,route,sector")
         .in("service_date", [mw.serviceDate, rw.serviceDate]),
       supabase.from("opt_outs").select("id").eq("service_date", ow.serviceDate),
     ]);
@@ -103,14 +112,19 @@ function Dashboard() {
 
   const book = async (kind: "morning" | "return") => {
     if (!user) return;
+    if (kind === "return" && (!returnSector || !returnStop)) {
+      toast.error("Choose a sector and drop-off stop first.");
+      return;
+    }
     setBusy(true);
     const payload = {
       student_id: user.id,
       kind,
       slot: kind === "morning" ? morningSlot : returnSlot,
       service_date: kind === "morning" ? mw.serviceDate : rw.serviceDate,
-      route: profile?.route ?? null,
-      pickup_stop: kind === "morning" ? stop : null,
+      route: kind === "morning" ? (profile?.route ?? null) : EARLY_RETURN_ROUTE_NAME,
+      pickup_stop: kind === "morning" ? stop : returnStop,
+      sector: kind === "return" ? returnSector : null,
     };
     const { error } = await supabase
       .from("bookings")
@@ -233,15 +247,45 @@ function Dashboard() {
         >
           {returnBooking ? (
             <Confirmed
-              text={returnBooking.slot}
+              text={`${returnBooking.slot} · ${returnBooking.sector ? SECTOR_LABELS[returnBooking.sector as EarlyReturnSector] : ""} · ${returnBooking.pickup_stop ?? ""}`}
               onCancel={rw.open ? () => void cancel(returnBooking.id) : undefined}
             />
           ) : rw.open ? (
             <div className="space-y-4">
               <SlotPicker options={[...RETURN_SLOTS]} value={returnSlot} onChange={setReturnSlot} />
+              <div className="space-y-2">
+                <Label>Sector (relative to Sidi Gaber)</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  {(Object.keys(SECTOR_LABELS) as EarlyReturnSector[]).map((sector) => (
+                    <button
+                      key={sector}
+                      type="button"
+                      onClick={() => {
+                        setReturnSector(sector);
+                        setReturnStop(stopsForSector(sector)[0] ?? "");
+                      }}
+                      className={`rounded-md border px-3 py-2 text-sm ${
+                        returnSector === sector
+                          ? "border-accent bg-accent text-accent-foreground"
+                          : "border-input bg-background"
+                      }`}
+                    >
+                      {SECTOR_LABELS[sector]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {returnSector && (
+                <SelectField
+                  label="Drop-off stop"
+                  value={returnStop}
+                  options={stopsForSector(returnSector)}
+                  onChange={setReturnStop}
+                />
+              )}
               <Button
                 className="btn-gold w-full"
-                disabled={busy}
+                disabled={busy || !returnSector || !returnStop}
                 onClick={() => void book("return")}
               >
                 Reserve return seat

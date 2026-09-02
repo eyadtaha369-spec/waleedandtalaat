@@ -11,13 +11,15 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ALL_SLOTS, cairoNow, MORNING_SLOTS, toDateKey } from "@/lib/schedule";
+import { ALL_SLOTS, cairoNow, MORNING_SLOTS, RETURN_SLOTS, toDateKey } from "@/lib/schedule";
+import { SECTOR_LABELS, type EarlyReturnSector } from "@/lib/earlyReturnSectors";
 
 type Row = {
   student_id: string;
   full_name: string;
   route: string | null;
   pickup_stop: string | null;
+  sector: string | null;
   payment_status: string;
 };
 
@@ -29,6 +31,8 @@ export function ManifestsPanel() {
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>("all");
+
+  const isEarlyReturn = (RETURN_SLOTS as readonly string[]).includes(slot);
 
   useEffect(() => {
     void load(slot);
@@ -55,6 +59,7 @@ export function ManifestsPanel() {
             full_name: p.full_name,
             route: p.route,
             pickup_stop: p.pickup_stop,
+            sector: null,
             payment_status: p.payment_status,
           })),
       );
@@ -64,7 +69,7 @@ export function ManifestsPanel() {
         : "return";
       const { data: bookings } = await supabase
         .from("bookings")
-        .select("student_id,route,pickup_stop")
+        .select("student_id,route,pickup_stop,sector")
         .eq("service_date", today)
         .eq("kind", kind)
         .eq("slot", currentSlot);
@@ -81,6 +86,7 @@ export function ManifestsPanel() {
           full_name: profileById.get(b.student_id)?.full_name ?? "—",
           route: b.route,
           pickup_stop: b.pickup_stop,
+          sector: b.sector,
           payment_status: profileById.get(b.student_id)?.payment_status ?? "paid_full",
         })),
       );
@@ -92,6 +98,8 @@ export function ManifestsPanel() {
     (r) => paymentFilter === "all" || r.payment_status === paymentFilter,
   );
   const installmentCount = rows.filter((r) => r.payment_status === "installment_pending").length;
+
+  const bySector = (sector: EarlyReturnSector) => filteredRows.filter((r) => r.sector === sector);
 
   return (
     <section className="rounded-3xl border border-border bg-card p-6">
@@ -111,7 +119,7 @@ export function ManifestsPanel() {
         <TabsContent value={slot} className="mt-5">
           <div className="mb-4 flex flex-wrap items-center gap-2">
             <Badge className="btn-gold">
-              <Users className="me-1 size-3.5" /> {filteredRows.length} passenger
+              <Users className="me-1 size-3.5" /> {filteredRows.length} total passenger
               {filteredRows.length === 1 ? "" : "s"}
             </Badge>
             {installmentCount > 0 && (
@@ -139,36 +147,67 @@ export function ManifestsPanel() {
             <p className="text-sm text-muted-foreground">Loading manifest…</p>
           ) : filteredRows.length === 0 ? (
             <p className="text-sm text-muted-foreground">No passengers match this view.</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Route</TableHead>
-                  <TableHead>Stop</TableHead>
-                  <TableHead>Payment</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredRows.map((r) => (
-                  <TableRow key={r.student_id}>
-                    <TableCell className="font-medium">{r.full_name}</TableCell>
-                    <TableCell>{r.route ?? "—"}</TableCell>
-                    <TableCell>{r.pickup_stop ?? "—"}</TableCell>
-                    <TableCell>
-                      {r.payment_status === "installment_pending" ? (
-                        <Badge className="bg-warning text-warning-foreground">🟡 قسط</Badge>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">Paid</span>
+          ) : isEarlyReturn ? (
+            <div className="space-y-6">
+              {(Object.keys(SECTOR_LABELS) as EarlyReturnSector[]).map((sector) => {
+                const group = bySector(sector);
+                return (
+                  <div key={sector}>
+                    <div className="mb-2 flex items-center gap-2">
+                      <Badge className="bg-accent text-accent-foreground">
+                        {SECTOR_LABELS[sector]} — {group.length}
+                      </Badge>
+                      {group.length > 0 && (
+                        <span className="text-xs text-muted-foreground">
+                          {group.length <= 33 ? "fits a 33-seater" : "needs a 50-seater"}
+                        </span>
                       )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                    </div>
+                    {group.length === 0 ? (
+                      <p className="text-xs text-muted-foreground">No passengers in this sector.</p>
+                    ) : (
+                      <ManifestTable rows={group} />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <ManifestTable rows={filteredRows} />
           )}
         </TabsContent>
       </Tabs>
     </section>
+  );
+}
+
+function ManifestTable({ rows }: { rows: Row[] }) {
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Name</TableHead>
+          <TableHead>Route</TableHead>
+          <TableHead>Stop</TableHead>
+          <TableHead>Payment</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {rows.map((r) => (
+          <TableRow key={r.student_id}>
+            <TableCell className="font-medium">{r.full_name}</TableCell>
+            <TableCell>{r.route ?? "—"}</TableCell>
+            <TableCell>{r.pickup_stop ?? "—"}</TableCell>
+            <TableCell>
+              {r.payment_status === "installment_pending" ? (
+                <Badge className="bg-warning text-warning-foreground">🟡 قسط</Badge>
+              ) : (
+                <span className="text-xs text-muted-foreground">Paid</span>
+              )}
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
   );
 }

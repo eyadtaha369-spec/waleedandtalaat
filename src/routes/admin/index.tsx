@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import {
   Bus,
   ClipboardList,
@@ -9,11 +10,13 @@ import {
   Users,
   UsersRound,
   Wallet,
+  Zap,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { AdminGuard } from "@/components/admin/AdminGuard";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
+import { Button } from "@/components/ui/button";
 import { RETURN_SLOTS, cairoNow, toDateKey } from "@/lib/schedule";
 
 export const Route = createFileRoute("/admin/")({
@@ -50,8 +53,9 @@ function AdminConsole() {
     earlyReturnToday: null,
     pendingInstallments: null,
   });
+  const [runningCron, setRunningCron] = useState(false);
 
-  useEffect(() => {
+  const refreshKpis = () => {
     void (async () => {
       const [students, morning, earlyReturn, installments] = await Promise.all([
         supabase
@@ -81,7 +85,36 @@ function AdminConsole() {
         pendingInstallments: installments.count ?? 0,
       });
     })();
-  }, [today]);
+  };
+
+  useEffect(refreshKpis, [today]);
+
+  const runCronTest = async () => {
+    setRunningCron(true);
+    const { data, error } = await supabase.rpc("apply_4pm_noshow_deduction", { p_date: null });
+    setRunningCron(false);
+    if (error || (data as { error?: string })?.error) {
+      toast.error((data as { error?: string })?.error ?? error?.message ?? "Cron test failed");
+      return;
+    }
+    const result = data as {
+      deducted_students_count: number;
+      updated_balances: { student_id: string; full_name: string; trips_remaining: number }[];
+    };
+    console.log("4:15 PM auto-deduction test result", result);
+    if (result.deducted_students_count === 0) {
+      toast.success("No eligible no-shows right now — 0 students deducted.");
+    } else {
+      const names = result.updated_balances.map(
+        (b) => `${b.full_name} (${b.trips_remaining} left)`,
+      );
+      toast.success(
+        `Deducted ${result.deducted_students_count} student${result.deducted_students_count === 1 ? "" : "s"}: ${names.join(", ")}`,
+        { duration: 12000 },
+      );
+    }
+    refreshKpis();
+  };
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8">
@@ -144,6 +177,19 @@ function AdminConsole() {
           title="Bulk Student Import"
           description="Import the roster sheet or recover credentials for existing students."
         />
+      </div>
+
+      <div className="mt-6 rounded-2xl border border-dashed border-accent/60 bg-accent/5 p-5">
+        <p className="text-xs tracking-widest text-muted-foreground uppercase">Developer testing</p>
+        <div className="mt-2 flex flex-wrap items-center gap-3">
+          <Button variant="outline" disabled={runningCron} onClick={() => void runCronTest()}>
+            <Zap className="size-4" /> Run 4:15 PM Auto-Deduction Test Cron
+          </Button>
+          <p className="text-sm text-muted-foreground">
+            Runs the same no-show deduction logic as the real 4:15 PM cron job, immediately, for
+            today. Safe to click more than once — students already processed today are skipped.
+          </p>
+        </div>
       </div>
     </main>
   );

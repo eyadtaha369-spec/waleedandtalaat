@@ -1,9 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { ArrowLeft, Bus, Users } from "lucide-react";
+import { ArrowLeft, Bus, Ticket, Users } from "lucide-react";
 import { AdminGuard } from "@/components/admin/AdminGuard";
 import { ManifestsPanel } from "@/components/admin/ManifestsPanel";
 import { FleetPanel } from "@/components/admin/FleetPanel";
+import { TripBalancesPanel } from "@/components/admin/TripBalancesPanel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export const Route = createFileRoute("/admin/manifests")({
@@ -37,12 +38,18 @@ function ManifestsPage() {
           <TabsTrigger value="fleet">
             <Bus className="size-4" /> Fleet allocation
           </TabsTrigger>
+          <TabsTrigger value="trips">
+            <Ticket className="size-4" /> Trip balances
+          </TabsTrigger>
         </TabsList>
         <TabsContent value="manifests" className="mt-5">
           <ManifestsPanel />
         </TabsContent>
         <TabsContent value="fleet" className="mt-5">
           <FleetPanel />
+        </TabsContent>
+        <TabsContent value="trips" className="mt-5">
+          <TripBalancesPanel />
         </TabsContent>
       </Tabs>
     </main>

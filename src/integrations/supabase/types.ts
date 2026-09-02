@@ -194,6 +194,33 @@ export type Database = {
         };
         Relationships: [];
       };
+      trip_transactions: {
+        Row: {
+          id: string;
+          student_id: string;
+          amount: number;
+          description: string;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          student_id: string;
+          amount: number;
+          description: string;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          student_id?: string;
+          amount?: number;
+          description?: string;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       scans: {
         Row: {
           id: string;
@@ -354,6 +381,25 @@ export type Database = {
       confirm_second_installment: {
         Args: { p_student_id: string };
         Returns: Json;
+      };
+      apply_4pm_noshow_deduction: {
+        Args: { p_date: string | null };
+        Returns: Json;
+      };
+      reset_student_trips: {
+        Args: { p_student_id: string; p_remaining_trips: number };
+        Returns: Json;
+      };
+      list_package_students: {
+        Args: Record<string, never>;
+        Returns: {
+          user_id: string;
+          full_name: string;
+          phone: string | null;
+          route: string | null;
+          trips_remaining: number;
+          trips_total: number;
+        }[];
       };
       update_staff_user: {
         Args: { p_user_id: string; p_full_name: string; p_phone: string; p_role: string };

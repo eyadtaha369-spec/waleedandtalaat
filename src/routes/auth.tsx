@@ -27,7 +27,7 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, isAdmin, isSupervisor, loading } = useAuth();
   const { routes, stopsByRoute } = useRoutes();
   const [busy, setBusy] = useState(false);
   const [email, setEmail] = useState("");
@@ -46,8 +46,11 @@ function AuthPage() {
   }, [routes]);
 
   useEffect(() => {
-    if (user) void navigate({ to: "/dashboard" });
-  }, [user, navigate]);
+    if (loading || !user) return;
+    if (isAdmin) void navigate({ to: "/admin" });
+    else if (isSupervisor) void navigate({ to: "/admin/scan" });
+    else void navigate({ to: "/dashboard" });
+  }, [loading, user, isAdmin, isSupervisor, navigate]);
 
   const signIn = async () => {
     setBusy(true);
@@ -55,7 +58,7 @@ function AuthPage() {
     setBusy(false);
     if (error) return toast.error(error.message);
     toast.success("Welcome back");
-    void navigate({ to: "/dashboard" });
+    // Redirect is handled by the effect above once roles finish loading.
   };
 
   const signUp = async () => {

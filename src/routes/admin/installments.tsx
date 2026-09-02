@@ -1,10 +1,10 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { CheckCircle2, MessageCircle, Wallet } from "lucide-react";
+import { ArrowLeft, CheckCircle2, MessageCircle, Wallet } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
 import { useRoutes } from "@/hooks/useRoutes";
+import { AdminGuard } from "@/components/admin/AdminGuard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,7 +23,11 @@ export const Route = createFileRoute("/admin/installments")({
   head: () => ({
     meta: [{ title: "Installments — Waleed & Talaat" }],
   }),
-  component: InstallmentsPage,
+  component: () => (
+    <AdminGuard requireAdmin>
+      <InstallmentsPage />
+    </AdminGuard>
+  ),
 });
 
 type Student = {
@@ -40,8 +44,6 @@ type Student = {
 type StatusFilter = "all" | "pending_second" | "completed";
 
 function InstallmentsPage() {
-  const { user, isAdmin, loading } = useAuth();
-  const navigate = useNavigate();
   const { routes } = useRoutes();
 
   const [students, setStudents] = useState<Student[]>([]);
@@ -50,18 +52,6 @@ function InstallmentsPage() {
   const [routeFilter, setRouteFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [search, setSearch] = useState("");
-
-  useEffect(() => {
-    if (loading) return;
-    if (!user) {
-      void navigate({ to: "/auth" });
-      return;
-    }
-    if (!isAdmin) {
-      toast.error("Admin access required.");
-      void navigate({ to: "/dashboard" });
-    }
-  }, [loading, user, isAdmin, navigate]);
 
   const load = async () => {
     setLoadingList(true);
@@ -75,8 +65,8 @@ function InstallmentsPage() {
   };
 
   useEffect(() => {
-    if (isAdmin) void load();
-  }, [isAdmin]);
+    void load();
+  }, []);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -111,15 +101,16 @@ function InstallmentsPage() {
     void load();
   };
 
-  if (loading || !isAdmin) {
-    return <main className="mx-auto max-w-6xl px-4 py-16 text-muted-foreground">Loading…</main>;
-  }
-
   return (
     <main className="mx-auto max-w-6xl px-4 py-8">
-      <div className="surface-navy shadow-luxe rounded-3xl p-6">
-        <p className="text-xs tracking-[0.25em] uppercase opacity-70">Admin</p>
-        <h1 className="text-2xl font-bold">Installments &amp; collections</h1>
+      <div className="surface-navy shadow-luxe flex flex-wrap items-center justify-between gap-4 rounded-3xl p-6">
+        <div>
+          <p className="text-xs tracking-[0.25em] uppercase opacity-70">Admin</p>
+          <h1 className="text-2xl font-bold">Installments &amp; collections</h1>
+        </div>
+        <Link to="/admin" className="text-sm text-white/80 hover:text-white">
+          <ArrowLeft className="me-1 inline size-4" /> Back to console
+        </Link>
       </div>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-3">

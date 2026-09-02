@@ -28,18 +28,30 @@ export function Wordmark() {
   );
 }
 
-const links = [
+const studentLinks = [
   { to: "/dashboard", label: "Dashboard" },
   { to: "/pass", label: "Boarding pass" },
   { to: "/daily-pass", label: "Daily pass" },
 ];
 
+const adminLinks = [
+  { to: "/admin/manifests", label: "Manifests" },
+  { to: "/admin/installments", label: "Installments" },
+  { to: "/admin/requests", label: "Daily Pass" },
+  { to: "/admin/users", label: "Users" },
+  { to: "/admin/scan", label: "Scan QR" },
+];
+
+const supervisorLinks = [{ to: "/admin/scan", label: "Scan QR" }];
+
 export function AppHeader() {
-  const { user, isStaff, signOut } = useAuth();
+  const { user, isAdmin, isSupervisor, signOut } = useAuth();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [open, setOpen] = useState(false);
 
-  const nav = [...links, ...(isStaff ? [{ to: "/admin", label: "Admin" }] : [])];
+  // Admins and supervisors never see the student booking links — they
+  // get a dedicated nav for their own section instead.
+  const nav = isAdmin ? adminLinks : isSupervisor ? supervisorLinks : studentLinks;
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/85 backdrop-blur-xl">

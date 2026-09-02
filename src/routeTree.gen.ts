@@ -16,7 +16,12 @@ import { Route as DailyPassRouteImport } from './routes/daily-pass'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as PassRouteImport } from './routes/pass'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
+import { Route as AdminImportRouteImport } from './routes/admin/import'
 import { Route as AdminInstallmentsRouteImport } from './routes/admin/installments'
+import { Route as AdminManifestsRouteImport } from './routes/admin/manifests'
+import { Route as AdminRequestsRouteImport } from './routes/admin/requests'
+import { Route as AdminScanRouteImport } from './routes/admin/scan'
+import { Route as AdminUsersRouteImport } from './routes/admin/users'
 import { Route as GuestPassTokenRouteImport } from './routes/guest-pass/$token'
 
 const IndexRoute = IndexRouteImport.update({
@@ -54,9 +59,34 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminImportRoute = AdminImportRouteImport.update({
+  id: '/import',
+  path: '/import',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminInstallmentsRoute = AdminInstallmentsRouteImport.update({
   id: '/installments',
   path: '/installments',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminManifestsRoute = AdminManifestsRouteImport.update({
+  id: '/manifests',
+  path: '/manifests',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminRequestsRoute = AdminRequestsRouteImport.update({
+  id: '/requests',
+  path: '/requests',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminScanRoute = AdminScanRouteImport.update({
+  id: '/scan',
+  path: '/scan',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminUsersRoute = AdminUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
   getParentRoute: () => AdminRoute,
 } as any)
 const GuestPassTokenRoute = GuestPassTokenRouteImport.update({
@@ -72,7 +102,12 @@ export interface FileRoutesByFullPath {
   '/daily-pass': typeof DailyPassRoute
   '/dashboard': typeof DashboardRoute
   '/pass': typeof PassRoute
+  '/admin/import': typeof AdminImportRoute
   '/admin/installments': typeof AdminInstallmentsRoute
+  '/admin/manifests': typeof AdminManifestsRoute
+  '/admin/requests': typeof AdminRequestsRoute
+  '/admin/scan': typeof AdminScanRoute
+  '/admin/users': typeof AdminUsersRoute
   '/guest-pass/$token': typeof GuestPassTokenRoute
   '/admin/': typeof AdminIndexRoute
 }
@@ -82,7 +117,12 @@ export interface FileRoutesByTo {
   '/daily-pass': typeof DailyPassRoute
   '/dashboard': typeof DashboardRoute
   '/pass': typeof PassRoute
+  '/admin/import': typeof AdminImportRoute
   '/admin/installments': typeof AdminInstallmentsRoute
+  '/admin/manifests': typeof AdminManifestsRoute
+  '/admin/requests': typeof AdminRequestsRoute
+  '/admin/scan': typeof AdminScanRoute
+  '/admin/users': typeof AdminUsersRoute
   '/guest-pass/$token': typeof GuestPassTokenRoute
   '/admin': typeof AdminIndexRoute
 }
@@ -94,7 +134,12 @@ export interface FileRoutesById {
   '/daily-pass': typeof DailyPassRoute
   '/dashboard': typeof DashboardRoute
   '/pass': typeof PassRoute
+  '/admin/import': typeof AdminImportRoute
   '/admin/installments': typeof AdminInstallmentsRoute
+  '/admin/manifests': typeof AdminManifestsRoute
+  '/admin/requests': typeof AdminRequestsRoute
+  '/admin/scan': typeof AdminScanRoute
+  '/admin/users': typeof AdminUsersRoute
   '/guest-pass/$token': typeof GuestPassTokenRoute
   '/admin/': typeof AdminIndexRoute
 }
@@ -107,7 +152,12 @@ export interface FileRouteTypes {
     | '/daily-pass'
     | '/dashboard'
     | '/pass'
+    | '/admin/import'
     | '/admin/installments'
+    | '/admin/manifests'
+    | '/admin/requests'
+    | '/admin/scan'
+    | '/admin/users'
     | '/guest-pass/$token'
     | '/admin/'
   fileRoutesByTo: FileRoutesByTo
@@ -117,7 +167,12 @@ export interface FileRouteTypes {
     | '/daily-pass'
     | '/dashboard'
     | '/pass'
+    | '/admin/import'
     | '/admin/installments'
+    | '/admin/manifests'
+    | '/admin/requests'
+    | '/admin/scan'
+    | '/admin/users'
     | '/guest-pass/$token'
     | '/admin'
   id:
@@ -128,7 +183,12 @@ export interface FileRouteTypes {
     | '/daily-pass'
     | '/dashboard'
     | '/pass'
+    | '/admin/import'
     | '/admin/installments'
+    | '/admin/manifests'
+    | '/admin/requests'
+    | '/admin/scan'
+    | '/admin/users'
     | '/guest-pass/$token'
     | '/admin/'
   fileRoutesById: FileRoutesById
@@ -194,11 +254,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/import': {
+      id: '/admin/import'
+      path: '/import'
+      fullPath: '/admin/import'
+      preLoaderRoute: typeof AdminImportRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/installments': {
       id: '/admin/installments'
       path: '/installments'
       fullPath: '/admin/installments'
       preLoaderRoute: typeof AdminInstallmentsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/manifests': {
+      id: '/admin/manifests'
+      path: '/manifests'
+      fullPath: '/admin/manifests'
+      preLoaderRoute: typeof AdminManifestsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/requests': {
+      id: '/admin/requests'
+      path: '/requests'
+      fullPath: '/admin/requests'
+      preLoaderRoute: typeof AdminRequestsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/scan': {
+      id: '/admin/scan'
+      path: '/scan'
+      fullPath: '/admin/scan'
+      preLoaderRoute: typeof AdminScanRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/users': {
+      id: '/admin/users'
+      path: '/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AdminUsersRouteImport
       parentRoute: typeof AdminRoute
     }
     '/guest-pass/$token': {
@@ -212,12 +307,22 @@ declare module '@tanstack/react-router' {
 }
 
 interface AdminRouteChildren {
+  AdminImportRoute: typeof AdminImportRoute
   AdminInstallmentsRoute: typeof AdminInstallmentsRoute
+  AdminManifestsRoute: typeof AdminManifestsRoute
+  AdminRequestsRoute: typeof AdminRequestsRoute
+  AdminScanRoute: typeof AdminScanRoute
+  AdminUsersRoute: typeof AdminUsersRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminImportRoute: AdminImportRoute,
   AdminInstallmentsRoute: AdminInstallmentsRoute,
+  AdminManifestsRoute: AdminManifestsRoute,
+  AdminRequestsRoute: AdminRequestsRoute,
+  AdminScanRoute: AdminScanRoute,
+  AdminUsersRoute: AdminUsersRoute,
   AdminIndexRoute: AdminIndexRoute,
 }
 

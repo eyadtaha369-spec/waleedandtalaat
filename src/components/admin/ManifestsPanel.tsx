@@ -26,7 +26,8 @@ type Row = {
 type PaymentFilter = "all" | "paid_full" | "installment_pending";
 
 export function ManifestsPanel() {
-  const today = useMemo(() => toDateKey(cairoNow()), []);
+  const todayKey = useMemo(() => toDateKey(cairoNow()), []);
+  const [date, setDate] = useState<string>(todayKey);
   const [slot, setSlot] = useState<string>(ALL_SLOTS[0]);
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,20 +36,19 @@ export function ManifestsPanel() {
   const isEarlyReturn = (RETURN_SLOTS as readonly string[]).includes(slot);
 
   useEffect(() => {
-    void load(slot);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slot]);
+    void load(slot, date);
+  }, [slot, date]);
 
-  const load = async (currentSlot: string) => {
+  const load = async (currentSlot: string, currentDate: string) => {
     setLoading(true);
     if (currentSlot === "04:00 PM") {
       const [{ data: optedOut }, { data: profiles }, { data: fourPmBookings }] = await Promise.all([
-        supabase.from("opt_outs").select("student_id").eq("service_date", today),
+        supabase.from("opt_outs").select("student_id").eq("service_date", currentDate),
         supabase.from("profiles").select("id,full_name,route,pickup_stop,payment_status"),
         supabase
           .from("bookings")
           .select("student_id,route,pickup_stop")
-          .eq("service_date", today)
+          .eq("service_date", currentDate)
           .eq("kind", "return")
           .eq("slot", "04:00 PM"),
       ]);
@@ -84,7 +84,7 @@ export function ManifestsPanel() {
       const { data: bookings } = await supabase
         .from("bookings")
         .select("student_id,route,pickup_stop,sector")
-        .eq("service_date", today)
+        .eq("service_date", currentDate)
         .eq("kind", kind)
         .eq("slot", currentSlot);
 
@@ -129,6 +129,28 @@ export function ManifestsPanel() {
   return (
     <section className="rounded-3xl border border-border bg-card p-6">
       <Tabs value={slot} onValueChange={setSlot}>
+        <div className="mb-4 flex flex-wrap items-center gap-3">
+          <label className="text-sm font-medium text-muted-foreground" htmlFor="manifest-date">
+            Date
+          </label>
+          <input
+            id="manifest-date"
+            type="date"
+            className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+          />
+          {date !== todayKey && (
+            <button
+              type="button"
+              className="text-xs text-accent underline underline-offset-2"
+              onClick={() => setDate(todayKey)}
+            >
+              Reset to today ({todayKey})
+            </button>
+          )}
+        </div>
+
         <TabsList className="flex h-auto flex-wrap gap-1 bg-transparent p-0">
           {ALL_SLOTS.map((s) => (
             <TabsTrigger
@@ -154,7 +176,7 @@ export function ManifestsPanel() {
             )}
             {slot === "04:00 PM" && (
               <span className="text-xs text-muted-foreground">
-                All subscribed students not opted out today
+                All subscribed students not opted out on {date}
               </span>
             )}
             <select

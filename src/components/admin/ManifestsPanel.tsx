@@ -42,27 +42,41 @@ export function ManifestsPanel() {
   const load = async (currentSlot: string) => {
     setLoading(true);
     if (currentSlot === "04:00 PM") {
-      const { data: optedOut } = await supabase
-        .from("opt_outs")
-        .select("student_id")
-        .eq("service_date", today);
+      const [{ data: optedOut }, { data: profiles }, { data: fourPmBookings }] = await Promise.all([
+        supabase.from("opt_outs").select("student_id").eq("service_date", today),
+        supabase.from("profiles").select("id,full_name,route,pickup_stop,payment_status"),
+        supabase
+          .from("bookings")
+          .select("student_id,route,pickup_stop")
+          .eq("service_date", today)
+          .eq("kind", "return")
+          .eq("slot", "04:00 PM"),
+      ]);
       const excluded = new Set((optedOut ?? []).map((o) => o.student_id));
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("id,full_name,route,pickup_stop,payment_status")
-        .order("route");
-      setRows(
-        (profiles ?? [])
-          .filter((p) => !excluded.has(p.id))
-          .map((p) => ({
+      const bookingById = new Map((fourPmBookings ?? []).map((b) => [b.student_id, b]));
+
+      const built = (profiles ?? [])
+        .filter((p) => !excluded.has(p.id))
+        .map((p) => {
+          // A student who proactively booked 4:00 PM has their exact
+          // chosen stop; everyone else falls back to their registered
+          // route/stop under the guaranteed-seat default.
+          const booking = bookingById.get(p.id);
+          return {
             student_id: p.id,
             full_name: p.full_name,
-            route: p.route,
-            pickup_stop: p.pickup_stop,
+            route: booking?.route ?? p.route,
+            pickup_stop: booking?.pickup_stop ?? p.pickup_stop,
             sector: null,
             payment_status: p.payment_status,
-          })),
-      );
+          };
+        })
+        .sort(
+          (a, b) =>
+            (a.route ?? "").localeCompare(b.route ?? "") ||
+            (a.pickup_stop ?? "").localeCompare(b.pickup_stop ?? ""),
+        );
+      setRows(built);
     } else {
       const kind = (MORNING_SLOTS as readonly string[]).includes(currentSlot)
         ? "morning"
@@ -100,6 +114,17 @@ export function ManifestsPanel() {
   const installmentCount = rows.filter((r) => r.payment_status === "installment_pending").length;
 
   const bySector = (sector: EarlyReturnSector) => filteredRows.filter((r) => r.sector === sector);
+
+  const byRoute = useMemo(() => {
+    const groups = new Map<string, Row[]>();
+    for (const r of filteredRows) {
+      const key = r.route ?? "No route assigned";
+      const list = groups.get(key) ?? [];
+      list.push(r);
+      groups.set(key, list);
+    }
+    return [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  }, [filteredRows]);
 
   return (
     <section className="rounded-3xl border border-border bg-card p-6">
@@ -171,6 +196,19 @@ export function ManifestsPanel() {
                   </div>
                 );
               })}
+            </div>
+          ) : slot === "04:00 PM" ? (
+            <div className="space-y-6">
+              {byRoute.map(([routeName, group]) => (
+                <div key={routeName}>
+                  <div className="mb-2">
+                    <Badge className="bg-accent text-accent-foreground">
+                      {routeName} — {group.length}
+                    </Badge>
+                  </div>
+                  <ManifestTable rows={group} />
+                </div>
+              ))}
             </div>
           ) : (
             <ManifestTable rows={filteredRows} />

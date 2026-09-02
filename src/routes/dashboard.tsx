@@ -68,7 +68,10 @@ function Dashboard() {
   const [returnSlot, setReturnSlot] = useState<string>(RETURN_SLOTS[0]);
   const [returnSector, setReturnSector] = useState<EarlyReturnSector | "">("");
   const [returnStop, setReturnStop] = useState<string>("");
+  const [fourPmStop, setFourPmStop] = useState<string>("");
   const stopsForMyRoute = profile?.route ? (stopsByRoute[profile.route] ?? []) : [];
+  const isFourPmReturn = returnSlot === "04:00 PM";
+  const RETURN_SLOT_CHOICES = [...RETURN_SLOTS, "04:00 PM"];
 
   useEffect(() => {
     if (!loading && !user) void navigate({ to: "/auth" });
@@ -78,6 +81,11 @@ function Dashboard() {
     if (profile?.route) {
       const stops = stopsByRoute[profile.route] ?? [];
       setStop(
+        profile.pickup_stop && stops.includes(profile.pickup_stop)
+          ? profile.pickup_stop
+          : (stops[0] ?? ""),
+      );
+      setFourPmStop(
         profile.pickup_stop && stops.includes(profile.pickup_stop)
           ? profile.pickup_stop
           : (stops[0] ?? ""),
@@ -112,9 +120,15 @@ function Dashboard() {
 
   const book = async (kind: "morning" | "return") => {
     if (!user) return;
-    if (kind === "return" && (!returnSector || !returnStop)) {
-      toast.error("Choose a sector and drop-off stop first.");
-      return;
+    if (kind === "return") {
+      if (isFourPmReturn && !fourPmStop) {
+        toast.error("Choose a drop-off stop first.");
+        return;
+      }
+      if (!isFourPmReturn && (!returnSector || !returnStop)) {
+        toast.error("Choose a sector and drop-off stop first.");
+        return;
+      }
     }
     setBusy(true);
     const payload = {
@@ -122,9 +136,10 @@ function Dashboard() {
       kind,
       slot: kind === "morning" ? morningSlot : returnSlot,
       service_date: kind === "morning" ? mw.serviceDate : rw.serviceDate,
-      route: kind === "morning" ? (profile?.route ?? null) : EARLY_RETURN_ROUTE_NAME,
-      pickup_stop: kind === "morning" ? stop : returnStop,
-      sector: kind === "return" ? returnSector : null,
+      route:
+        kind === "morning" || isFourPmReturn ? (profile?.route ?? null) : EARLY_RETURN_ROUTE_NAME,
+      pickup_stop: kind === "morning" ? stop : isFourPmReturn ? fourPmStop : returnStop,
+      sector: kind === "return" && !isFourPmReturn ? returnSector : null,
     };
     const { error } = await supabase
       .from("bookings")
@@ -247,45 +262,75 @@ function Dashboard() {
         >
           {returnBooking ? (
             <Confirmed
-              text={`${returnBooking.slot} · ${returnBooking.sector ? SECTOR_LABELS[returnBooking.sector as EarlyReturnSector] : ""} · ${returnBooking.pickup_stop ?? ""}`}
+              text={`${returnBooking.slot} · ${returnBooking.sector ? SECTOR_LABELS[returnBooking.sector as EarlyReturnSector] + " · " : ""}${returnBooking.pickup_stop ?? ""}`}
               onCancel={rw.open ? () => void cancel(returnBooking.id) : undefined}
             />
           ) : rw.open ? (
             <div className="space-y-4">
-              <SlotPicker options={[...RETURN_SLOTS]} value={returnSlot} onChange={setReturnSlot} />
-              <div className="space-y-2">
-                <Label>Sector (relative to Sidi Gaber)</Label>
-                <div className="grid grid-cols-2 gap-2">
-                  {(Object.keys(SECTOR_LABELS) as EarlyReturnSector[]).map((sector) => (
-                    <button
-                      key={sector}
-                      type="button"
-                      onClick={() => {
-                        setReturnSector(sector);
-                        setReturnStop(stopsForSector(sector)[0] ?? "");
-                      }}
-                      className={`rounded-md border px-3 py-2 text-sm ${
-                        returnSector === sector
-                          ? "border-accent bg-accent text-accent-foreground"
-                          : "border-input bg-background"
-                      }`}
-                    >
-                      {SECTOR_LABELS[sector]}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              {returnSector && (
-                <SelectField
-                  label="Drop-off stop"
-                  value={returnStop}
-                  options={stopsForSector(returnSector)}
-                  onChange={setReturnStop}
-                />
+              <SlotPicker
+                options={RETURN_SLOT_CHOICES}
+                value={returnSlot}
+                onChange={setReturnSlot}
+              />
+
+              {isFourPmReturn ? (
+                <>
+                  <div className="rounded-xl border border-border bg-secondary/50 px-3 py-2">
+                    <p className="text-[11px] tracking-widest text-muted-foreground uppercase">
+                      Your route
+                    </p>
+                    <p className="text-sm font-semibold">
+                      {profile.route ?? "No route assigned — contact admin"}
+                    </p>
+                  </div>
+                  <SelectField
+                    label="Drop-off stop"
+                    value={fourPmStop}
+                    options={stopsForMyRoute}
+                    onChange={setFourPmStop}
+                  />
+                </>
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    <Label>Sector (relative to Sidi Gaber)</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {(Object.keys(SECTOR_LABELS) as EarlyReturnSector[]).map((sector) => (
+                        <button
+                          key={sector}
+                          type="button"
+                          onClick={() => {
+                            setReturnSector(sector);
+                            setReturnStop(stopsForSector(sector)[0] ?? "");
+                          }}
+                          className={`rounded-md border px-3 py-2 text-sm ${
+                            returnSector === sector
+                              ? "border-accent bg-accent text-accent-foreground"
+                              : "border-input bg-background"
+                          }`}
+                        >
+                          {SECTOR_LABELS[sector]}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {returnSector && (
+                    <SelectField
+                      label="Drop-off stop"
+                      value={returnStop}
+                      options={stopsForSector(returnSector)}
+                      onChange={setReturnStop}
+                    />
+                  )}
+                </>
               )}
+
               <Button
                 className="btn-gold w-full"
-                disabled={busy || !returnSector || !returnStop}
+                disabled={
+                  busy ||
+                  (isFourPmReturn ? !fourPmStop || !profile.route : !returnSector || !returnStop)
+                }
                 onClick={() => void book("return")}
               >
                 Reserve return seat
@@ -303,8 +348,10 @@ function Dashboard() {
           <div className="flex-1">
             <h2 className="text-lg font-semibold">The 4:00 PM bus needs no booking</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Every subscribed student has a guaranteed seat on the 4:00 PM return. Only tell us if
-              you are <em>not</em> coming, so we can right-size the fleet.
+              Every subscribed student has a guaranteed seat on the 4:00 PM return by default — no
+              action needed. If you'd like to pin down your exact drop-off stop, you can also book
+              4:00 PM above like any other return slot. Only tell us if you are <em>not</em> coming,
+              so we can right-size the fleet.
             </p>
             <div className="mt-4 flex flex-wrap items-center gap-3">
               <Button

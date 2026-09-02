@@ -301,7 +301,10 @@ export type Database = {
       };
       is_staff: { Args: { _user_id: string }; Returns: boolean };
       is_admin: { Args: { _user_id: string }; Returns: boolean };
-      scan_pass: { Args: { p_student_id: string; p_slot: string }; Returns: Json };
+      scan_pass: {
+        Args: { p_student_id: string; p_slot: string; p_service_date: string | null };
+        Returns: Json;
+      };
       scan_guest_pass: { Args: { p_token: string }; Returns: Json };
       fleet_manifest_report: {
         Args: { p_date: string | null };

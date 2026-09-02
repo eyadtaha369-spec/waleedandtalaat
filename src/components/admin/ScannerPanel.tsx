@@ -6,8 +6,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { SmartAvatar } from "@/components/SmartAvatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ALL_SLOTS } from "@/lib/schedule";
+import { ALL_SLOTS, cairoNow, toDateKey } from "@/lib/schedule";
 import { edgeFunctionErrorMessage } from "@/lib/functionsError";
+import { useAuth } from "@/hooks/useAuth";
 
 const SCANNER_ELEMENT_ID = "wt-qr-scanner";
 
@@ -22,11 +23,14 @@ type ScanResult = {
 };
 
 export function ScannerPanel() {
+  const { isAdmin } = useAuth();
   const [slot, setSlot] = useState<string>(ALL_SLOTS[0]);
+  const [dateOverride, setDateOverride] = useState<string>("");
   const [scanning, setScanning] = useState(false);
   const [result, setResult] = useState<ScanResult | null>(null);
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const lockRef = useRef(false);
+  const todayKey = toDateKey(cairoNow());
 
   useEffect(() => {
     return () => {
@@ -73,7 +77,9 @@ export function ScannerPanel() {
       // scan log, and trip deduction for package students. The client
       // never decides "is this booked" itself.
       const { data, error } = await supabase.functions.invoke("scan-pass", {
-        body: payload.guest ? { guest_token: payload.id } : { student_id: payload.id, slot },
+        body: payload.guest
+          ? { guest_token: payload.id }
+          : { student_id: payload.id, slot, service_date: dateOverride || undefined },
       });
 
       if (error || data?.error) {
@@ -120,6 +126,24 @@ export function ScannerPanel() {
             <ScanLine className="size-4" /> {scanning ? "Stop scanner" : "Start scanner"}
           </Button>
         </div>
+
+        {isAdmin && (
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <Label>Test date override (admin only)</Label>
+            <input
+              type="date"
+              className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+              value={dateOverride}
+              onChange={(e) => setDateOverride(e.target.value)}
+              disabled={scanning}
+            />
+            {dateOverride && (
+              <Button size="sm" variant="ghost" onClick={() => setDateOverride("")}>
+                Reset to today ({todayKey})
+              </Button>
+            )}
+          </div>
+        )}
 
         <div className="mt-5 overflow-hidden rounded-2xl border border-dashed border-border bg-secondary/50">
           <div id={SCANNER_ELEMENT_ID} className="mx-auto aspect-square max-w-sm" />

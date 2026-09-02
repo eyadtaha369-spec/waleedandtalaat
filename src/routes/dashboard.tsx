@@ -198,6 +198,14 @@ function Dashboard() {
               ? `${profile.trips_remaining}/${profile.trips_total}`
               : "Full term"}
           </p>
+          {profile.subscription_type === "70_trips" && (
+            <Link
+              to="/trips"
+              className="mt-1 block text-[11px] underline underline-offset-2 opacity-80"
+            >
+              View scan history
+            </Link>
+          )}
         </div>
         <Link to="/pass">
           <Button className="btn-gold">

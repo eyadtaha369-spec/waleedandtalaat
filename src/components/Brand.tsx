@@ -31,6 +31,7 @@ export function Wordmark() {
 const studentLinks = [
   { to: "/dashboard", label: "Dashboard" },
   { to: "/pass", label: "Boarding pass" },
+  { to: "/trips", label: "My trips" },
   { to: "/daily-pass", label: "Daily pass" },
 ];
 

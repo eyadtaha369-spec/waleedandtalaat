@@ -15,6 +15,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as DailyPassRouteImport } from './routes/daily-pass'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as PassRouteImport } from './routes/pass'
+import { Route as TripsRouteImport } from './routes/trips'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as AdminImportRouteImport } from './routes/admin/import'
 import { Route as AdminInstallmentsRouteImport } from './routes/admin/installments'
@@ -52,6 +53,11 @@ const DashboardRoute = DashboardRouteImport.update({
 const PassRoute = PassRouteImport.update({
   id: '/pass',
   path: '/pass',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TripsRoute = TripsRouteImport.update({
+  id: '/trips',
+  path: '/trips',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
@@ -102,6 +108,7 @@ export interface FileRoutesByFullPath {
   '/daily-pass': typeof DailyPassRoute
   '/dashboard': typeof DashboardRoute
   '/pass': typeof PassRoute
+  '/trips': typeof TripsRoute
   '/admin/import': typeof AdminImportRoute
   '/admin/installments': typeof AdminInstallmentsRoute
   '/admin/manifests': typeof AdminManifestsRoute
@@ -117,6 +124,7 @@ export interface FileRoutesByTo {
   '/daily-pass': typeof DailyPassRoute
   '/dashboard': typeof DashboardRoute
   '/pass': typeof PassRoute
+  '/trips': typeof TripsRoute
   '/admin/import': typeof AdminImportRoute
   '/admin/installments': typeof AdminInstallmentsRoute
   '/admin/manifests': typeof AdminManifestsRoute
@@ -134,6 +142,7 @@ export interface FileRoutesById {
   '/daily-pass': typeof DailyPassRoute
   '/dashboard': typeof DashboardRoute
   '/pass': typeof PassRoute
+  '/trips': typeof TripsRoute
   '/admin/import': typeof AdminImportRoute
   '/admin/installments': typeof AdminInstallmentsRoute
   '/admin/manifests': typeof AdminManifestsRoute
@@ -152,6 +161,7 @@ export interface FileRouteTypes {
     | '/daily-pass'
     | '/dashboard'
     | '/pass'
+    | '/trips'
     | '/admin/import'
     | '/admin/installments'
     | '/admin/manifests'
@@ -167,6 +177,7 @@ export interface FileRouteTypes {
     | '/daily-pass'
     | '/dashboard'
     | '/pass'
+    | '/trips'
     | '/admin/import'
     | '/admin/installments'
     | '/admin/manifests'
@@ -183,6 +194,7 @@ export interface FileRouteTypes {
     | '/daily-pass'
     | '/dashboard'
     | '/pass'
+    | '/trips'
     | '/admin/import'
     | '/admin/installments'
     | '/admin/manifests'
@@ -200,6 +212,7 @@ export interface RootRouteChildren {
   DailyPassRoute: typeof DailyPassRoute
   DashboardRoute: typeof DashboardRoute
   PassRoute: typeof PassRoute
+  TripsRoute: typeof TripsRoute
   GuestPassTokenRoute: typeof GuestPassTokenRoute
 }
 
@@ -245,6 +258,13 @@ declare module '@tanstack/react-router' {
       path: '/pass'
       fullPath: '/pass'
       preLoaderRoute: typeof PassRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/trips': {
+      id: '/trips'
+      path: '/trips'
+      fullPath: '/trips'
+      preLoaderRoute: typeof TripsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/': {
@@ -335,6 +355,7 @@ const rootRouteChildren: RootRouteChildren = {
   DailyPassRoute: DailyPassRoute,
   DashboardRoute: DashboardRoute,
   PassRoute: PassRoute,
+  TripsRoute: TripsRoute,
   GuestPassTokenRoute: GuestPassTokenRoute,
 }
 export const routeTree = rootRouteImport

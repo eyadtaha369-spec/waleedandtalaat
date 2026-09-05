@@ -48,6 +48,14 @@ export const EXAM_STOPS: { name: string; time: string }[] = [
 
 export const EXAM_RETURN_NOTE = "العودة بعد انتهاء الامتحان (سيتم تحديد الميعاد لاحقاً)";
 
+export const COMPANION_RELATIONS = ["أب", "أم", "أخ/أخت", "آخر"] as const;
+
+export const COMPANION_FEE_EGP = 250;
+
+export const COMPANION_PAYMENT_NOTICE =
+  `تنويه: تكلفة حجز مقعد المرافق (${COMPANION_FEE_EGP} جنيه للذهاب والعودة). ` +
+  `يرجى تحويل المبلغ عبر InstaPay وإرفاق صورة الإيصال لتأكيد الحجز.`;
+
 function toWhatsAppNumber(phone: string): string {
   const digits = phone.replace(/\D/g, "");
   if (digits.startsWith("20")) return digits;

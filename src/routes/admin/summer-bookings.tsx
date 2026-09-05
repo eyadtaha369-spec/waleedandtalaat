@@ -41,6 +41,10 @@ type ExamBooking = {
   pickup_time: string;
   status: "pending" | "confirmed" | "rejected";
   pass_token: string | null;
+  has_companion: boolean;
+  companion_name: string | null;
+  companion_relation: string | null;
+  receipt_url: string | null;
 };
 
 const SITE_ORIGIN = typeof window !== "undefined" ? window.location.origin : "";
@@ -56,7 +60,9 @@ function SummerBookingsPage() {
     setLoading(true);
     const { data, error } = await supabase
       .from("exam_bookings")
-      .select("id,full_name,phone,exam_date,pickup_stop,pickup_time,status,pass_token")
+      .select(
+        "id,full_name,phone,exam_date,pickup_stop,pickup_time,status,pass_token,has_companion,companion_name,companion_relation,receipt_url",
+      )
       .order("created_at", { ascending: false });
     setLoading(false);
     if (error) {
@@ -69,6 +75,17 @@ function SummerBookingsPage() {
   useEffect(() => {
     void load();
   }, []);
+
+  const viewReceipt = async (path: string) => {
+    const { data, error } = await supabase.storage
+      .from("exam-receipts")
+      .createSignedUrl(path, 3600);
+    if (error || !data) {
+      toast.error(error?.message ?? "Could not open receipt");
+      return;
+    }
+    window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+  };
 
   const decide = async (booking: ExamBooking, action: "confirmed" | "rejected") => {
     setBusyId(booking.id);
@@ -177,6 +194,7 @@ function SummerBookingsPage() {
                 <TableHead>Phone</TableHead>
                 <TableHead>Exam date</TableHead>
                 <TableHead>Pickup stop &amp; time</TableHead>
+                <TableHead>Companion / مرافق</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-end">Actions</TableHead>
               </TableRow>
@@ -189,6 +207,29 @@ function SummerBookingsPage() {
                   <TableCell>{examDateLabel(b.exam_date)}</TableCell>
                   <TableCell>
                     {b.pickup_stop} · {b.pickup_time}
+                  </TableCell>
+                  <TableCell>
+                    {b.has_companion ? (
+                      <div>
+                        <span className="whitespace-nowrap">👥 طالب + مرافق (المستحق: 250 ج)</span>
+                        {b.companion_name && (
+                          <p className="text-xs text-muted-foreground">
+                            {b.companion_name} · {b.companion_relation}
+                          </p>
+                        )}
+                        {b.receipt_url && (
+                          <button
+                            type="button"
+                            onClick={() => void viewReceipt(b.receipt_url!)}
+                            className="text-xs text-accent underline underline-offset-2"
+                          >
+                            View receipt
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="whitespace-nowrap">👤 طالب فقط (مجاناً)</span>
+                    )}
                   </TableCell>
                   <TableCell>
                     {b.status === "pending" && (

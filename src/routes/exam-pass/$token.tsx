@@ -23,6 +23,8 @@ type ExamPass = {
   pickup_stop: string;
   pickup_time: string;
   status: string;
+  has_companion: boolean;
+  companion_name: string | null;
 };
 
 function ExamPassPage() {
@@ -72,6 +74,13 @@ function ExamPassPage() {
           <p className="text-sm text-muted-foreground">
             {pass.pickup_stop} · {pass.pickup_time}
           </p>
+          <Badge
+            className={`mt-3 ${pass.has_companion ? "bg-success text-success-foreground" : "bg-muted text-muted-foreground"}`}
+          >
+            {pass.has_companion
+              ? `👥 طالب + 1 مرافق (مدفوع)${pass.companion_name ? ` — ${pass.companion_name}` : ""}`
+              : "👤 طالب فقط"}
+          </Badge>
         </div>
 
         <div className="flex justify-center border-y border-dashed border-border bg-secondary/60 p-6">

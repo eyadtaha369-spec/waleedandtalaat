@@ -231,6 +231,13 @@ export type Database = {
           pickup_time: string;
           status: string;
           pass_token: string | null;
+          is_scanned: boolean;
+          scanned_at: string | null;
+          scanned_by: string | null;
+          has_companion: boolean;
+          companion_name: string | null;
+          companion_relation: string | null;
+          receipt_url: string | null;
           created_at: string;
         };
         Insert: {
@@ -242,6 +249,13 @@ export type Database = {
           pickup_time: string;
           status?: string;
           pass_token?: string | null;
+          is_scanned?: boolean;
+          scanned_at?: string | null;
+          scanned_by?: string | null;
+          has_companion?: boolean;
+          companion_name?: string | null;
+          companion_relation?: string | null;
+          receipt_url?: string | null;
           created_at?: string;
         };
         Update: {
@@ -253,6 +267,13 @@ export type Database = {
           pickup_time?: string;
           status?: string;
           pass_token?: string | null;
+          is_scanned?: boolean;
+          scanned_at?: string | null;
+          scanned_by?: string | null;
+          has_companion?: boolean;
+          companion_name?: string | null;
+          companion_relation?: string | null;
+          receipt_url?: string | null;
           created_at?: string;
         };
         Relationships: [];
@@ -445,6 +466,8 @@ export type Database = {
           pickup_stop: string;
           pickup_time: string;
           status: string;
+          has_companion: boolean;
+          companion_name: string | null;
         }[];
       };
       decide_exam_booking: {

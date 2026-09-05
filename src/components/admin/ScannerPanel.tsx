@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Html5Qrcode } from "html5-qrcode";
 import { toast } from "sonner";
-import { CheckCircle2, ScanLine, XCircle } from "lucide-react";
+import { CheckCircle2, ScanLine, Users, XCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { SmartAvatar } from "@/components/SmartAvatar";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +20,7 @@ type ScanResult = {
   route: string | null;
   photoUrl: string | null;
   tripsRemaining: number | null;
+  hasCompanion: boolean;
 };
 
 export function ScannerPanel() {
@@ -95,6 +96,7 @@ export function ScannerPanel() {
         route: data.route,
         photoUrl: data.photo_url,
         tripsRemaining: data.trips_remaining ?? null,
+        hasCompanion: !!data.has_companion,
       });
     } catch {
       toast.error("Unrecognized QR code.");
@@ -194,24 +196,31 @@ function ResultCard({ result }: { result: ScanResult }) {
   const Icon = c.icon;
 
   return (
-    <div className="mt-4 flex items-center gap-4 rounded-2xl border border-border p-5">
-      <div className="size-16 shrink-0 overflow-hidden rounded-xl border-gilded">
-        <SmartAvatar
-          photoUrl={result.photoUrl}
-          name={result.fullName}
-          className="size-full text-xl"
-        />
+    <div className="mt-4 space-y-3">
+      <div className="flex items-center gap-4 rounded-2xl border border-border p-5">
+        <div className="size-16 shrink-0 overflow-hidden rounded-xl border-gilded">
+          <SmartAvatar
+            photoUrl={result.photoUrl}
+            name={result.fullName}
+            className="size-full text-xl"
+          />
+        </div>
+        <div className="flex-1">
+          <p className="text-lg font-bold">{result.fullName}</p>
+          <p className="text-sm text-muted-foreground">
+            {result.route ?? "—"}
+            {result.tripsRemaining !== null && ` · ${result.tripsRemaining} trips left`}
+          </p>
+        </div>
+        <Badge className={c.className}>
+          <Icon className="me-1 size-3.5" /> {c.label}
+        </Badge>
       </div>
-      <div className="flex-1">
-        <p className="text-lg font-bold">{result.fullName}</p>
-        <p className="text-sm text-muted-foreground">
-          {result.route ?? "—"}
-          {result.tripsRemaining !== null && ` · ${result.tripsRemaining} trips left`}
-        </p>
-      </div>
-      <Badge className={c.className}>
-        <Icon className="me-1 size-3.5" /> {c.label}
-      </Badge>
+      {result.hasCompanion && (
+        <Badge className="bg-success text-success-foreground w-full justify-center py-2 text-sm">
+          <Users className="me-1 size-4" /> 👥 مسموح بركوب مرافق (تم سداد 250 ج)
+        </Badge>
+      )}
     </div>
   );
 }

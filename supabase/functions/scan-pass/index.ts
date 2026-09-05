@@ -19,10 +19,11 @@ Deno.serve(async (req) => {
     const url = Deno.env.get("SUPABASE_URL")!;
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
 
-    const { student_id, slot, guest_token, service_date } = (await req.json()) as {
+    const { student_id, slot, guest_token, exam_token, service_date } = (await req.json()) as {
       student_id?: string;
       slot?: string;
       guest_token?: string;
+      exam_token?: string;
       service_date?: string;
     };
 
@@ -36,8 +37,14 @@ Deno.serve(async (req) => {
       return json(data);
     }
 
+    if (exam_token) {
+      const { data, error } = await client.rpc("scan_exam_pass", { p_token: exam_token });
+      if (error) return json({ error: error.message }, 400);
+      return json(data);
+    }
+
     if (!student_id || !slot) {
-      return json({ error: "student_id and slot (or guest_token) are required" }, 400);
+      return json({ error: "student_id and slot (or guest_token/exam_token) are required" }, 400);
     }
 
     const { data, error } = await client.rpc("scan_pass", {

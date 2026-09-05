@@ -70,7 +70,7 @@ export function ScannerPanel() {
     lockRef.current = true;
 
     try {
-      const payload = JSON.parse(decodedText) as { id?: string; guest?: boolean };
+      const payload = JSON.parse(decodedText) as { id?: string; guest?: boolean; exam?: boolean };
       if (!payload.id) throw new Error("bad payload");
 
       // Server does everything atomically: staff check, booking lookup,
@@ -79,7 +79,9 @@ export function ScannerPanel() {
       const { data, error } = await supabase.functions.invoke("scan-pass", {
         body: payload.guest
           ? { guest_token: payload.id }
-          : { student_id: payload.id, slot, service_date: dateOverride || undefined },
+          : payload.exam
+            ? { exam_token: payload.id }
+            : { student_id: payload.id, slot, service_date: dateOverride || undefined },
       });
 
       if (error || data?.error) {

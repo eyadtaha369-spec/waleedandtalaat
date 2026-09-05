@@ -221,6 +221,42 @@ export type Database = {
         };
         Relationships: [];
       };
+      exam_bookings: {
+        Row: {
+          id: string;
+          full_name: string;
+          phone: string;
+          exam_date: string;
+          pickup_stop: string;
+          pickup_time: string;
+          status: string;
+          pass_token: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          full_name: string;
+          phone: string;
+          exam_date: string;
+          pickup_stop: string;
+          pickup_time: string;
+          status?: string;
+          pass_token?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          full_name?: string;
+          phone?: string;
+          exam_date?: string;
+          pickup_stop?: string;
+          pickup_time?: string;
+          status?: string;
+          pass_token?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       scans: {
         Row: {
           id: string;
@@ -400,6 +436,20 @@ export type Database = {
           trips_remaining: number;
           trips_total: number;
         }[];
+      };
+      get_exam_pass: {
+        Args: { p_token: string };
+        Returns: {
+          full_name: string;
+          exam_date: string;
+          pickup_stop: string;
+          pickup_time: string;
+          status: string;
+        }[];
+      };
+      decide_exam_booking: {
+        Args: { p_id: string; p_action: string };
+        Returns: Json;
       };
       update_staff_user: {
         Args: { p_user_id: string; p_full_name: string; p_phone: string; p_role: string };

@@ -39,6 +39,7 @@ const adminLinks = [
   { to: "/admin/manifests", label: "Manifests" },
   { to: "/admin/installments", label: "Installments" },
   { to: "/admin/requests", label: "Daily Pass" },
+  { to: "/admin/summer-bookings", label: "Summer Bookings" },
   { to: "/admin/users", label: "Users" },
   { to: "/admin/scan", label: "Scan QR" },
 ];

@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import {
   Bus,
   ClipboardList,
+  GraduationCap,
   ScanLine,
   ShieldCheck,
   Upload,
@@ -158,6 +159,12 @@ function AdminConsole() {
           icon={ClipboardList}
           title="Daily Pass Approvals"
           description="Accept or reject non-subscriber daily pass requests."
+        />
+        <ShortcutCard
+          to="/admin/summer-bookings"
+          icon={GraduationCap}
+          title="Summer Bookings / حجز الامتحانات"
+          description="Accept or reject exam-day guest bookings and send the QR pass link."
         />
         <ShortcutCard
           to="/admin/scan"

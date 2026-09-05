@@ -1,7 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState } from "react";
 import { BusFront, QrCode, ShieldCheck, Ticket } from "lucide-react";
 import { Logo } from "@/components/Brand";
 import { Button } from "@/components/ui/button";
+import { ExamBookingModal } from "@/components/ExamBookingModal";
 import { MORNING_SLOTS, RETURN_SLOTS } from "@/lib/schedule";
 
 export const Route = createFileRoute("/")({
@@ -42,6 +44,7 @@ const features = [
 ];
 
 function Index() {
+  const [examModalOpen, setExamModalOpen] = useState(false);
   return (
     <main>
       <section className="surface-navy relative overflow-hidden">
@@ -59,7 +62,16 @@ function Index() {
               وليد وطلعت — daily transportation for students of Alamein International University,
               with reserved seats, verified boarding and a supervisor dashboard built for the road.
             </p>
-            <div className="mt-8 flex flex-wrap gap-3">
+            <div className="mt-6">
+              <button
+                type="button"
+                onClick={() => setExamModalOpen(true)}
+                className="animate-pulse rounded-2xl bg-gradient-to-r from-[var(--gold)] to-amber-400 px-6 py-4 text-lg font-bold text-black shadow-lg transition-transform hover:scale-105"
+              >
+                حجز أيام الامتحانات 📝
+              </button>
+            </div>
+            <div className="mt-6 flex flex-wrap gap-3">
               <Link to="/auth">
                 <Button size="lg" className="btn-gold">
                   Student sign in
@@ -107,6 +119,8 @@ function Index() {
           <span>Waleed &amp; Talaat Student Transportation — وليد وطلعت</span>
         </div>
       </footer>
+
+      <ExamBookingModal open={examModalOpen} onOpenChange={setExamModalOpen} />
     </main>
   );
 }

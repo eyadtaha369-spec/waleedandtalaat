@@ -14,6 +14,7 @@ export type Profile = {
   trips_total: number;
   trips_remaining: number;
   photo_url: string | null;
+  assigned_route: string | null;
 };
 
 type AuthState = {

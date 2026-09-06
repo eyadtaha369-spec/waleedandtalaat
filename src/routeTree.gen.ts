@@ -17,15 +17,18 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as PassRouteImport } from './routes/pass'
 import { Route as TripsRouteImport } from './routes/trips'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
+import { Route as AdminDailyPassesRouteImport } from './routes/admin/daily-passes'
 import { Route as AdminImportRouteImport } from './routes/admin/import'
 import { Route as AdminInstallmentsRouteImport } from './routes/admin/installments'
 import { Route as AdminManifestsRouteImport } from './routes/admin/manifests'
 import { Route as AdminRequestsRouteImport } from './routes/admin/requests'
 import { Route as AdminScanRouteImport } from './routes/admin/scan'
+import { Route as AdminStudentsRouteImport } from './routes/admin/students'
 import { Route as AdminSummerBookingsRouteImport } from './routes/admin/summer-bookings'
 import { Route as AdminUsersRouteImport } from './routes/admin/users'
 import { Route as ExamPassTokenRouteImport } from './routes/exam-pass/$token'
 import { Route as GuestPassTokenRouteImport } from './routes/guest-pass/$token'
+import { Route as SupervisorStudentsRouteImport } from './routes/supervisor/students'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -67,6 +70,11 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminDailyPassesRoute = AdminDailyPassesRouteImport.update({
+  id: '/daily-passes',
+  path: '/daily-passes',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminImportRoute = AdminImportRouteImport.update({
   id: '/import',
   path: '/import',
@@ -92,6 +100,11 @@ const AdminScanRoute = AdminScanRouteImport.update({
   path: '/scan',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminStudentsRoute = AdminStudentsRouteImport.update({
+  id: '/students',
+  path: '/students',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminSummerBookingsRoute = AdminSummerBookingsRouteImport.update({
   id: '/summer-bookings',
   path: '/summer-bookings',
@@ -112,6 +125,11 @@ const GuestPassTokenRoute = GuestPassTokenRouteImport.update({
   path: '/guest-pass/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SupervisorStudentsRoute = SupervisorStudentsRouteImport.update({
+  id: '/supervisor/students',
+  path: '/supervisor/students',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -121,15 +139,18 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/pass': typeof PassRoute
   '/trips': typeof TripsRoute
+  '/admin/daily-passes': typeof AdminDailyPassesRoute
   '/admin/import': typeof AdminImportRoute
   '/admin/installments': typeof AdminInstallmentsRoute
   '/admin/manifests': typeof AdminManifestsRoute
   '/admin/requests': typeof AdminRequestsRoute
   '/admin/scan': typeof AdminScanRoute
+  '/admin/students': typeof AdminStudentsRoute
   '/admin/summer-bookings': typeof AdminSummerBookingsRoute
   '/admin/users': typeof AdminUsersRoute
   '/exam-pass/$token': typeof ExamPassTokenRoute
   '/guest-pass/$token': typeof GuestPassTokenRoute
+  '/supervisor/students': typeof SupervisorStudentsRoute
   '/admin/': typeof AdminIndexRoute
 }
 export interface FileRoutesByTo {
@@ -139,15 +160,18 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/pass': typeof PassRoute
   '/trips': typeof TripsRoute
+  '/admin/daily-passes': typeof AdminDailyPassesRoute
   '/admin/import': typeof AdminImportRoute
   '/admin/installments': typeof AdminInstallmentsRoute
   '/admin/manifests': typeof AdminManifestsRoute
   '/admin/requests': typeof AdminRequestsRoute
   '/admin/scan': typeof AdminScanRoute
+  '/admin/students': typeof AdminStudentsRoute
   '/admin/summer-bookings': typeof AdminSummerBookingsRoute
   '/admin/users': typeof AdminUsersRoute
   '/exam-pass/$token': typeof ExamPassTokenRoute
   '/guest-pass/$token': typeof GuestPassTokenRoute
+  '/supervisor/students': typeof SupervisorStudentsRoute
   '/admin': typeof AdminIndexRoute
 }
 export interface FileRoutesById {
@@ -159,15 +183,18 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/pass': typeof PassRoute
   '/trips': typeof TripsRoute
+  '/admin/daily-passes': typeof AdminDailyPassesRoute
   '/admin/import': typeof AdminImportRoute
   '/admin/installments': typeof AdminInstallmentsRoute
   '/admin/manifests': typeof AdminManifestsRoute
   '/admin/requests': typeof AdminRequestsRoute
   '/admin/scan': typeof AdminScanRoute
+  '/admin/students': typeof AdminStudentsRoute
   '/admin/summer-bookings': typeof AdminSummerBookingsRoute
   '/admin/users': typeof AdminUsersRoute
   '/exam-pass/$token': typeof ExamPassTokenRoute
   '/guest-pass/$token': typeof GuestPassTokenRoute
+  '/supervisor/students': typeof SupervisorStudentsRoute
   '/admin/': typeof AdminIndexRoute
 }
 export interface FileRouteTypes {
@@ -180,15 +207,18 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/pass'
     | '/trips'
+    | '/admin/daily-passes'
     | '/admin/import'
     | '/admin/installments'
     | '/admin/manifests'
     | '/admin/requests'
     | '/admin/scan'
+    | '/admin/students'
     | '/admin/summer-bookings'
     | '/admin/users'
     | '/exam-pass/$token'
     | '/guest-pass/$token'
+    | '/supervisor/students'
     | '/admin/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -198,15 +228,18 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/pass'
     | '/trips'
+    | '/admin/daily-passes'
     | '/admin/import'
     | '/admin/installments'
     | '/admin/manifests'
     | '/admin/requests'
     | '/admin/scan'
+    | '/admin/students'
     | '/admin/summer-bookings'
     | '/admin/users'
     | '/exam-pass/$token'
     | '/guest-pass/$token'
+    | '/supervisor/students'
     | '/admin'
   id:
     | '__root__'
@@ -217,15 +250,18 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/pass'
     | '/trips'
+    | '/admin/daily-passes'
     | '/admin/import'
     | '/admin/installments'
     | '/admin/manifests'
     | '/admin/requests'
     | '/admin/scan'
+    | '/admin/students'
     | '/admin/summer-bookings'
     | '/admin/users'
     | '/exam-pass/$token'
     | '/guest-pass/$token'
+    | '/supervisor/students'
     | '/admin/'
   fileRoutesById: FileRoutesById
 }
@@ -239,6 +275,7 @@ export interface RootRouteChildren {
   TripsRoute: typeof TripsRoute
   ExamPassTokenRoute: typeof ExamPassTokenRoute
   GuestPassTokenRoute: typeof GuestPassTokenRoute
+  SupervisorStudentsRoute: typeof SupervisorStudentsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -299,6 +336,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/daily-passes': {
+      id: '/admin/daily-passes'
+      path: '/daily-passes'
+      fullPath: '/admin/daily-passes'
+      preLoaderRoute: typeof AdminDailyPassesRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/import': {
       id: '/admin/import'
       path: '/import'
@@ -334,6 +378,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminScanRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/students': {
+      id: '/admin/students'
+      path: '/students'
+      fullPath: '/admin/students'
+      preLoaderRoute: typeof AdminStudentsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/summer-bookings': {
       id: '/admin/summer-bookings'
       path: '/summer-bookings'
@@ -362,26 +413,37 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GuestPassTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/supervisor/students': {
+      id: '/supervisor/students'
+      path: '/supervisor/students'
+      fullPath: '/supervisor/students'
+      preLoaderRoute: typeof SupervisorStudentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 interface AdminRouteChildren {
+  AdminDailyPassesRoute: typeof AdminDailyPassesRoute
   AdminImportRoute: typeof AdminImportRoute
   AdminInstallmentsRoute: typeof AdminInstallmentsRoute
   AdminManifestsRoute: typeof AdminManifestsRoute
   AdminRequestsRoute: typeof AdminRequestsRoute
   AdminScanRoute: typeof AdminScanRoute
+  AdminStudentsRoute: typeof AdminStudentsRoute
   AdminSummerBookingsRoute: typeof AdminSummerBookingsRoute
   AdminUsersRoute: typeof AdminUsersRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminDailyPassesRoute: AdminDailyPassesRoute,
   AdminImportRoute: AdminImportRoute,
   AdminInstallmentsRoute: AdminInstallmentsRoute,
   AdminManifestsRoute: AdminManifestsRoute,
   AdminRequestsRoute: AdminRequestsRoute,
   AdminScanRoute: AdminScanRoute,
+  AdminStudentsRoute: AdminStudentsRoute,
   AdminSummerBookingsRoute: AdminSummerBookingsRoute,
   AdminUsersRoute: AdminUsersRoute,
   AdminIndexRoute: AdminIndexRoute,
@@ -399,6 +461,7 @@ const rootRouteChildren: RootRouteChildren = {
   TripsRoute: TripsRoute,
   ExamPassTokenRoute: ExamPassTokenRoute,
   GuestPassTokenRoute: GuestPassTokenRoute,
+  SupervisorStudentsRoute: SupervisorStudentsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

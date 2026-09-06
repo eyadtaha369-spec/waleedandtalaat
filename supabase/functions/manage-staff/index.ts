@@ -19,6 +19,7 @@ type CreateBody = {
   email: string;
   password: string;
   role: "admin" | "supervisor";
+  assigned_route?: string | null;
 };
 type ResetPasswordBody = { action: "reset_password"; user_id: string; new_password: string };
 type SetActiveBody = { action: "set_active"; user_id: string; active: boolean };
@@ -49,9 +50,12 @@ Deno.serve(async (req) => {
     const body = (await req.json()) as Body;
 
     if (body.action === "create") {
-      const { full_name, phone, email, password, role } = body;
+      const { full_name, phone, email, password, role, assigned_route } = body;
       if (!full_name || !email || !password || !role) {
         return json({ error: "full_name, email, password and role are required" }, 400);
+      }
+      if (role === "supervisor" && !assigned_route) {
+        return json({ error: "assigned_route is required for supervisors" }, 400);
       }
       const { data: created, error: createError } = await admin.auth.admin.createUser({
         email,
@@ -66,12 +70,16 @@ Deno.serve(async (req) => {
       // the requested staff role.
       await admin.from("user_roles").delete().eq("user_id", created.user.id).eq("role", "student");
       await admin.from("user_roles").insert({ user_id: created.user.id, role });
-      return json({ user_id: created.user.id, full_name, phone, email, role });
+      if (role === "supervisor") {
+        await admin.from("profiles").update({ assigned_route }).eq("id", created.user.id);
+      }
+      return json({ user_id: created.user.id, full_name, phone, email, role, assigned_route });
     }
 
     if (body.action === "reset_password") {
       const { user_id, new_password } = body;
-      if (!user_id || !new_password) return json({ error: "user_id and new_password are required" }, 400);
+      if (!user_id || !new_password)
+        return json({ error: "user_id and new_password are required" }, 400);
       const { error } = await admin.auth.admin.updateUserById(user_id, { password: new_password });
       if (error) return json({ error: error.message }, 400);
       return json({ user_id, reset: true });

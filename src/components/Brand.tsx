@@ -42,10 +42,14 @@ function useNavLinks() {
     { to: "/admin/installments", label: t("nav.installments") },
     { to: "/admin/requests", label: t("nav.adminDailyPass") },
     { to: "/admin/summer-bookings", label: t("nav.summerBookings") },
+    { to: "/admin/students", label: t("nav.students") },
     { to: "/admin/users", label: t("nav.users") },
     { to: "/admin/scan", label: t("nav.scanQr") },
   ];
-  const supervisorLinks = [{ to: "/admin/scan", label: t("nav.scanQr") }];
+  const supervisorLinks = [
+    { to: "/supervisor/students", label: t("nav.students") },
+    { to: "/admin/scan", label: t("nav.scanQr") },
+  ];
   return { studentLinks, adminLinks, supervisorLinks };
 }
 

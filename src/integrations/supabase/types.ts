@@ -143,6 +143,7 @@ export type Database = {
           second_installment_amount: number | null;
           payment_method: string | null;
           installment_status: string;
+          assigned_route: string | null;
           trips_remaining: number;
           trips_total: number;
           username: string | null;
@@ -161,6 +162,7 @@ export type Database = {
           second_installment_amount?: number | null;
           payment_method?: string | null;
           installment_status?: string;
+          assigned_route?: string | null;
           trips_remaining?: number;
           trips_total?: number;
           username?: string | null;
@@ -179,6 +181,7 @@ export type Database = {
           second_installment_amount?: number | null;
           payment_method?: string | null;
           installment_status?: string;
+          assigned_route?: string | null;
           trips_remaining?: number;
           trips_total?: number;
           username?: string | null;
@@ -428,6 +431,7 @@ export type Database = {
           email: string;
           role: string;
           is_active: boolean;
+          assigned_route: string | null;
         }[];
       };
       list_students_for_credentials: {
@@ -497,8 +501,56 @@ export type Database = {
         Returns: Json;
       };
       update_staff_user: {
-        Args: { p_user_id: string; p_full_name: string; p_phone: string; p_role: string };
+        Args: {
+          p_user_id: string;
+          p_full_name: string;
+          p_phone: string;
+          p_role: string;
+          p_assigned_route: string | null;
+        };
         Returns: Json;
+      };
+      list_my_route_students: {
+        Args: Record<string, never>;
+        Returns: {
+          user_id: string;
+          full_name: string;
+          phone: string | null;
+          pickup_stop: string | null;
+          subscription_type: string;
+          trips_remaining: number;
+          trips_total: number;
+        }[];
+      };
+      list_all_students: {
+        Args: { p_route: string | null };
+        Returns: {
+          user_id: string;
+          full_name: string;
+          phone: string | null;
+          route: string | null;
+          pickup_stop: string | null;
+          subscription_type: string;
+          payment_status: string;
+          trips_remaining: number;
+          trips_total: number;
+        }[];
+      };
+      list_confirmed_daily_passes: {
+        Args: Record<string, never>;
+        Returns: {
+          full_name: string;
+          phone: string;
+          route: string;
+          pickup_stop: string | null;
+          slot: string;
+          kind: string;
+          payment_method: string;
+          is_scanned: boolean;
+          scanned_at: string | null;
+          scanned_by_name: string | null;
+          created_at: string;
+        }[];
       };
       decide_daily_pass_request: {
         Args: { p_request_id: string; p_action: string };

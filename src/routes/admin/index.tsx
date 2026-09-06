@@ -7,6 +7,7 @@ import {
   GraduationCap,
   ScanLine,
   ShieldCheck,
+  Ticket,
   Upload,
   Users,
   UsersRound,
@@ -173,6 +174,18 @@ function AdminConsole() {
           icon={GraduationCap}
           title={t("admin.summerBookingsTitle")}
           description={t("admin.summerBookingsDesc")}
+        />
+        <ShortcutCard
+          to="/admin/students"
+          icon={UsersRound}
+          title={t("students.masterDirectory")}
+          description={t("admin.studentsDesc")}
+        />
+        <ShortcutCard
+          to="/admin/daily-passes"
+          icon={Ticket}
+          title={t("dailyPasses.trackingTitle")}
+          description={t("admin.dailyPassesTrackingDesc")}
         />
         <ShortcutCard
           to="/admin/scan"

@@ -25,6 +25,7 @@ import {
 import { generateTempPassword } from "@/lib/credentials";
 import { edgeFunctionErrorMessage } from "@/lib/functionsError";
 import { useLanguage } from "@/hooks/useLanguage";
+import { useRoutes } from "@/hooks/useRoutes";
 
 type StaffUser = {
   user_id: string;
@@ -33,6 +34,7 @@ type StaffUser = {
   email: string;
   role: "admin" | "supervisor";
   is_active: boolean;
+  assigned_route: string | null;
 };
 
 const emptyCreateForm: {
@@ -41,17 +43,20 @@ const emptyCreateForm: {
   email: string;
   password: string;
   role: "admin" | "supervisor";
+  assigned_route: string;
 } = {
   full_name: "",
   phone: "",
   email: "",
   password: "",
   role: "supervisor",
+  assigned_route: "",
 };
 
 export function UsersPanel() {
   const { user: currentUser } = useAuth();
   const { t } = useLanguage();
+  const { routes } = useRoutes();
   const [users, setUsers] = useState<StaffUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -64,6 +69,7 @@ export function UsersPanel() {
     full_name: "",
     phone: "",
     role: "supervisor" as string,
+    assigned_route: "",
   });
 
   const load = async () => {
@@ -84,6 +90,10 @@ export function UsersPanel() {
   const createUser = async () => {
     if (!createForm.full_name || !createForm.email || !createForm.password) {
       toast.error(t("users.fullNameEmailPasswordRequired"));
+      return;
+    }
+    if (createForm.role === "supervisor" && !createForm.assigned_route) {
+      toast.error(t("users.assignedRouteRequired"));
       return;
     }
     setBusy(true);
@@ -107,17 +117,27 @@ export function UsersPanel() {
 
   const openEdit = (u: StaffUser) => {
     setEditUser(u);
-    setEditForm({ full_name: u.full_name, phone: u.phone ?? "", role: u.role });
+    setEditForm({
+      full_name: u.full_name,
+      phone: u.phone ?? "",
+      role: u.role,
+      assigned_route: u.assigned_route ?? "",
+    });
   };
 
   const saveEdit = async () => {
     if (!editUser) return;
+    if (editForm.role === "supervisor" && !editForm.assigned_route) {
+      toast.error(t("users.assignedRouteRequired"));
+      return;
+    }
     setBusy(true);
     const { error } = await supabase.rpc("update_staff_user", {
       p_user_id: editUser.user_id,
       p_full_name: editForm.full_name,
       p_phone: editForm.phone,
       p_role: editForm.role,
+      p_assigned_route: editForm.role === "supervisor" ? editForm.assigned_route : null,
     });
     setBusy(false);
     if (error) {
@@ -209,6 +229,9 @@ export function UsersPanel() {
                   >
                     {u.role === "admin" ? `🔴 ${t("users.admin")}` : `🔵 ${t("users.supervisor")}`}
                   </Badge>
+                  {u.role === "supervisor" && u.assigned_route && (
+                    <p className="mt-1 text-xs text-muted-foreground">{u.assigned_route}</p>
+                  )}
                 </TableCell>
                 <TableCell>
                   <Badge
@@ -305,6 +328,25 @@ export function UsersPanel() {
                 <option value="supervisor">{t("users.supervisor")}</option>
               </select>
             </div>
+            {createForm.role === "supervisor" && (
+              <div className="space-y-2">
+                <Label>{t("users.assignedRoute")}</Label>
+                <select
+                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  value={createForm.assigned_route}
+                  onChange={(e) => setCreateForm({ ...createForm, assigned_route: e.target.value })}
+                >
+                  <option value="" disabled>
+                    {t("users.assignedRoute")}
+                  </option>
+                  {routes.map((r) => (
+                    <option key={r} value={r}>
+                      {r}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button className="btn-gold w-full" disabled={busy} onClick={() => void createUser()}>
@@ -344,6 +386,25 @@ export function UsersPanel() {
                 <option value="supervisor">{t("users.supervisor")}</option>
               </select>
             </div>
+            {editForm.role === "supervisor" && (
+              <div className="space-y-2">
+                <Label>{t("users.assignedRoute")}</Label>
+                <select
+                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  value={editForm.assigned_route}
+                  onChange={(e) => setEditForm({ ...editForm, assigned_route: e.target.value })}
+                >
+                  <option value="" disabled>
+                    {t("users.assignedRoute")}
+                  </option>
+                  {routes.map((r) => (
+                    <option key={r} value={r}>
+                      {r}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button className="btn-gold w-full" disabled={busy} onClick={() => void saveEdit()}>

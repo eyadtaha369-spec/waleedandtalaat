@@ -17,6 +17,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { groupInviteLink } from "@/lib/whatsappGroups";
 
 export const Route = createFileRoute("/whatsapp-live")({
   head: () => ({ meta: [{ title: "WhatsApp Live Group Hub — Waleed & Talaat" }] }),
@@ -36,20 +37,6 @@ type StudentRow = {
 };
 
 type RouteLink = { route: string; whatsapp_group_link: string | null };
-
-function toWhatsAppNumber(phone: string): string {
-  const digits = phone.replace(/\D/g, "");
-  if (digits.startsWith("20")) return digits;
-  if (digits.startsWith("0")) return `20${digits.slice(1)}`;
-  return digits;
-}
-
-function inviteLink(fullName: string, phone: string, routeName: string, groupLink: string): string {
-  const message =
-    `أهلاً ${fullName}، برجاء الانضمام لجروب الواتساب الخاص بخطك (${routeName}) ` +
-    `لتلقي المواعيد والتنبيهات اليومية عبر الرابط التالي: ${groupLink}`;
-  return `https://wa.me/${toWhatsAppNumber(phone)}?text=${encodeURIComponent(message)}`;
-}
 
 function WhatsAppLivePage() {
   const { isAdmin, profile } = useAuth();
@@ -150,7 +137,7 @@ function WhatsAppLivePage() {
       return;
     }
     window.open(
-      inviteLink(s.full_name, s.phone, s.route ?? "", link),
+      groupInviteLink(s.full_name, s.phone, s.route ?? "", link),
       "_blank",
       "noopener,noreferrer",
     );
@@ -187,7 +174,7 @@ function WhatsAppLivePage() {
       if (!link || !s.phone) return;
       setTimeout(() => {
         window.open(
-          inviteLink(s.full_name, s.phone!, s.route ?? "", link),
+          groupInviteLink(s.full_name, s.phone!, s.route ?? "", link),
           "_blank",
           "noopener,noreferrer",
         );

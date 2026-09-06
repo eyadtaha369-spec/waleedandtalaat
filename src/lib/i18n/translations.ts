@@ -351,6 +351,9 @@ export const translations: Record<Lang, Record<string, string>> = {
     "whatsapp.linkMissingForRoute": "لا يوجد رابط جروب لهذا الخط — برجاء إضافته أولاً",
     "whatsapp.selectStudentsFirst": "برجاء تحديد طالب واحد على الأقل",
     "whatsapp.popupNote": "برجاء السماح بالنوافذ المنبثقة لهذا الموقع حتى تفتح كل الدعوات.",
+    "whatsapp.sendInviteNewStudents": "إرسال الدعوات للطلاب الجدد",
+    "whatsapp.noLinkForRoute": "لا يوجد رابط جروب لخط هذا الطالب بعد",
+    "whatsapp.noNewStudents": "لا يوجد طلاب جدد بحاجة لدعوة.",
 
     // Import
     "import.chooseFile": "اختيار ملف",
@@ -739,6 +742,9 @@ export const translations: Record<Lang, Record<string, string>> = {
     "whatsapp.linkMissingForRoute": "This route has no group link yet — add one first",
     "whatsapp.selectStudentsFirst": "Select at least one student",
     "whatsapp.popupNote": "Please allow pop-ups for this site so every invite window can open.",
+    "whatsapp.sendInviteNewStudents": "Send invites to new students",
+    "whatsapp.noLinkForRoute": "This student's route has no group link yet",
+    "whatsapp.noNewStudents": "No new students need an invite.",
 
     "import.chooseFile": "Choose file",
     "import.createAccounts": "Create accounts",

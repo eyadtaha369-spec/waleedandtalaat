@@ -1,12 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, MessageCircle, Rocket } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useRoutes } from "@/hooks/useRoutes";
 import { AdminGuard } from "@/components/admin/AdminGuard";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Table,
@@ -17,6 +18,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { subscriptionBadge } from "@/lib/subscription";
+import { groupInviteLink } from "@/lib/whatsappGroups";
 
 export const Route = createFileRoute("/admin/students")({
   head: () => ({ meta: [{ title: "Student directory — Waleed & Talaat" }] }),
@@ -37,7 +39,10 @@ type StudentRow = {
   payment_status: string;
   trips_remaining: number;
   trips_total: number;
+  whatsapp_invited_at: string | null;
 };
+
+type RouteLink = { route: string; whatsapp_group_link: string | null };
 
 function AdminStudentsPage() {
   const { t } = useLanguage();
@@ -46,6 +51,8 @@ function AdminStudentsPage() {
   const [loading, setLoading] = useState(true);
   const [routeFilter, setRouteFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
+  const [routeLinks, setRouteLinks] = useState<RouteLink[]>([]);
+  const [broadcasting, setBroadcasting] = useState(false);
 
   const load = async (route: string) => {
     setLoading(true);
@@ -63,6 +70,62 @@ function AdminStudentsPage() {
   useEffect(() => {
     void load(routeFilter);
   }, [routeFilter]);
+
+  useEffect(() => {
+    void supabase
+      .rpc("list_routes_with_whatsapp_links")
+      .then(({ data }) => setRouteLinks((data as RouteLink[]) ?? []));
+  }, []);
+
+  const linkForRoute = (route: string | null) =>
+    routeLinks.find((r) => r.route === route)?.whatsapp_group_link ?? null;
+
+  const markInvited = async (ids: string[]) => {
+    await supabase.rpc("mark_whatsapp_invited", { p_student_ids: ids });
+    setStudents((prev) =>
+      prev.map((s) =>
+        ids.includes(s.user_id) ? { ...s, whatsapp_invited_at: new Date().toISOString() } : s,
+      ),
+    );
+  };
+
+  const sendInvite = (s: StudentRow) => {
+    const link = linkForRoute(s.route);
+    if (!link || !s.phone) {
+      toast.error(t("whatsapp.noLinkForRoute"));
+      return;
+    }
+    window.open(
+      groupInviteLink(s.full_name, s.phone, s.route ?? "", link),
+      "_blank",
+      "noopener,noreferrer",
+    );
+    void markInvited([s.user_id]);
+  };
+
+  const sendToNewStudents = async () => {
+    const targets = filtered.filter(
+      (s) => !s.whatsapp_invited_at && s.phone && linkForRoute(s.route),
+    );
+    if (targets.length === 0) {
+      toast.error(t("whatsapp.noNewStudents"));
+      return;
+    }
+    setBroadcasting(true);
+    targets.forEach((s, i) => {
+      const link = linkForRoute(s.route)!;
+      setTimeout(() => {
+        window.open(
+          groupInviteLink(s.full_name, s.phone!, s.route ?? "", link),
+          "_blank",
+          "noopener,noreferrer",
+        );
+      }, i * 400);
+    });
+    await markInvited(targets.map((s) => s.user_id));
+    setBroadcasting(false);
+    toast.success(t("whatsapp.popupNote"), { duration: 8000 });
+  };
 
   const filtered = students.filter((s) => {
     const q = search.trim().toLowerCase();
@@ -103,6 +166,13 @@ function AdminStudentsPage() {
             className="max-w-xs"
           />
           <Badge className="btn-gold">{filtered.length}</Badge>
+          <Button
+            className="btn-gold ms-auto"
+            disabled={broadcasting}
+            onClick={() => void sendToNewStudents()}
+          >
+            <Rocket className="size-4" /> {t("whatsapp.sendInviteNewStudents")}
+          </Button>
         </div>
 
         {loading ? (
@@ -119,6 +189,7 @@ function AdminStudentsPage() {
                 <TableHead>{t("common.stop")}</TableHead>
                 <TableHead>{t("dashboard.subscription")}</TableHead>
                 <TableHead>{t("dashboard.tripsRemaining")}</TableHead>
+                <TableHead className="text-end">{t("common.actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -141,6 +212,15 @@ function AdminStudentsPage() {
                       ) : (
                         <span className="text-muted-foreground">—</span>
                       )}
+                    </TableCell>
+                    <TableCell className="text-end">
+                      <Button
+                        size="sm"
+                        className="bg-success text-success-foreground hover:bg-success/90"
+                        onClick={() => sendInvite(s)}
+                      >
+                        <MessageCircle className="size-4" /> {t("whatsapp.sendInvite")}
+                      </Button>
                     </TableCell>
                   </TableRow>
                 );

@@ -1,12 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { ArrowLeft, UsersRound } from "lucide-react";
+import { ArrowLeft, MessageCircle, Rocket, UsersRound } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/hooks/useLanguage";
 import { AdminGuard } from "@/components/admin/AdminGuard";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -16,6 +17,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { subscriptionBadge } from "@/lib/subscription";
+import { groupInviteLink } from "@/lib/whatsappGroups";
 
 export const Route = createFileRoute("/supervisor/students")({
   head: () => ({ meta: [{ title: "My route's students — Waleed & Talaat" }] }),
@@ -34,6 +36,7 @@ type StudentRow = {
   subscription_type: string;
   trips_remaining: number;
   trips_total: number;
+  whatsapp_invited_at: string | null;
 };
 
 function SupervisorStudentsPage() {
@@ -41,6 +44,8 @@ function SupervisorStudentsPage() {
   const { t } = useLanguage();
   const [students, setStudents] = useState<StudentRow[] | null>(null);
   const [loading, setLoading] = useState(true);
+  const [groupLink, setGroupLink] = useState<string | null>(null);
+  const [broadcasting, setBroadcasting] = useState(false);
 
   useEffect(() => {
     void (async () => {
@@ -54,6 +59,62 @@ function SupervisorStudentsPage() {
       setStudents((data as StudentRow[]) ?? []);
     })();
   }, []);
+
+  useEffect(() => {
+    void supabase.rpc("list_routes_with_whatsapp_links").then(({ data }) => {
+      const links = (data as { route: string; whatsapp_group_link: string | null }[]) ?? [];
+      setGroupLink(
+        links.find((r) => r.route === profile?.assigned_route)?.whatsapp_group_link ?? null,
+      );
+    });
+  }, [profile?.assigned_route]);
+
+  const markInvited = async (ids: string[]) => {
+    await supabase.rpc("mark_whatsapp_invited", { p_student_ids: ids });
+    setStudents((prev) =>
+      (prev ?? []).map((s) =>
+        ids.includes(s.user_id) ? { ...s, whatsapp_invited_at: new Date().toISOString() } : s,
+      ),
+    );
+  };
+
+  const sendInvite = (s: StudentRow) => {
+    if (!groupLink || !s.phone) {
+      toast.error(t("whatsapp.noLinkForRoute"));
+      return;
+    }
+    window.open(
+      groupInviteLink(s.full_name, s.phone, profile?.assigned_route ?? "", groupLink),
+      "_blank",
+      "noopener,noreferrer",
+    );
+    void markInvited([s.user_id]);
+  };
+
+  const sendToNewStudents = async () => {
+    if (!groupLink) {
+      toast.error(t("whatsapp.noLinkForRoute"));
+      return;
+    }
+    const targets = (students ?? []).filter((s) => !s.whatsapp_invited_at && s.phone);
+    if (targets.length === 0) {
+      toast.error(t("whatsapp.noNewStudents"));
+      return;
+    }
+    setBroadcasting(true);
+    targets.forEach((s, i) => {
+      setTimeout(() => {
+        window.open(
+          groupInviteLink(s.full_name, s.phone!, profile?.assigned_route ?? "", groupLink),
+          "_blank",
+          "noopener,noreferrer",
+        );
+      }, i * 400);
+    });
+    await markInvited(targets.map((s) => s.user_id));
+    setBroadcasting(false);
+    toast.success(t("whatsapp.popupNote"), { duration: 8000 });
+  };
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-8">
@@ -72,14 +133,24 @@ function SupervisorStudentsPage() {
       </div>
 
       <div className="mt-6 rounded-3xl border border-border bg-card p-6">
+        <div className="flex flex-wrap items-center justify-end">
+          <Button
+            className="btn-gold"
+            disabled={broadcasting}
+            onClick={() => void sendToNewStudents()}
+          >
+            <Rocket className="size-4" /> {t("whatsapp.sendInviteNewStudents")}
+          </Button>
+        </div>
+
         {loading ? (
-          <p className="text-sm text-muted-foreground">{t("common.loading")}</p>
+          <p className="mt-4 text-sm text-muted-foreground">{t("common.loading")}</p>
         ) : !profile?.assigned_route ? (
-          <p className="text-sm text-muted-foreground">{t("supervisor.noRouteAssigned")}</p>
+          <p className="mt-4 text-sm text-muted-foreground">{t("supervisor.noRouteAssigned")}</p>
         ) : !students || students.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t("supervisor.noStudents")}</p>
+          <p className="mt-4 text-sm text-muted-foreground">{t("supervisor.noStudents")}</p>
         ) : (
-          <Table>
+          <Table className="mt-4">
             <TableHeader>
               <TableRow>
                 <TableHead>{t("common.name")}</TableHead>
@@ -87,6 +158,7 @@ function SupervisorStudentsPage() {
                 <TableHead>{t("common.stop")}</TableHead>
                 <TableHead>{t("dashboard.subscription")}</TableHead>
                 <TableHead>{t("dashboard.tripsRemaining")}</TableHead>
+                <TableHead className="text-end">{t("common.actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -108,6 +180,15 @@ function SupervisorStudentsPage() {
                       ) : (
                         <span className="text-muted-foreground">—</span>
                       )}
+                    </TableCell>
+                    <TableCell className="text-end">
+                      <Button
+                        size="sm"
+                        className="bg-success text-success-foreground hover:bg-success/90"
+                        onClick={() => sendInvite(s)}
+                      >
+                        <MessageCircle className="size-4" /> {t("whatsapp.sendInvite")}
+                      </Button>
                     </TableCell>
                   </TableRow>
                 );

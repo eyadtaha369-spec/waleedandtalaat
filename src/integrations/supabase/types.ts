@@ -523,6 +523,7 @@ export type Database = {
           subscription_type: string;
           trips_remaining: number;
           trips_total: number;
+          whatsapp_invited_at: string | null;
         }[];
       };
       list_all_students: {
@@ -537,6 +538,7 @@ export type Database = {
           payment_status: string;
           trips_remaining: number;
           trips_total: number;
+          whatsapp_invited_at: string | null;
         }[];
       };
       set_route_whatsapp_link: {

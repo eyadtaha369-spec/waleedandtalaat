@@ -6,13 +6,11 @@
 // - Builds a wa.me link with the confirmation/rejection message
 //   pre-filled. Sending is manual: the admin clicks the link, WhatsApp
 //   opens with the chat and text ready, and they press Send themselves.
+//
+// Self-contained on purpose: the Supabase dashboard's single-file
+// "Via Editor" deploy doesn't bundle a separate _shared/ folder, so
+// the WhatsApp helpers below are inlined rather than imported.
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import {
-  approvalMessage,
-  buildWhatsAppLink,
-  rejectionMessage,
-  roundTripApprovalMessage,
-} from "../_shared/whatsapp.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -21,6 +19,47 @@ const corsHeaders = {
 
 // Public site origin used to build the shareable pass URL.
 const SITE_URL = Deno.env.get("SITE_URL") ?? "https://waleedandtalaat.vercel.app";
+
+/** Normalizes a local Egyptian number like "01012345678" to "201012345678". */
+function toWhatsAppNumber(phone: string): string {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.startsWith("20")) return digits;
+  if (digits.startsWith("0")) return `20${digits.slice(1)}`;
+  return digits;
+}
+
+function buildWhatsAppLink(phone: string, message: string): string {
+  return `https://wa.me/${toWhatsAppNumber(phone)}?text=${encodeURIComponent(message)}`;
+}
+
+function approvalMessage(fullName: string, route: string, slot: string, passUrl: string): string {
+  return (
+    `أهلاً ${fullName}! تم تأكيد حجزك اليومي 🚌\n` +
+    `الخط: ${route}\n` +
+    `📍 رابط QR الذهاب (ميعاد ${slot}): ${passUrl}`
+  );
+}
+
+function roundTripApprovalMessage(
+  fullName: string,
+  morningSlot: string,
+  morningPassUrl: string,
+  returnSlot: string,
+  returnPassUrl: string,
+): string {
+  return (
+    `أهلاً بك! تم تأكيد حجزك اليومي 🚌\n` +
+    `📍 رابط QR الذهاب (ميعاد ${morningSlot}): ${morningPassUrl}\n` +
+    `📍 رابط QR العودة (ميعاد ${returnSlot}): ${returnPassUrl}`
+  );
+}
+
+function rejectionMessage(fullName: string, route: string, slot: string): string {
+  return (
+    `عذراً ${fullName}، لم نتمكن من تأكيد مقعد على خط ${route} في موعد ${slot} اليوم. ` +
+    `برجاء تجربة موعد آخر أو التواصل معنا على الواتساب للمساعدة.`
+  );
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });

@@ -6,6 +6,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Logo } from "@/components/Brand";
 import { Badge } from "@/components/ui/badge";
 import { prettyDate } from "@/lib/schedule";
+import { useLanguage } from "@/hooks/useLanguage";
+import { formatSlotLabel } from "@/lib/i18n/dateFormat";
 
 export const Route = createFileRoute("/guest-pass/$token")({
   head: () => ({
@@ -24,9 +26,11 @@ type GuestPass = {
   slot: string;
   service_date: string;
   is_scanned: boolean;
+  kind: string;
 };
 
 function GuestPassPage() {
+  const { t, lang } = useLanguage();
   const { token } = Route.useParams();
   const [pass, setPass] = useState<GuestPass | null | undefined>(undefined);
 
@@ -37,7 +41,11 @@ function GuestPassPage() {
   }, [token]);
 
   if (pass === undefined) {
-    return <main className="mx-auto max-w-lg px-4 py-16 text-muted-foreground">Loading…</main>;
+    return (
+      <main className="mx-auto max-w-lg px-4 py-16 text-muted-foreground">
+        {t("common.loading")}
+      </main>
+    );
   }
 
   if (pass === null) {
@@ -45,10 +53,8 @@ function GuestPassPage() {
       <main className="surface-navy flex min-h-[calc(100vh-64px)] items-center justify-center px-4 py-12">
         <div className="shadow-luxe w-full max-w-md rounded-3xl bg-card p-8 text-center text-card-foreground">
           <Hourglass className="text-accent mx-auto size-10" />
-          <h1 className="mt-4 text-xl font-bold">Pass not found</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            This link is invalid or has expired. Please contact us on WhatsApp.
-          </p>
+          <h1 className="mt-4 text-xl font-bold">{t("guestPass.notFound")}</h1>
+          <p className="mt-2 text-sm text-muted-foreground">{t("guestPass.notFoundBody")}</p>
         </div>
       </main>
     );
@@ -63,7 +69,9 @@ function GuestPassPage() {
           <Logo size={44} />
           <div>
             <p className="font-display font-semibold">Waleed &amp; Talaat</p>
-            <p className="text-[11px] tracking-[0.25em] uppercase opacity-70">Daily pass</p>
+            <p className="text-[11px] tracking-[0.25em] uppercase opacity-70">
+              {pass.kind === "return" ? t("guestPass.returnLeg") : t("guestPass.morningLeg")}
+            </p>
           </div>
           <Badge className="btn-gold ms-auto">{prettyDate(pass.service_date)}</Badge>
         </div>
@@ -72,7 +80,7 @@ function GuestPassPage() {
           <h1 className="text-xl font-bold">{pass.full_name}</h1>
           <p className="text-sm text-muted-foreground">
             {pass.route}
-            {pass.pickup_stop ? ` · ${pass.pickup_stop}` : ""} · {pass.slot}
+            {pass.pickup_stop ? ` · ${pass.pickup_stop}` : ""} · {formatSlotLabel(pass.slot, lang)}
           </p>
         </div>
 
@@ -85,10 +93,10 @@ function GuestPassPage() {
         <div className="flex items-center justify-center gap-2 p-6 text-sm">
           {pass.is_scanned ? (
             <Badge className="bg-success text-success-foreground">
-              <CheckCircle2 className="me-1 size-3.5" /> Already boarded
+              <CheckCircle2 className="me-1 size-3.5" /> {t("guestPass.alreadyBoarded")}
             </Badge>
           ) : (
-            <Badge className="bg-muted text-muted-foreground">Not yet boarded</Badge>
+            <Badge className="bg-muted text-muted-foreground">{t("guestPass.notYetBoarded")}</Badge>
           )}
         </div>
       </div>

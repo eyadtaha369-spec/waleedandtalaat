@@ -7,7 +7,12 @@
 //   pre-filled. Sending is manual: the admin clicks the link, WhatsApp
 //   opens with the chat and text ready, and they press Send themselves.
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { approvalMessage, buildWhatsAppLink, rejectionMessage } from "../_shared/whatsapp.ts";
+import {
+  approvalMessage,
+  buildWhatsAppLink,
+  rejectionMessage,
+  roundTripApprovalMessage,
+} from "../_shared/whatsapp.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -45,8 +50,21 @@ Deno.serve(async (req) => {
 
     const message =
       action === "approved"
-        ? approvalMessage(data.full_name, data.route, data.slot, `${SITE_URL}/guest-pass/${data.pass_token}`)
-        : rejectionMessage(data.full_name, data.route, data.slot);
+        ? data.trip_type === "round_trip" && data.return_pass_token
+          ? roundTripApprovalMessage(
+              data.full_name,
+              data.morning_slot,
+              `${SITE_URL}/guest-pass/${data.morning_pass_token}`,
+              data.return_slot,
+              `${SITE_URL}/guest-pass/${data.return_pass_token}`,
+            )
+          : approvalMessage(
+              data.full_name,
+              data.route,
+              data.morning_slot,
+              `${SITE_URL}/guest-pass/${data.morning_pass_token}`,
+            )
+        : rejectionMessage(data.full_name, data.route, data.morning_slot);
 
     return json({ ...data, whatsapp_url: buildWhatsAppLink(data.phone, message) });
   } catch (err) {

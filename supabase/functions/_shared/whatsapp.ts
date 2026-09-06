@@ -16,17 +16,36 @@ export function buildWhatsAppLink(phone: string, message: string): string {
   return `https://wa.me/${toWhatsAppNumber(phone)}?text=${encodeURIComponent(message)}`;
 }
 
-export function approvalMessage(fullName: string, route: string, slot: string, passUrl: string): string {
+export function approvalMessage(
+  fullName: string,
+  route: string,
+  slot: string,
+  passUrl: string,
+): string {
   return (
-    `Hi ${fullName}! Your Waleed & Talaat daily pass is confirmed ✅\n` +
-    `Route: ${route}\nTime: ${slot}\n\n` +
-    `Show this pass to the supervisor when boarding:\n${passUrl}`
+    `أهلاً ${fullName}! تم تأكيد حجزك اليومي 🚌\n` +
+    `الخط: ${route}\n` +
+    `📍 رابط QR الذهاب (ميعاد ${slot}): ${passUrl}`
+  );
+}
+
+export function roundTripApprovalMessage(
+  fullName: string,
+  morningSlot: string,
+  morningPassUrl: string,
+  returnSlot: string,
+  returnPassUrl: string,
+): string {
+  return (
+    `أهلاً بك! تم تأكيد حجزك اليومي 🚌\n` +
+    `📍 رابط QR الذهاب (ميعاد ${morningSlot}): ${morningPassUrl}\n` +
+    `📍 رابط QR العودة (ميعاد ${returnSlot}): ${returnPassUrl}`
   );
 }
 
 export function rejectionMessage(fullName: string, route: string, slot: string): string {
   return (
-    `Hi ${fullName}, unfortunately we couldn't confirm a seat for ${route} at ${slot} today. ` +
-    `Please try requesting another time slot, or contact us on WhatsApp for help.`
+    `عذراً ${fullName}، لم نتمكن من تأكيد مقعد على خط ${route} في موعد ${slot} اليوم. ` +
+    `برجاء تجربة موعد آخر أو التواصل معنا على الواتساب للمساعدة.`
   );
 }

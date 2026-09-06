@@ -55,6 +55,11 @@ export type Database = {
           service_date: string;
           slot: string;
           status: string;
+          trip_type: string;
+          return_slot: string | null;
+          return_pickup_stop: string | null;
+          payment_method: string;
+          receipt_url: string | null;
         };
         Insert: {
           created_at?: string;
@@ -66,6 +71,11 @@ export type Database = {
           service_date?: string;
           slot: string;
           status?: string;
+          trip_type?: string;
+          return_slot?: string | null;
+          return_pickup_stop?: string | null;
+          payment_method?: string;
+          receipt_url?: string | null;
         };
         Update: {
           created_at?: string;
@@ -77,6 +87,11 @@ export type Database = {
           service_date?: string;
           slot?: string;
           status?: string;
+          trip_type?: string;
+          return_slot?: string | null;
+          return_pickup_stop?: string | null;
+          payment_method?: string;
+          receipt_url?: string | null;
         };
         Relationships: [];
       };
@@ -337,6 +352,7 @@ export type Database = {
           is_scanned: boolean;
           scanned_at: string | null;
           scanned_by: string | null;
+          kind: string;
           created_at: string;
         };
         Insert: {
@@ -352,6 +368,7 @@ export type Database = {
           is_scanned?: boolean;
           scanned_at?: string | null;
           scanned_by?: string | null;
+          kind?: string;
           created_at?: string;
         };
         Update: {
@@ -367,6 +384,7 @@ export type Database = {
           is_scanned?: boolean;
           scanned_at?: string | null;
           scanned_by?: string | null;
+          kind?: string;
           created_at?: string;
         };
         Relationships: [];
@@ -495,6 +513,7 @@ export type Database = {
           slot: string;
           service_date: string;
           is_scanned: boolean;
+          kind: string;
         }[];
       };
     };

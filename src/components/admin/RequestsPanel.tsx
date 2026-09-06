@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { prettyDate } from "@/lib/schedule";
+import { formatSlotLabel } from "@/lib/i18n/dateFormat";
 import { edgeFunctionErrorMessage } from "@/lib/functionsError";
 import { useLanguage } from "@/hooks/useLanguage";
 
@@ -17,10 +18,15 @@ type Request = {
   slot: string;
   service_date: string;
   status: string;
+  trip_type: string;
+  return_slot: string | null;
+  return_pickup_stop: string | null;
+  payment_method: string;
+  receipt_url: string | null;
 };
 
 export function RequestsPanel() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const [requests, setRequests] = useState<Request[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -29,10 +35,23 @@ export function RequestsPanel() {
     setLoading(true);
     const { data } = await supabase
       .from("daily_pass_requests")
-      .select("id,full_name,phone,route,pickup_stop,slot,service_date,status")
+      .select(
+        "id,full_name,phone,route,pickup_stop,slot,service_date,status,trip_type,return_slot,return_pickup_stop,payment_method,receipt_url",
+      )
       .order("created_at", { ascending: false });
     setRequests((data as Request[]) ?? []);
     setLoading(false);
+  };
+
+  const viewReceipt = async (path: string) => {
+    const { data, error } = await supabase.storage
+      .from("daily-pass-receipts")
+      .createSignedUrl(path, 3600);
+    if (error || !data) {
+      toast.error(error?.message ?? "Could not open receipt");
+      return;
+    }
+    window.open(data.signedUrl, "_blank", "noopener,noreferrer");
   };
 
   useEffect(() => {
@@ -88,9 +107,37 @@ export function RequestsPanel() {
                   <p className="font-semibold">{r.full_name}</p>
                   <p className="text-sm text-muted-foreground">
                     {r.phone} · {r.route}
-                    {r.pickup_stop ? ` · ${r.pickup_stop}` : ""} · {r.slot} ·{" "}
+                    {r.pickup_stop ? ` · ${r.pickup_stop}` : ""} · {formatSlotLabel(r.slot, lang)} ·{" "}
                     {prettyDate(r.service_date)}
                   </p>
+                  {r.trip_type === "round_trip" && r.return_slot && (
+                    <p className="text-sm text-muted-foreground">
+                      {t("dailyPass.roundTrip")}: {formatSlotLabel(r.return_slot, lang)}
+                      {r.return_pickup_stop ? ` · ${r.return_pickup_stop}` : ""}
+                    </p>
+                  )}
+                  <div className="mt-1 flex items-center gap-2">
+                    <Badge
+                      className={
+                        r.payment_method === "instapay"
+                          ? "bg-accent text-accent-foreground"
+                          : "bg-muted text-muted-foreground"
+                      }
+                    >
+                      {r.payment_method === "instapay"
+                        ? t("dailyPass.instapay")
+                        : t("dailyPass.cash")}
+                    </Badge>
+                    {r.payment_method === "instapay" && r.receipt_url && (
+                      <button
+                        type="button"
+                        onClick={() => void viewReceipt(r.receipt_url!)}
+                        className="text-xs text-accent underline underline-offset-2"
+                      >
+                        {t("summer.viewReceipt")}
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <Button
                   size="sm"
@@ -124,7 +171,7 @@ export function RequestsPanel() {
                 className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/60 px-4 py-2.5 text-sm"
               >
                 <span>
-                  {r.full_name} · {r.route} · {r.slot}
+                  {r.full_name} · {r.route} · {formatSlotLabel(r.slot, lang)}
                 </span>
                 <Badge
                   className={

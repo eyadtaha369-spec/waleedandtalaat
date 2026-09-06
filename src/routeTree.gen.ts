@@ -16,6 +16,7 @@ import { Route as DailyPassRouteImport } from './routes/daily-pass'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as PassRouteImport } from './routes/pass'
 import { Route as TripsRouteImport } from './routes/trips'
+import { Route as WhatsappLiveRouteImport } from './routes/whatsapp-live'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as AdminDailyPassesRouteImport } from './routes/admin/daily-passes'
 import { Route as AdminImportRouteImport } from './routes/admin/import'
@@ -63,6 +64,11 @@ const PassRoute = PassRouteImport.update({
 const TripsRoute = TripsRouteImport.update({
   id: '/trips',
   path: '/trips',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WhatsappLiveRoute = WhatsappLiveRouteImport.update({
+  id: '/whatsapp-live',
+  path: '/whatsapp-live',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
@@ -139,6 +145,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/pass': typeof PassRoute
   '/trips': typeof TripsRoute
+  '/whatsapp-live': typeof WhatsappLiveRoute
   '/admin/daily-passes': typeof AdminDailyPassesRoute
   '/admin/import': typeof AdminImportRoute
   '/admin/installments': typeof AdminInstallmentsRoute
@@ -160,6 +167,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/pass': typeof PassRoute
   '/trips': typeof TripsRoute
+  '/whatsapp-live': typeof WhatsappLiveRoute
   '/admin/daily-passes': typeof AdminDailyPassesRoute
   '/admin/import': typeof AdminImportRoute
   '/admin/installments': typeof AdminInstallmentsRoute
@@ -183,6 +191,7 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/pass': typeof PassRoute
   '/trips': typeof TripsRoute
+  '/whatsapp-live': typeof WhatsappLiveRoute
   '/admin/daily-passes': typeof AdminDailyPassesRoute
   '/admin/import': typeof AdminImportRoute
   '/admin/installments': typeof AdminInstallmentsRoute
@@ -207,6 +216,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/pass'
     | '/trips'
+    | '/whatsapp-live'
     | '/admin/daily-passes'
     | '/admin/import'
     | '/admin/installments'
@@ -228,6 +238,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/pass'
     | '/trips'
+    | '/whatsapp-live'
     | '/admin/daily-passes'
     | '/admin/import'
     | '/admin/installments'
@@ -250,6 +261,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/pass'
     | '/trips'
+    | '/whatsapp-live'
     | '/admin/daily-passes'
     | '/admin/import'
     | '/admin/installments'
@@ -273,6 +285,7 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   PassRoute: typeof PassRoute
   TripsRoute: typeof TripsRoute
+  WhatsappLiveRoute: typeof WhatsappLiveRoute
   ExamPassTokenRoute: typeof ExamPassTokenRoute
   GuestPassTokenRoute: typeof GuestPassTokenRoute
   SupervisorStudentsRoute: typeof SupervisorStudentsRoute
@@ -327,6 +340,13 @@ declare module '@tanstack/react-router' {
       path: '/trips'
       fullPath: '/trips'
       preLoaderRoute: typeof TripsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/whatsapp-live': {
+      id: '/whatsapp-live'
+      path: '/whatsapp-live'
+      fullPath: '/whatsapp-live'
+      preLoaderRoute: typeof WhatsappLiveRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/': {
@@ -459,6 +479,7 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   PassRoute: PassRoute,
   TripsRoute: TripsRoute,
+  WhatsappLiveRoute: WhatsappLiveRoute,
   ExamPassTokenRoute: ExamPassTokenRoute,
   GuestPassTokenRoute: GuestPassTokenRoute,
   SupervisorStudentsRoute: SupervisorStudentsRoute,

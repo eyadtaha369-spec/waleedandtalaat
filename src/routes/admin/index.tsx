@@ -5,6 +5,7 @@ import {
   Bus,
   ClipboardList,
   GraduationCap,
+  MessageCircle,
   ScanLine,
   ShieldCheck,
   Ticket,
@@ -186,6 +187,12 @@ function AdminConsole() {
           icon={Ticket}
           title={t("dailyPasses.trackingTitle")}
           description={t("admin.dailyPassesTrackingDesc")}
+        />
+        <ShortcutCard
+          to="/whatsapp-live"
+          icon={MessageCircle}
+          title={t("whatsapp.title")}
+          description={t("admin.whatsappLiveDesc")}
         />
         <ShortcutCard
           to="/admin/scan"

@@ -96,9 +96,9 @@ export type Database = {
         Relationships: [];
       };
       routes: {
-        Row: { id: string; name: string; display_order: number };
-        Insert: { id?: string; name: string; display_order?: number };
-        Update: { id?: string; name?: string; display_order?: number };
+        Row: { id: string; name: string; display_order: number; whatsapp_group_link: string | null };
+        Insert: { id?: string; name: string; display_order?: number; whatsapp_group_link?: string | null };
+        Update: { id?: string; name?: string; display_order?: number; whatsapp_group_link?: string | null };
         Relationships: [];
       };
       stops: {
@@ -144,6 +144,7 @@ export type Database = {
           payment_method: string | null;
           installment_status: string;
           assigned_route: string | null;
+          whatsapp_invited_at: string | null;
           trips_remaining: number;
           trips_total: number;
           username: string | null;
@@ -163,6 +164,7 @@ export type Database = {
           payment_method?: string | null;
           installment_status?: string;
           assigned_route?: string | null;
+          whatsapp_invited_at?: string | null;
           trips_remaining?: number;
           trips_total?: number;
           username?: string | null;
@@ -182,6 +184,7 @@ export type Database = {
           payment_method?: string | null;
           installment_status?: string;
           assigned_route?: string | null;
+          whatsapp_invited_at?: string | null;
           trips_remaining?: number;
           trips_total?: number;
           username?: string | null;
@@ -535,6 +538,28 @@ export type Database = {
           trips_remaining: number;
           trips_total: number;
         }[];
+      };
+      set_route_whatsapp_link: {
+        Args: { p_route: string; p_link: string };
+        Returns: undefined;
+      };
+      list_routes_with_whatsapp_links: {
+        Args: Record<string, never>;
+        Returns: { route: string; whatsapp_group_link: string | null }[];
+      };
+      list_route_students_for_whatsapp: {
+        Args: { p_route: string | null };
+        Returns: {
+          user_id: string;
+          full_name: string;
+          phone: string | null;
+          route: string | null;
+          whatsapp_invited_at: string | null;
+        }[];
+      };
+      mark_whatsapp_invited: {
+        Args: { p_student_ids: string[] };
+        Returns: number;
       };
       list_confirmed_daily_passes: {
         Args: Record<string, never>;

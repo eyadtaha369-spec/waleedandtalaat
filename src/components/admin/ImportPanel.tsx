@@ -17,6 +17,7 @@ import {
 import { generateTempPassword, generateUsername, credentialsWhatsAppLink } from "@/lib/credentials";
 import { edgeFunctionErrorMessage } from "@/lib/functionsError";
 import { RecoverCredentialsPanel } from "@/components/admin/RecoverCredentialsPanel";
+import { useLanguage } from "@/hooks/useLanguage";
 import { withUtf8Bom, excelTextCell } from "@/lib/csvExport";
 import { normalizeRouteName } from "@/lib/routeAliases";
 import { normalizePhotoUrl } from "@/lib/driveImage";
@@ -95,6 +96,7 @@ function rowsToParsed(data: Record<string, unknown>[]): ParsedRow[] {
 }
 
 export function ImportPanel() {
+  const { t } = useLanguage();
   const [rows, setRows] = useState<ParsedRow[]>([]);
   const [results, setResults] = useState<ImportResult[]>([]);
   const [busy, setBusy] = useState(false);
@@ -163,8 +165,8 @@ export function ImportPanel() {
     const failCount = created.filter((r) => r.status === "failed").length;
     toast.success(
       failCount === 0
-        ? `${created.length} accounts created`
-        : `${created.length - failCount} created, ${failCount} failed`,
+        ? `${created.length} ${t("import.accountsCreated")}`
+        : `${created.length - failCount} ${t("import.created").toLowerCase()}, ${failCount} ${t("import.failed").toLowerCase()}`,
     );
   };
 
@@ -190,7 +192,7 @@ export function ImportPanel() {
   return (
     <div className="space-y-5">
       <section className="rounded-3xl border border-border bg-card p-6">
-        <h2 className="font-semibold">Bulk student import</h2>
+        <h2 className="font-semibold">{t("import.bulkTitle")}</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           Upload the roster sheet (.xlsx or .csv) with columns: <code dir="rtl">اسم الطالب</code>,{" "}
           <code dir="rtl">رقم الطالب</code>, <code dir="rtl">4x6 صورة شخصية</code>,{" "}
@@ -207,17 +209,16 @@ export function ImportPanel() {
             onChange={(e) => e.target.files?.[0] && void onFile(e.target.files[0])}
           />
           <Button variant="outline" onClick={() => fileRef.current?.click()}>
-            <Upload className="size-4" /> Choose file
+            <Upload className="size-4" /> {t("import.chooseFile")}
           </Button>
           {rows.length > 0 && (
             <Button className="btn-gold" disabled={busy} onClick={() => void createAccounts()}>
-              <UserPlus className="size-4" /> Create {rows.length} account
-              {rows.length === 1 ? "" : "s"}
+              <UserPlus className="size-4" /> {t("import.createAccounts")} ({rows.length})
             </Button>
           )}
           {results.length > 0 && (
             <Button variant="secondary" onClick={downloadCredentials}>
-              <Download className="size-4" /> Download credentials sheet
+              <Download className="size-4" /> {t("import.downloadCredentials")}
             </Button>
           )}
         </div>
@@ -225,18 +226,18 @@ export function ImportPanel() {
 
       {rows.length > 0 && (
         <section className="overflow-x-auto rounded-3xl border border-border bg-card p-6">
-          <h3 className="mb-4 font-semibold">Preview — generated usernames &amp; temp passwords</h3>
+          <h3 className="mb-4 font-semibold">{t("import.previewTitle")}</h3>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Photo</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Phone</TableHead>
-                <TableHead>Route</TableHead>
-                <TableHead>Plan</TableHead>
-                <TableHead>Username</TableHead>
-                <TableHead>Temp password</TableHead>
-                {results.length > 0 && <TableHead>Status</TableHead>}
+                <TableHead>{t("import.photo")}</TableHead>
+                <TableHead>{t("common.name")}</TableHead>
+                <TableHead>{t("common.phone")}</TableHead>
+                <TableHead>{t("common.route")}</TableHead>
+                <TableHead>{t("import.plan")}</TableHead>
+                <TableHead>{t("import.username")}</TableHead>
+                <TableHead>{t("import.tempPassword")}</TableHead>
+                {results.length > 0 && <TableHead>{t("common.status")}</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -286,10 +287,10 @@ export function ImportPanel() {
                             rel="noopener noreferrer"
                             className="text-success underline underline-offset-2"
                           >
-                            Send on WhatsApp
+                            {t("import.sendWhatsapp")}
                           </a>
                         ) : outcome ? (
-                          <span className="text-destructive">Failed</span>
+                          <span className="text-destructive">{t("import.failed")}</span>
                         ) : (
                           "—"
                         )}

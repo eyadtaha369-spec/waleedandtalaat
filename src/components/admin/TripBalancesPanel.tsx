@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Pencil, RefreshCw, Save, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useLanguage } from "@/hooks/useLanguage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -23,6 +24,7 @@ type PackageStudent = {
 };
 
 export function TripBalancesPanel() {
+  const { t } = useLanguage();
   const [students, setStudents] = useState<PackageStudent[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -53,7 +55,7 @@ export function TripBalancesPanel() {
   const save = async (studentId: string) => {
     const n = Number(editValue);
     if (!Number.isInteger(n) || n < 0) {
-      toast.error("Enter a whole number, 0 or more.");
+      toast.error(t("tripBalances.enterWholeNumber"));
       return;
     }
     setBusy(true);
@@ -64,11 +66,11 @@ export function TripBalancesPanel() {
     setBusy(false);
     if (error || (data as { error?: string })?.error) {
       toast.error(
-        (data as { error?: string })?.error ?? error?.message ?? "Could not update balance",
+        (data as { error?: string })?.error ?? error?.message ?? t("tripBalances.updateError"),
       );
       return;
     }
-    toast.success("Trip balance updated");
+    toast.success(t("tripBalances.updated"));
     setEditingId(null);
     void load();
   };
@@ -82,31 +84,31 @@ export function TripBalancesPanel() {
   return (
     <section className="rounded-3xl border border-border bg-card p-6">
       <div className="flex flex-wrap items-center gap-3">
-        <h2 className="font-semibold">Trip balances (70-trip package students)</h2>
+        <h2 className="font-semibold">{t("tripBalances.title")}</h2>
         <Button size="sm" variant="outline" className="ms-auto" onClick={() => void load()}>
-          <RefreshCw className="size-4" /> Refresh
+          <RefreshCw className="size-4" /> {t("tripBalances.refresh")}
         </Button>
       </div>
       <Input
-        placeholder="Search by name or phone…"
+        placeholder={t("tripBalances.searchPlaceholder")}
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         className="mt-3 max-w-xs"
       />
 
       {loading ? (
-        <p className="mt-4 text-sm text-muted-foreground">Loading…</p>
+        <p className="mt-4 text-sm text-muted-foreground">{t("common.loading")}</p>
       ) : filtered.length === 0 ? (
-        <p className="mt-4 text-sm text-muted-foreground">No package students match this view.</p>
+        <p className="mt-4 text-sm text-muted-foreground">{t("tripBalances.noMatch")}</p>
       ) : (
         <Table className="mt-4">
           <TableHeader>
             <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Phone</TableHead>
-              <TableHead>Route</TableHead>
-              <TableHead>Remaining trips</TableHead>
-              <TableHead className="text-end">Actions</TableHead>
+              <TableHead>{t("common.name")}</TableHead>
+              <TableHead>{t("common.phone")}</TableHead>
+              <TableHead>{t("common.route")}</TableHead>
+              <TableHead>{t("tripBalances.remainingTrips")}</TableHead>
+              <TableHead className="text-end">{t("common.actions")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -137,7 +139,7 @@ export function TripBalancesPanel() {
                         disabled={busy}
                         onClick={() => void save(s.user_id)}
                       >
-                        <Save className="size-4" /> Save
+                        <Save className="size-4" /> {t("common.save")}
                       </Button>
                       <Button
                         size="sm"
@@ -150,7 +152,7 @@ export function TripBalancesPanel() {
                     </div>
                   ) : (
                     <Button size="sm" variant="ghost" onClick={() => startEdit(s)}>
-                      <Pencil className="size-4" /> Edit remaining trips
+                      <Pencil className="size-4" /> {t("tripBalances.editRemaining")}
                     </Button>
                   )}
                 </TableCell>

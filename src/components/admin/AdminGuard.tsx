@@ -2,6 +2,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+import { useLanguage } from "@/hooks/useLanguage";
 
 /**
  * Wraps an admin-section page. Redirects: signed-out -> /auth,
@@ -17,6 +18,7 @@ export function AdminGuard({
   children: React.ReactNode;
 }) {
   const { user, isStaff, isAdmin, loading } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -38,7 +40,11 @@ export function AdminGuard({
 
   const authorized = !loading && !!user && isStaff && (!requireAdmin || isAdmin);
   if (!authorized) {
-    return <main className="mx-auto max-w-6xl px-4 py-16 text-muted-foreground">Loading…</main>;
+    return (
+      <main className="mx-auto max-w-6xl px-4 py-16 text-muted-foreground">
+        {t("common.loading")}
+      </main>
+    );
   }
   return <>{children}</>;
 }

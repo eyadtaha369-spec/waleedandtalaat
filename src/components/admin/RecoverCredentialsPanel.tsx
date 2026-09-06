@@ -15,6 +15,7 @@ import {
 import { generateTempPassword, credentialsWhatsAppLink } from "@/lib/credentials";
 import { edgeFunctionErrorMessage } from "@/lib/functionsError";
 import { withUtf8Bom, excelTextCell } from "@/lib/csvExport";
+import { useLanguage } from "@/hooks/useLanguage";
 
 type Student = {
   user_id: string;
@@ -27,6 +28,7 @@ type Student = {
 type ResetResult = Student & { new_password: string; status: "reset" | "failed" };
 
 export function RecoverCredentialsPanel() {
+  const { t } = useLanguage();
   const [students, setStudents] = useState<Student[] | null>(null);
   const [results, setResults] = useState<ResetResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -59,9 +61,7 @@ export function RecoverCredentialsPanel() {
     });
     setBusy(false);
     if (error || data?.error) {
-      toast.error(
-        data?.error ?? (await edgeFunctionErrorMessage(error, "Could not reset passwords")),
-      );
+      toast.error(data?.error ?? (await edgeFunctionErrorMessage(error, t("recover.resetError"))));
       return;
     }
     const statusById = new Map(
@@ -78,8 +78,8 @@ export function RecoverCredentialsPanel() {
     const failCount = merged.filter((r) => r.status === "failed").length;
     toast.success(
       failCount === 0
-        ? `${merged.length} passwords reset`
-        : `${merged.length - failCount} reset, ${failCount} failed`,
+        ? `${merged.length} ${t("recover.passwordsReset")}`
+        : `${merged.length - failCount} ${t("recover.passwordsReset")}, ${failCount} ${t("import.failed").toLowerCase()}`,
     );
   };
 
@@ -104,25 +104,22 @@ export function RecoverCredentialsPanel() {
 
   return (
     <section className="rounded-3xl border border-border bg-card p-6">
-      <h2 className="font-semibold">Recover credentials for existing students</h2>
-      <p className="mt-1 text-sm text-muted-foreground">
-        For accounts already created whose original username/password were never sent out — the
-        original password can't be recovered (it's hashed), so this generates a fresh one for every
-        listed student.
-      </p>
+      <h2 className="font-semibold">{t("recover.title")}</h2>
+      <p className="mt-1 text-sm text-muted-foreground">{t("recover.desc")}</p>
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <Button variant="outline" onClick={() => void loadStudents()} disabled={loading}>
-          <RefreshCw className="size-4" /> Load students
+          <RefreshCw className="size-4" /> {t("recover.loadStudents")}
         </Button>
         {students && students.length > 0 && (
           <Button className="btn-gold" disabled={busy} onClick={() => void resetAll()}>
-            <KeyRound className="size-4" /> Generate new passwords for {students.length} student
+            <KeyRound className="size-4" /> {t("recover.generateFor")} {students.length}{" "}
+            {t("recover.student")}
             {students.length === 1 ? "" : "s"}
           </Button>
         )}
         {results.length > 0 && (
           <Button variant="secondary" onClick={downloadCredentials}>
-            <Download className="size-4" /> Download credentials sheet
+            <Download className="size-4" /> {t("import.downloadCredentials")}
           </Button>
         )}
       </div>
@@ -132,11 +129,11 @@ export function RecoverCredentialsPanel() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Phone</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>New password</TableHead>
-                {results.length > 0 && <TableHead>Send</TableHead>}
+                <TableHead>{t("common.name")}</TableHead>
+                <TableHead>{t("common.phone")}</TableHead>
+                <TableHead>{t("auth.email")}</TableHead>
+                <TableHead>{t("recover.newPassword")}</TableHead>
+                {results.length > 0 && <TableHead>{t("recover.send")}</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -162,10 +159,10 @@ export function RecoverCredentialsPanel() {
                             rel="noopener noreferrer"
                             className="text-success underline underline-offset-2"
                           >
-                            Send on WhatsApp
+                            {t("import.sendWhatsapp")}
                           </a>
                         ) : r ? (
-                          <span className="text-destructive">Failed</span>
+                          <span className="text-destructive">{t("import.failed")}</span>
                         ) : (
                           "—"
                         )}

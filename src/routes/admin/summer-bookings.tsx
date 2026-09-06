@@ -15,6 +15,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { edgeFunctionErrorMessage } from "@/lib/functionsError";
+import { useLanguage } from "@/hooks/useLanguage";
 import {
   EXAM_DATES,
   EXAM_STOPS,
@@ -52,6 +53,7 @@ const SITE_ORIGIN = typeof window !== "undefined" ? window.location.origin : "";
 type StatusFilter = "not_rejected" | "all" | "pending" | "confirmed" | "rejected";
 
 function SummerBookingsPage() {
+  const { t } = useLanguage();
   const [bookings, setBookings] = useState<ExamBooking[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -129,9 +131,7 @@ function SummerBookingsPage() {
           });
     window.open(link, "_blank", "noopener,noreferrer");
     toast.success(
-      action === "confirmed"
-        ? "تم التأكيد — WhatsApp مفتوح لإرسال رابط التصريح"
-        : "تم الرفض — WhatsApp مفتوح لإرسال الإشعار",
+      action === "confirmed" ? t("summer.whatsappConfirmed") : t("summer.whatsappRejected"),
     );
     void load();
   };
@@ -155,10 +155,10 @@ function SummerBookingsPage() {
       <div className="surface-navy shadow-luxe flex flex-wrap items-center justify-between gap-4 rounded-3xl p-6">
         <div>
           <p className="text-xs tracking-[0.25em] uppercase opacity-70">Admin</p>
-          <h1 className="text-2xl font-bold">Summer Bookings / حجز الامتحانات</h1>
+          <h1 className="text-2xl font-bold">{t("summer.title")}</h1>
         </div>
         <Link to="/admin" className="text-sm text-white/80 hover:text-white">
-          <ArrowLeft className="me-1 inline size-4" /> Back to console
+          <ArrowLeft className="me-1 inline size-4" /> {t("common.backToConsole")}
         </Link>
       </div>
 
@@ -169,7 +169,7 @@ function SummerBookingsPage() {
             value={dateFilter}
             onChange={(e) => setDateFilter(e.target.value)}
           >
-            <option value="all">All exam dates</option>
+            <option value="all">{t("summer.allDates")}</option>
             {EXAM_DATES.map((d) => (
               <option key={d.value} value={d.value}>
                 {d.label}
@@ -181,7 +181,7 @@ function SummerBookingsPage() {
             value={stopFilter}
             onChange={(e) => setStopFilter(e.target.value)}
           >
-            <option value="all">All stops</option>
+            <option value="all">{t("summer.allStops")}</option>
             {EXAM_STOPS.map((s) => (
               <option key={s.name} value={s.name}>
                 {s.name}
@@ -193,34 +193,38 @@ function SummerBookingsPage() {
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
           >
-            <option value="not_rejected">Hide rejected</option>
-            <option value="all">All statuses</option>
-            <option value="pending">Pending only</option>
-            <option value="confirmed">Accepted only</option>
-            <option value="rejected">Rejected only</option>
+            <option value="not_rejected">{t("summer.hideRejected")}</option>
+            <option value="all">{t("summer.allStatuses")}</option>
+            <option value="pending">{t("summer.pendingOnly")}</option>
+            <option value="confirmed">{t("summer.acceptedOnly")}</option>
+            <option value="rejected">{t("summer.rejectedOnly")}</option>
           </select>
-          <Badge className="btn-gold">{filtered.length} shown</Badge>
+          <Badge className="btn-gold">
+            {filtered.length} {t("summer.shown")}
+          </Badge>
           <Badge className="bg-success text-success-foreground">
-            🟢 {acceptedCount} accepted
-            {dateFilter !== "all" ? ` on ${examDateLabel(dateFilter)}` : ""}
+            🟢 {acceptedCount} {t("summer.accepted")}
+            {dateFilter !== "all"
+              ? ` ${t("summer.acceptedOnDate")} ${examDateLabel(dateFilter)}`
+              : ""}
           </Badge>
         </div>
 
         {loading ? (
-          <p className="mt-4 text-sm text-muted-foreground">Loading…</p>
+          <p className="mt-4 text-sm text-muted-foreground">{t("common.loading")}</p>
         ) : filtered.length === 0 ? (
-          <p className="mt-4 text-sm text-muted-foreground">No requests match this view.</p>
+          <p className="mt-4 text-sm text-muted-foreground">{t("summer.noRequests")}</p>
         ) : (
           <Table className="mt-4">
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Phone</TableHead>
-                <TableHead>Exam date</TableHead>
-                <TableHead>Pickup stop &amp; time</TableHead>
-                <TableHead>Companion / مرافق</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-end">Actions</TableHead>
+                <TableHead>{t("common.name")}</TableHead>
+                <TableHead>{t("common.phone")}</TableHead>
+                <TableHead>{t("summer.examDate")}</TableHead>
+                <TableHead>{t("summer.pickupStopTime")}</TableHead>
+                <TableHead>{t("summer.companion")}</TableHead>
+                <TableHead>{t("common.status")}</TableHead>
+                <TableHead className="text-end">{t("common.actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -235,7 +239,9 @@ function SummerBookingsPage() {
                   <TableCell>
                     {b.has_companion ? (
                       <div>
-                        <span className="whitespace-nowrap">👥 طالب + مرافق (المستحق: 250 ج)</span>
+                        <span className="whitespace-nowrap">
+                          {t("summer.studentPlusCompanion")}
+                        </span>
                         {b.companion_name && (
                           <p className="text-xs text-muted-foreground">
                             {b.companion_name} · {b.companion_relation}
@@ -247,24 +253,28 @@ function SummerBookingsPage() {
                             onClick={() => void viewReceipt(b.receipt_url!)}
                             className="text-xs text-accent underline underline-offset-2"
                           >
-                            View receipt
+                            {t("summer.viewReceipt")}
                           </button>
                         )}
                       </div>
                     ) : (
-                      <span className="whitespace-nowrap">👤 طالب فقط (مجاناً)</span>
+                      <span className="whitespace-nowrap">{t("summer.studentOnly")}</span>
                     )}
                   </TableCell>
                   <TableCell>
                     {b.status === "pending" && (
-                      <Badge className="bg-warning text-warning-foreground">🟡 Pending</Badge>
+                      <Badge className="bg-warning text-warning-foreground">
+                        🟡 {t("summer.pending")}
+                      </Badge>
                     )}
                     {b.status === "confirmed" && (
-                      <Badge className="bg-success text-success-foreground">🟢 Accepted</Badge>
+                      <Badge className="bg-success text-success-foreground">
+                        🟢 {t("summer.accepted")}
+                      </Badge>
                     )}
                     {b.status === "rejected" && (
                       <Badge className="bg-destructive text-destructive-foreground">
-                        🔴 Rejected
+                        🔴 {t("summer.rejected")}
                       </Badge>
                     )}
                   </TableCell>
@@ -277,7 +287,7 @@ function SummerBookingsPage() {
                           disabled={busyId === b.id}
                           onClick={() => void decide(b, "confirmed")}
                         >
-                          <Check className="size-4" /> Accept
+                          <Check className="size-4" /> {t("common.accept")}
                         </Button>
                         <Button
                           size="sm"
@@ -285,7 +295,7 @@ function SummerBookingsPage() {
                           disabled={busyId === b.id}
                           onClick={() => void decide(b, "rejected")}
                         >
-                          <X className="size-4" /> Reject
+                          <X className="size-4" /> {t("common.reject")}
                         </Button>
                       </div>
                     )}

@@ -5,6 +5,7 @@ import Papa from "papaparse";
 import { supabase } from "@/integrations/supabase/client";
 import { edgeFunctionErrorMessage } from "@/lib/functionsError";
 import { withUtf8Bom } from "@/lib/csvExport";
+import { useLanguage } from "@/hooks/useLanguage";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,6 +27,7 @@ type FleetRow = {
 };
 
 export function FleetPanel() {
+  const { t } = useLanguage();
   const [rows, setRows] = useState<FleetRow[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -34,9 +36,7 @@ export function FleetPanel() {
     const { data, error } = await supabase.functions.invoke("fleet-manifests", { body: {} });
     setLoading(false);
     if (error || data?.error) {
-      toast.error(
-        data?.error ?? (await edgeFunctionErrorMessage(error, "Could not load fleet report")),
-      );
+      toast.error(data?.error ?? (await edgeFunctionErrorMessage(error, t("fleet.loadError"))));
       return;
     }
     setRows((data?.routes as FleetRow[]) ?? []);
@@ -70,32 +70,30 @@ export function FleetPanel() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Bus className="text-accent size-5" />
-          <h2 className="font-semibold">Fleet allocation — today</h2>
+          <h2 className="font-semibold">{t("fleet.title")}</h2>
         </div>
         {rows.length > 0 && (
           <Button size="sm" variant="outline" onClick={downloadCsv}>
-            <Download className="size-4" /> Export CSV
+            <Download className="size-4" /> {t("fleet.exportCsv")}
           </Button>
         )}
       </div>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Remaining for 4PM = morning scans − early return passengers (12:30/1:30/2:30) − opt-outs.
-      </p>
+      <p className="mt-1 text-sm text-muted-foreground">{t("fleet.formula")}</p>
 
       {loading ? (
-        <p className="mt-4 text-sm text-muted-foreground">Loading…</p>
+        <p className="mt-4 text-sm text-muted-foreground">{t("common.loading")}</p>
       ) : rows.length === 0 ? (
-        <p className="mt-4 text-sm text-muted-foreground">No scan activity yet today.</p>
+        <p className="mt-4 text-sm text-muted-foreground">{t("fleet.noActivity")}</p>
       ) : (
         <Table className="mt-4">
           <TableHeader>
             <TableRow>
-              <TableHead>Route</TableHead>
-              <TableHead>Morning scans</TableHead>
-              <TableHead>Early return</TableHead>
-              <TableHead>Opted out</TableHead>
-              <TableHead>Remaining 4PM</TableHead>
-              <TableHead>Bus</TableHead>
+              <TableHead>{t("common.route")}</TableHead>
+              <TableHead>{t("fleet.morningScans")}</TableHead>
+              <TableHead>{t("fleet.earlyReturn")}</TableHead>
+              <TableHead>{t("fleet.optedOut")}</TableHead>
+              <TableHead>{t("fleet.remaining4pm")}</TableHead>
+              <TableHead>{t("fleet.bus")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

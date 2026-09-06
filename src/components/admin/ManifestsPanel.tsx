@@ -13,6 +13,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ALL_SLOTS, cairoNow, MORNING_SLOTS, RETURN_SLOTS, toDateKey } from "@/lib/schedule";
 import { SECTOR_LABELS, type EarlyReturnSector } from "@/lib/earlyReturnSectors";
+import { useLanguage } from "@/hooks/useLanguage";
 
 type Row = {
   student_id: string;
@@ -26,6 +27,7 @@ type Row = {
 type PaymentFilter = "all" | "paid_full" | "installment_pending";
 
 export function ManifestsPanel() {
+  const { t } = useLanguage();
   const todayKey = useMemo(() => toDateKey(cairoNow()), []);
   const [date, setDate] = useState<string>(todayKey);
   const [slot, setSlot] = useState<string>(ALL_SLOTS[0]);
@@ -118,7 +120,7 @@ export function ManifestsPanel() {
   const byRoute = useMemo(() => {
     const groups = new Map<string, Row[]>();
     for (const r of filteredRows) {
-      const key = r.route ?? "No route assigned";
+      const key = r.route ?? t("manifests.noRouteAssigned");
       const list = groups.get(key) ?? [];
       list.push(r);
       groups.set(key, list);
@@ -131,7 +133,7 @@ export function ManifestsPanel() {
       <Tabs value={slot} onValueChange={setSlot}>
         <div className="mb-4 flex flex-wrap items-center gap-3">
           <label className="text-sm font-medium text-muted-foreground" htmlFor="manifest-date">
-            Date
+            {t("manifests.date")}
           </label>
           <input
             id="manifest-date"
@@ -146,7 +148,7 @@ export function ManifestsPanel() {
               className="text-xs text-accent underline underline-offset-2"
               onClick={() => setDate(todayKey)}
             >
-              Reset to today ({todayKey})
+              {t("manifests.resetToday")} ({todayKey})
             </button>
           )}
         </div>
@@ -166,7 +168,8 @@ export function ManifestsPanel() {
         <TabsContent value={slot} className="mt-5">
           <div className="mb-4 flex flex-wrap items-center gap-2">
             <Badge className="btn-gold">
-              <Users className="me-1 size-3.5" /> {filteredRows.length} total passenger
+              <Users className="me-1 size-3.5" /> {filteredRows.length}{" "}
+              {t("manifests.totalPassenger")}
               {filteredRows.length === 1 ? "" : "s"}
             </Badge>
             {installmentCount > 0 && (
@@ -176,7 +179,7 @@ export function ManifestsPanel() {
             )}
             {slot === "04:00 PM" && (
               <span className="text-xs text-muted-foreground">
-                All subscribed students not opted out on {date}
+                {t("manifests.allSubscribedNote")} {date}
               </span>
             )}
             <select
@@ -184,16 +187,16 @@ export function ManifestsPanel() {
               value={paymentFilter}
               onChange={(e) => setPaymentFilter(e.target.value as PaymentFilter)}
             >
-              <option value="all">All payment statuses</option>
-              <option value="paid_full">Paid in full</option>
-              <option value="installment_pending">Installment pending (قسط)</option>
+              <option value="all">{t("manifests.allPaymentStatuses")}</option>
+              <option value="paid_full">{t("manifests.paidInFull")}</option>
+              <option value="installment_pending">{t("manifests.installmentPending")}</option>
             </select>
           </div>
 
           {loading ? (
-            <p className="text-sm text-muted-foreground">Loading manifest…</p>
+            <p className="text-sm text-muted-foreground">{t("manifests.loadingManifest")}</p>
           ) : filteredRows.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No passengers match this view.</p>
+            <p className="text-sm text-muted-foreground">{t("manifests.noPassengers")}</p>
           ) : isEarlyReturn ? (
             <div className="space-y-6">
               {(Object.keys(SECTOR_LABELS) as EarlyReturnSector[]).map((sector) => {
@@ -206,12 +209,16 @@ export function ManifestsPanel() {
                       </Badge>
                       {group.length > 0 && (
                         <span className="text-xs text-muted-foreground">
-                          {group.length <= 33 ? "fits a 33-seater" : "needs a 50-seater"}
+                          {group.length <= 33
+                            ? t("manifests.fitsSmall")
+                            : t("manifests.needsLarge")}
                         </span>
                       )}
                     </div>
                     {group.length === 0 ? (
-                      <p className="text-xs text-muted-foreground">No passengers in this sector.</p>
+                      <p className="text-xs text-muted-foreground">
+                        {t("manifests.noPassengersSector")}
+                      </p>
                     ) : (
                       <ManifestTable rows={group} />
                     )}
@@ -242,14 +249,15 @@ export function ManifestsPanel() {
 }
 
 function ManifestTable({ rows }: { rows: Row[] }) {
+  const { t } = useLanguage();
   return (
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Name</TableHead>
-          <TableHead>Route</TableHead>
-          <TableHead>Stop</TableHead>
-          <TableHead>Payment</TableHead>
+          <TableHead>{t("common.name")}</TableHead>
+          <TableHead>{t("common.route")}</TableHead>
+          <TableHead>{t("common.stop")}</TableHead>
+          <TableHead>{t("manifests.payment")}</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -262,7 +270,7 @@ function ManifestTable({ rows }: { rows: Row[] }) {
               {r.payment_status === "installment_pending" ? (
                 <Badge className="bg-warning text-warning-foreground">🟡 قسط</Badge>
               ) : (
-                <span className="text-xs text-muted-foreground">Paid</span>
+                <span className="text-xs text-muted-foreground">{t("common.paid")}</span>
               )}
             </TableCell>
           </TableRow>

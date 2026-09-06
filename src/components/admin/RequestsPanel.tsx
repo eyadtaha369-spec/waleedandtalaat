@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { prettyDate } from "@/lib/schedule";
 import { edgeFunctionErrorMessage } from "@/lib/functionsError";
+import { useLanguage } from "@/hooks/useLanguage";
 
 type Request = {
   id: string;
@@ -19,6 +20,7 @@ type Request = {
 };
 
 export function RequestsPanel() {
+  const { t } = useLanguage();
   const [requests, setRequests] = useState<Request[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -45,7 +47,7 @@ export function RequestsPanel() {
     setBusyId(null);
     if (error || data?.error) {
       toast.error(
-        data?.error ?? (await edgeFunctionErrorMessage(error, "Could not update request")),
+        data?.error ?? (await edgeFunctionErrorMessage(error, t("requests.updateError"))),
       );
       return;
     }
@@ -56,9 +58,7 @@ export function RequestsPanel() {
       window.open(data.whatsapp_url, "_blank", "noopener,noreferrer");
     }
     toast.success(
-      action === "approved"
-        ? "Approved — WhatsApp opened with the pass link, ready to send"
-        : "Rejected — WhatsApp opened with the notice, ready to send",
+      action === "approved" ? t("requests.approvedWhatsapp") : t("requests.rejectedWhatsapp"),
     );
   };
 
@@ -69,14 +69,14 @@ export function RequestsPanel() {
     <div className="space-y-6">
       <section className="rounded-3xl border border-border bg-card p-6">
         <div className="flex items-center gap-2">
-          <h2 className="font-semibold">Pending requests</h2>
+          <h2 className="font-semibold">{t("requests.pendingRequests")}</h2>
           <Badge className="btn-gold">{pending.length}</Badge>
         </div>
 
         {loading ? (
-          <p className="mt-4 text-sm text-muted-foreground">Loading…</p>
+          <p className="mt-4 text-sm text-muted-foreground">{t("common.loading")}</p>
         ) : pending.length === 0 ? (
-          <p className="mt-4 text-sm text-muted-foreground">No pending daily pass requests.</p>
+          <p className="mt-4 text-sm text-muted-foreground">{t("requests.noPending")}</p>
         ) : (
           <div className="mt-4 space-y-3">
             {pending.map((r) => (
@@ -98,7 +98,7 @@ export function RequestsPanel() {
                   disabled={busyId === r.id}
                   onClick={() => void decide(r.id, "approved")}
                 >
-                  <Check className="size-4" /> Accept
+                  <Check className="size-4" /> {t("common.accept")}
                 </Button>
                 <Button
                   size="sm"
@@ -106,7 +106,7 @@ export function RequestsPanel() {
                   disabled={busyId === r.id}
                   onClick={() => void decide(r.id, "rejected")}
                 >
-                  <X className="size-4" /> Reject
+                  <X className="size-4" /> {t("common.reject")}
                 </Button>
               </div>
             ))}
@@ -116,7 +116,7 @@ export function RequestsPanel() {
 
       {decided.length > 0 && (
         <section className="rounded-3xl border border-border bg-card p-6">
-          <h2 className="font-semibold">Recently decided</h2>
+          <h2 className="font-semibold">{t("requests.recentlyDecided")}</h2>
           <div className="mt-4 space-y-2">
             {decided.map((r) => (
               <div

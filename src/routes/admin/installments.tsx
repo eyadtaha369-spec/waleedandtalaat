@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { ArrowLeft, CheckCircle2, MessageCircle, Wallet } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRoutes } from "@/hooks/useRoutes";
+import { useLanguage } from "@/hooks/useLanguage";
 import { AdminGuard } from "@/components/admin/AdminGuard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -45,6 +46,7 @@ type StatusFilter = "all" | "pending_second" | "completed";
 
 function InstallmentsPage() {
   const { routes } = useRoutes();
+  const { t } = useLanguage();
 
   const [students, setStudents] = useState<Student[]>([]);
   const [loadingList, setLoadingList] = useState(true);
@@ -97,7 +99,7 @@ function InstallmentsPage() {
       );
       return;
     }
-    toast.success("Second installment confirmed");
+    toast.success(t("installments.secondConfirmed"));
     void load();
   };
 
@@ -106,21 +108,21 @@ function InstallmentsPage() {
       <div className="surface-navy shadow-luxe flex flex-wrap items-center justify-between gap-4 rounded-3xl p-6">
         <div>
           <p className="text-xs tracking-[0.25em] uppercase opacity-70">Admin</p>
-          <h1 className="text-2xl font-bold">Installments &amp; collections</h1>
+          <h1 className="text-2xl font-bold">{t("admin.installmentsTitle")}</h1>
         </div>
         <Link to="/admin" className="text-sm text-white/80 hover:text-white">
-          <ArrowLeft className="me-1 inline size-4" /> Back to console
+          <ArrowLeft className="me-1 inline size-4" /> {t("common.backToConsole")}
         </Link>
       </div>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-3">
-        <KpiCard label="Total installment students" value={String(totalStudents)} />
+        <KpiCard label={t("installments.totalStudents")} value={String(totalStudents)} />
         <KpiCard
-          label="Total collected (initial)"
+          label={t("installments.totalCollected")}
           value={`${totalCollected.toLocaleString()} ج.م`}
         />
         <KpiCard
-          label="Outstanding 2nd installment"
+          label={t("installments.outstanding")}
           value={`${totalOutstanding.toLocaleString()} ج.م`}
           accent
         />
@@ -129,7 +131,7 @@ function InstallmentsPage() {
       <div className="mt-6 rounded-3xl border border-border bg-card p-6">
         <div className="flex flex-wrap items-center gap-3">
           <Input
-            placeholder="Search by name or phone…"
+            placeholder={t("installments.searchPlaceholder")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="max-w-xs"
@@ -139,7 +141,7 @@ function InstallmentsPage() {
             value={routeFilter}
             onChange={(e) => setRouteFilter(e.target.value)}
           >
-            <option value="all">All routes</option>
+            <option value="all">{t("installments.allRoutes")}</option>
             {routes.map((r) => (
               <option key={r} value={r}>
                 {r}
@@ -151,27 +153,27 @@ function InstallmentsPage() {
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
           >
-            <option value="all">All statuses</option>
-            <option value="pending_second">في انتظار القسط الثاني</option>
-            <option value="completed">مسدد بالكامل</option>
+            <option value="all">{t("common.all")}</option>
+            <option value="pending_second">{t("installments.pendingSecond")}</option>
+            <option value="completed">{t("installments.completed")}</option>
           </select>
         </div>
 
         {loadingList ? (
-          <p className="mt-4 text-sm text-muted-foreground">Loading…</p>
+          <p className="mt-4 text-sm text-muted-foreground">{t("common.loading")}</p>
         ) : filtered.length === 0 ? (
-          <p className="mt-4 text-sm text-muted-foreground">No students match this view.</p>
+          <p className="mt-4 text-sm text-muted-foreground">{t("installments.noStudentsMatch")}</p>
         ) : (
           <Table className="mt-4">
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Phone</TableHead>
-                <TableHead>Route</TableHead>
-                <TableHead>Initial paid</TableHead>
-                <TableHead>Method</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-end">Actions</TableHead>
+                <TableHead>{t("common.name")}</TableHead>
+                <TableHead>{t("common.phone")}</TableHead>
+                <TableHead>{t("common.route")}</TableHead>
+                <TableHead>{t("installments.initialPaid")}</TableHead>
+                <TableHead>{t("installments.method")}</TableHead>
+                <TableHead>{t("common.status")}</TableHead>
+                <TableHead className="text-end">{t("common.actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -184,10 +186,12 @@ function InstallmentsPage() {
                   <TableCell>{s.payment_method ?? "—"}</TableCell>
                   <TableCell>
                     {s.installment_status === "completed" ? (
-                      <Badge className="bg-success text-success-foreground">🟢 مسدد بالكامل</Badge>
+                      <Badge className="bg-success text-success-foreground">
+                        🟢 {t("installments.completed")}
+                      </Badge>
                     ) : (
                       <Badge className="bg-warning text-warning-foreground">
-                        🟡 في انتظار القسط الثاني
+                        🟡 {t("installments.pendingSecond")}
                       </Badge>
                     )}
                   </TableCell>
@@ -204,7 +208,7 @@ function InstallmentsPage() {
                           rel="noopener noreferrer"
                         >
                           <Button size="sm" variant="outline">
-                            <MessageCircle className="size-4" /> Remind
+                            <MessageCircle className="size-4" /> {t("installments.remind")}
                           </Button>
                         </a>
                       )}
@@ -215,7 +219,7 @@ function InstallmentsPage() {
                           disabled={busyId === s.user_id}
                           onClick={() => void confirmPayment(s.user_id)}
                         >
-                          <CheckCircle2 className="size-4" /> Mark paid
+                          <CheckCircle2 className="size-4" /> {t("installments.markPaid")}
                         </Button>
                       )}
                     </div>

@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/table";
 import { generateTempPassword } from "@/lib/credentials";
 import { edgeFunctionErrorMessage } from "@/lib/functionsError";
+import { useLanguage } from "@/hooks/useLanguage";
 
 type StaffUser = {
   user_id: string;
@@ -50,6 +51,7 @@ const emptyCreateForm: {
 
 export function UsersPanel() {
   const { user: currentUser } = useAuth();
+  const { t } = useLanguage();
   const [users, setUsers] = useState<StaffUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -81,7 +83,7 @@ export function UsersPanel() {
 
   const createUser = async () => {
     if (!createForm.full_name || !createForm.email || !createForm.password) {
-      toast.error("Full name, email and password are required.");
+      toast.error(t("users.fullNameEmailPasswordRequired"));
       return;
     }
     setBusy(true);
@@ -90,10 +92,14 @@ export function UsersPanel() {
     });
     setBusy(false);
     if (error || data?.error) {
-      toast.error(data?.error ?? (await edgeFunctionErrorMessage(error, "Could not create user")));
+      toast.error(data?.error ?? (await edgeFunctionErrorMessage(error, t("users.createError"))));
       return;
     }
-    toast.success(`${createForm.role === "admin" ? "Admin" : "Supervisor"} account created`);
+    toast.success(
+      createForm.role === "admin"
+        ? t("users.adminAccountCreated")
+        : t("users.supervisorAccountCreated"),
+    );
     setCreateOpen(false);
     setCreateForm(emptyCreateForm);
     void load();
@@ -118,7 +124,7 @@ export function UsersPanel() {
       toast.error(error.message);
       return;
     }
-    toast.success("Updated");
+    toast.success(t("users.updated"));
     setEditUser(null);
     void load();
   };
@@ -132,16 +138,18 @@ export function UsersPanel() {
     setBusy(false);
     if (error || data?.error) {
       toast.error(
-        data?.error ?? (await edgeFunctionErrorMessage(error, "Could not reset password")),
+        data?.error ?? (await edgeFunctionErrorMessage(error, t("users.resetPasswordError"))),
       );
       return;
     }
-    toast.success(`New password for ${u.full_name}: ${newPassword}`, { duration: 15000 });
+    toast.success(`${t("users.newPasswordFor")} ${u.full_name}: ${newPassword}`, {
+      duration: 15000,
+    });
   };
 
   const toggleActive = async (u: StaffUser) => {
     if (u.user_id === currentUser?.id) {
-      toast.error("You can't deactivate your own account — ask another admin to do it.");
+      toast.error(t("users.cantDeactivateSelf"));
       return;
     }
     setBusy(true);
@@ -150,12 +158,10 @@ export function UsersPanel() {
     });
     setBusy(false);
     if (error || data?.error) {
-      toast.error(
-        data?.error ?? (await edgeFunctionErrorMessage(error, "Could not update status")),
-      );
+      toast.error(data?.error ?? (await edgeFunctionErrorMessage(error, t("users.statusError"))));
       return;
     }
-    toast.success(u.is_active ? "Account deactivated" : "Account reactivated");
+    toast.success(u.is_active ? t("users.accountDeactivated") : t("users.accountReactivated"));
     void load();
   };
 
@@ -164,27 +170,27 @@ export function UsersPanel() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <ShieldCheck className="text-accent size-5" />
-          <h2 className="font-semibold">Admins &amp; supervisors</h2>
+          <h2 className="font-semibold">{t("users.adminsSupervisors")}</h2>
         </div>
         <Button size="sm" className="btn-gold" onClick={() => setCreateOpen(true)}>
-          <UserPlus className="size-4" /> New admin / supervisor
+          <UserPlus className="size-4" /> {t("users.newAdminSupervisor")}
         </Button>
       </div>
 
       {loading ? (
-        <p className="mt-4 text-sm text-muted-foreground">Loading…</p>
+        <p className="mt-4 text-sm text-muted-foreground">{t("common.loading")}</p>
       ) : users.length === 0 ? (
-        <p className="mt-4 text-sm text-muted-foreground">No staff accounts yet.</p>
+        <p className="mt-4 text-sm text-muted-foreground">{t("users.noAccounts")}</p>
       ) : (
         <Table className="mt-4">
           <TableHeader>
             <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Phone</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-end">Actions</TableHead>
+              <TableHead>{t("common.name")}</TableHead>
+              <TableHead>{t("common.phone")}</TableHead>
+              <TableHead>{t("auth.email")}</TableHead>
+              <TableHead>{t("users.role")}</TableHead>
+              <TableHead>{t("common.status")}</TableHead>
+              <TableHead className="text-end">{t("common.actions")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -201,7 +207,7 @@ export function UsersPanel() {
                         : "bg-accent text-accent-foreground"
                     }
                   >
-                    {u.role === "admin" ? "🔴 Admin" : "🔵 Supervisor"}
+                    {u.role === "admin" ? `🔴 ${t("users.admin")}` : `🔵 ${t("users.supervisor")}`}
                   </Badge>
                 </TableCell>
                 <TableCell>
@@ -212,7 +218,7 @@ export function UsersPanel() {
                         : "bg-muted text-muted-foreground"
                     }
                   >
-                    {u.is_active ? "Active" : "Deactivated"}
+                    {u.is_active ? t("users.active") : t("users.deactivated")}
                   </Badge>
                 </TableCell>
                 <TableCell className="text-end">
@@ -233,9 +239,7 @@ export function UsersPanel() {
                       variant="ghost"
                       disabled={busy || u.user_id === currentUser?.id}
                       title={
-                        u.user_id === currentUser?.id
-                          ? "You can't deactivate your own account"
-                          : undefined
+                        u.user_id === currentUser?.id ? t("users.cantDeactivateOwn") : undefined
                       }
                       onClick={() => void toggleActive(u)}
                     >
@@ -253,27 +257,27 @@ export function UsersPanel() {
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>New admin / supervisor</DialogTitle>
+            <DialogTitle>{t("users.newAdminSupervisor")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <Field
-              label="Full name"
+              label={t("auth.fullName")}
               value={createForm.full_name}
               onChange={(v) => setCreateForm({ ...createForm, full_name: v })}
             />
             <Field
-              label="Phone / WhatsApp number"
+              label={t("users.whatsappPhone")}
               value={createForm.phone}
               onChange={(v) => setCreateForm({ ...createForm, phone: v })}
             />
             <Field
-              label="Email / username"
+              label={t("users.emailUsername")}
               type="email"
               value={createForm.email}
               onChange={(v) => setCreateForm({ ...createForm, email: v })}
             />
             <div className="space-y-2">
-              <Label>Password</Label>
+              <Label>{t("users.password")}</Label>
               <div className="flex gap-2">
                 <Input
                   value={createForm.password}
@@ -284,12 +288,12 @@ export function UsersPanel() {
                   variant="outline"
                   onClick={() => setCreateForm({ ...createForm, password: generateTempPassword() })}
                 >
-                  Generate
+                  {t("users.generate")}
                 </Button>
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Role</Label>
+              <Label>{t("users.role")}</Label>
               <select
                 className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                 value={createForm.role}
@@ -297,14 +301,14 @@ export function UsersPanel() {
                   setCreateForm({ ...createForm, role: e.target.value as "admin" | "supervisor" })
                 }
               >
-                <option value="admin">Admin</option>
-                <option value="supervisor">Supervisor</option>
+                <option value="admin">{t("users.admin")}</option>
+                <option value="supervisor">{t("users.supervisor")}</option>
               </select>
             </div>
           </div>
           <DialogFooter>
             <Button className="btn-gold w-full" disabled={busy} onClick={() => void createUser()}>
-              Create account
+              {t("users.createAccount")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -314,34 +318,36 @@ export function UsersPanel() {
       <Dialog open={!!editUser} onOpenChange={(open) => !open && setEditUser(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit {editUser?.full_name}</DialogTitle>
+            <DialogTitle>
+              {t("users.editUserTitle")} {editUser?.full_name}
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <Field
-              label="Full name"
+              label={t("auth.fullName")}
               value={editForm.full_name}
               onChange={(v) => setEditForm({ ...editForm, full_name: v })}
             />
             <Field
-              label="Phone / WhatsApp number"
+              label={t("users.whatsappPhone")}
               value={editForm.phone}
               onChange={(v) => setEditForm({ ...editForm, phone: v })}
             />
             <div className="space-y-2">
-              <Label>Role</Label>
+              <Label>{t("users.role")}</Label>
               <select
                 className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                 value={editForm.role}
                 onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
               >
-                <option value="admin">Admin</option>
-                <option value="supervisor">Supervisor</option>
+                <option value="admin">{t("users.admin")}</option>
+                <option value="supervisor">{t("users.supervisor")}</option>
               </select>
             </div>
           </div>
           <DialogFooter>
             <Button className="btn-gold w-full" disabled={busy} onClick={() => void saveEdit()}>
-              Save changes
+              {t("users.saveChanges")}
             </Button>
           </DialogFooter>
         </DialogContent>

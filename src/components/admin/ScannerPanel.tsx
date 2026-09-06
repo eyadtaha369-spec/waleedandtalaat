@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { ALL_SLOTS, cairoNow, toDateKey } from "@/lib/schedule";
 import { edgeFunctionErrorMessage } from "@/lib/functionsError";
 import { useAuth } from "@/hooks/useAuth";
+import { useLanguage } from "@/hooks/useLanguage";
 
 const SCANNER_ELEMENT_ID = "wt-qr-scanner";
 
@@ -25,6 +26,7 @@ type ScanResult = {
 
 export function ScannerPanel() {
   const { isAdmin } = useAuth();
+  const { t } = useLanguage();
   const [slot, setSlot] = useState<string>(ALL_SLOTS[0]);
   const [dateOverride, setDateOverride] = useState<string>("");
   const [scanning, setScanning] = useState(false);
@@ -52,7 +54,7 @@ export function ScannerPanel() {
         () => {},
       );
     } catch {
-      toast.error("Could not access the camera. Check permissions and try again.");
+      toast.error(t("scanner.cameraError"));
       setScanning(false);
     }
   };
@@ -86,7 +88,9 @@ export function ScannerPanel() {
       });
 
       if (error || data?.error) {
-        toast.error(data?.error ?? (await edgeFunctionErrorMessage(error, "Scan failed")));
+        toast.error(
+          data?.error ?? (await edgeFunctionErrorMessage(error, t("scanner.scanFailed"))),
+        );
         return;
       }
 
@@ -99,7 +103,7 @@ export function ScannerPanel() {
         hasCompanion: !!data.has_companion,
       });
     } catch {
-      toast.error("Unrecognized QR code.");
+      toast.error(t("scanner.unrecognizedQr"));
     } finally {
       setTimeout(() => {
         lockRef.current = false;
@@ -111,7 +115,7 @@ export function ScannerPanel() {
     <div className="grid gap-5 md:grid-cols-[1.1fr_1fr]">
       <section className="rounded-3xl border border-border bg-card p-6">
         <div className="flex flex-wrap items-center gap-3">
-          <Label>Checking against slot</Label>
+          <Label>{t("scanner.checkingSlot")}</Label>
           <select
             className="h-10 rounded-md border border-input bg-background px-3 text-sm"
             value={slot}
@@ -127,13 +131,14 @@ export function ScannerPanel() {
             variant={scanning ? "destructive" : "default"}
             onClick={() => void (scanning ? stop() : start())}
           >
-            <ScanLine className="size-4" /> {scanning ? "Stop scanner" : "Start scanner"}
+            <ScanLine className="size-4" />{" "}
+            {scanning ? t("scanner.stopScanner") : t("scanner.startScanner")}
           </Button>
         </div>
 
         {isAdmin && (
           <div className="mt-3 flex flex-wrap items-center gap-3">
-            <Label>Test date override (admin only)</Label>
+            <Label>{t("scanner.testDateOverride")}</Label>
             <input
               type="date"
               className="h-9 rounded-md border border-input bg-background px-3 text-sm"
@@ -143,7 +148,7 @@ export function ScannerPanel() {
             />
             {dateOverride && (
               <Button size="sm" variant="ghost" onClick={() => setDateOverride("")}>
-                Reset to today ({todayKey})
+                {t("scanner.resetToToday")} ({todayKey})
               </Button>
             )}
           </div>
@@ -153,41 +158,41 @@ export function ScannerPanel() {
           <div id={SCANNER_ELEMENT_ID} className="mx-auto aspect-square max-w-sm" />
           {!scanning && (
             <p className="p-8 text-center text-sm text-muted-foreground">
-              Press "Start scanner" and point the camera at a student's boarding pass QR code.
+              {t("scanner.pointCamera")}
             </p>
           )}
         </div>
       </section>
 
       <section className="rounded-3xl border border-border bg-card p-6">
-        <h2 className="font-semibold">Last scan</h2>
+        <h2 className="font-semibold">{t("scanner.lastScan")}</h2>
         {!result ? (
-          <p className="mt-4 text-sm text-muted-foreground">No scans yet this session.</p>
+          <p className="mt-4 text-sm text-muted-foreground">{t("scanner.noScansYet")}</p>
         ) : (
-          <ResultCard result={result} />
+          <ResultCard result={result} t={t} />
         )}
       </section>
     </div>
   );
 }
 
-function ResultCard({ result }: { result: ScanResult }) {
+function ResultCard({ result, t }: { result: ScanResult; t: (key: string) => string }) {
   const config: Record<
     ScanStatus,
     { label: string; className: string; icon: typeof CheckCircle2 }
   > = {
     booked: {
-      label: "Booked",
+      label: t("scanner.booked"),
       className: "bg-success text-success-foreground",
       icon: CheckCircle2,
     },
     not_booked: {
-      label: "Not booked",
+      label: t("scanner.notBooked"),
       className: "bg-destructive text-destructive-foreground",
       icon: XCircle,
     },
     scanned_earlier: {
-      label: "Scanned earlier",
+      label: t("scanner.scannedEarlier"),
       className: "bg-warning text-warning-foreground",
       icon: ScanLine,
     },
@@ -209,7 +214,8 @@ function ResultCard({ result }: { result: ScanResult }) {
           <p className="text-lg font-bold">{result.fullName}</p>
           <p className="text-sm text-muted-foreground">
             {result.route ?? "—"}
-            {result.tripsRemaining !== null && ` · ${result.tripsRemaining} trips left`}
+            {result.tripsRemaining !== null &&
+              ` · ${result.tripsRemaining} ${t("scanner.tripsLeft")}`}
           </p>
         </div>
         <Badge className={c.className}>
@@ -218,7 +224,7 @@ function ResultCard({ result }: { result: ScanResult }) {
       </div>
       {result.hasCompanion && (
         <Badge className="bg-success text-success-foreground w-full justify-center py-2 text-sm">
-          <Users className="me-1 size-4" /> 👥 مسموح بركوب مرافق (تم سداد 250 ج)
+          <Users className="me-1 size-4" /> {t("scanner.companionAllowed")}
         </Badge>
       )}
     </div>

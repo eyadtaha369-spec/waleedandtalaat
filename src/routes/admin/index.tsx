@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useLanguage } from "@/hooks/useLanguage";
 import { AdminGuard } from "@/components/admin/AdminGuard";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { Button } from "@/components/ui/button";
@@ -47,6 +48,7 @@ type Kpis = {
 
 function AdminConsole() {
   const { profile } = useAuth();
+  const { t } = useLanguage();
   const today = useMemo(() => toDateKey(cairoNow()), []);
   const [kpis, setKpis] = useState<Kpis>({
     totalStudents: null,
@@ -122,20 +124,26 @@ function AdminConsole() {
       <div className="surface-navy shadow-luxe flex flex-wrap items-center gap-4 rounded-3xl p-6">
         <ProfileAvatar />
         <div>
-          <p className="text-xs tracking-[0.25em] uppercase opacity-70">
-            Waleed &amp; Talaat — Executive Admin Console
-          </p>
+          <p className="text-xs tracking-[0.25em] uppercase opacity-70">{t("admin.console")}</p>
           <h1 className="text-2xl font-bold">{profile?.full_name || "Admin"}</h1>
         </div>
       </div>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard icon={UsersRound} label="Total active students" value={kpis.totalStudents} />
-        <KpiCard icon={Bus} label="Today's morning passengers" value={kpis.morningToday} />
-        <KpiCard icon={Bus} label="Today's early return passengers" value={kpis.earlyReturnToday} />
+        <KpiCard
+          icon={UsersRound}
+          label={t("admin.totalActiveStudents")}
+          value={kpis.totalStudents}
+        />
+        <KpiCard icon={Bus} label={t("admin.morningPassengersToday")} value={kpis.morningToday} />
+        <KpiCard
+          icon={Bus}
+          label={t("admin.earlyReturnPassengersToday")}
+          value={kpis.earlyReturnToday}
+        />
         <KpiCard
           icon={Wallet}
-          label="Pending 2nd installment"
+          label={t("admin.pendingSecondInstallment")}
           value={kpis.pendingInstallments}
           accent
         />
@@ -145,57 +153,56 @@ function AdminConsole() {
         <ShortcutCard
           to="/admin/manifests"
           icon={Users}
-          title="Fleet Manifests & Bus Allocation"
-          description="Passenger lists per slot, sector sub-counts, and the automated bus-sizing report."
+          title={t("admin.fleetManifestsTitle")}
+          description={t("admin.fleetManifestsDesc")}
         />
         <ShortcutCard
           to="/admin/installments"
           icon={Wallet}
-          title="Installments & Financial Tracking"
-          description="Track second-installment collections and send WhatsApp reminders."
+          title={t("admin.installmentsTitle")}
+          description={t("admin.installmentsDesc")}
         />
         <ShortcutCard
           to="/admin/requests"
           icon={ClipboardList}
-          title="Daily Pass Approvals"
-          description="Accept or reject non-subscriber daily pass requests."
+          title={t("admin.dailyPassApprovalsTitle")}
+          description={t("admin.dailyPassApprovalsDesc")}
         />
         <ShortcutCard
           to="/admin/summer-bookings"
           icon={GraduationCap}
-          title="Summer Bookings / حجز الامتحانات"
-          description="Accept or reject exam-day guest bookings and send the QR pass link."
+          title={t("admin.summerBookingsTitle")}
+          description={t("admin.summerBookingsDesc")}
         />
         <ShortcutCard
           to="/admin/scan"
           icon={ScanLine}
-          title="QR Camera Scanner"
-          description="Scan boarding passes and daily-pass QR codes at any slot."
+          title={t("admin.scannerTitle")}
+          description={t("admin.scannerDesc")}
         />
         <ShortcutCard
           to="/admin/users"
           icon={ShieldCheck}
-          title="User Management"
-          description="Create, edit, reset passwords for, or deactivate admins and supervisors."
+          title={t("admin.usersTitle")}
+          description={t("admin.usersDesc")}
         />
         <ShortcutCard
           to="/admin/import"
           icon={Upload}
-          title="Bulk Student Import"
-          description="Import the roster sheet or recover credentials for existing students."
+          title={t("admin.importTitle")}
+          description={t("admin.importDesc")}
         />
       </div>
 
       <div className="mt-6 rounded-2xl border border-dashed border-accent/60 bg-accent/5 p-5">
-        <p className="text-xs tracking-widest text-muted-foreground uppercase">Developer testing</p>
+        <p className="text-xs tracking-widest text-muted-foreground uppercase">
+          {t("admin.devTesting")}
+        </p>
         <div className="mt-2 flex flex-wrap items-center gap-3">
           <Button variant="outline" disabled={runningCron} onClick={() => void runCronTest()}>
-            <Zap className="size-4" /> Run 4:15 PM Auto-Deduction Test Cron
+            <Zap className="size-4" /> {t("admin.runCronButton")}
           </Button>
-          <p className="text-sm text-muted-foreground">
-            Runs the same no-show deduction logic as the real 4:15 PM cron job, immediately, for
-            today. Safe to click more than once — students already processed today are skipped.
-          </p>
+          <p className="text-sm text-muted-foreground">{t("admin.runCronDesc")}</p>
         </div>
       </div>
     </main>

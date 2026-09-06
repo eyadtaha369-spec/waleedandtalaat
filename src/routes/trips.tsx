@@ -3,7 +3,9 @@ import { useEffect, useState } from "react";
 import { CheckCircle2, Zap } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useLanguage } from "@/hooks/useLanguage";
 import { Badge } from "@/components/ui/badge";
+import { formatSlotLabel } from "@/lib/i18n/dateFormat";
 
 export const Route = createFileRoute("/trips")({
   head: () => ({
@@ -28,6 +30,7 @@ type Scan = {
 
 function TripsPage() {
   const { user, profile, loading } = useAuth();
+  const { t, lang } = useLanguage();
   const navigate = useNavigate();
   const [scans, setScans] = useState<Scan[] | null>(null);
 
@@ -46,38 +49,43 @@ function TripsPage() {
   }, [user]);
 
   if (!profile) {
-    return <main className="mx-auto max-w-2xl px-4 py-16 text-muted-foreground">Loading…</main>;
+    return (
+      <main className="mx-auto max-w-2xl px-4 py-16 text-muted-foreground">
+        {t("common.loading")}
+      </main>
+    );
   }
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-8">
       <div className="surface-navy shadow-luxe rounded-3xl p-6">
-        <p className="text-xs tracking-[0.25em] uppercase opacity-70">My trips</p>
-        <h1 className="text-2xl font-bold">Scan history</h1>
+        <p className="text-xs tracking-[0.25em] uppercase opacity-70">{t("trips.subtitle")}</p>
+        <h1 className="text-2xl font-bold">{t("trips.title")}</h1>
         {profile.subscription_type === "70_trips" && (
           <p className="mt-1 text-sm opacity-80">
-            {profile.trips_remaining}/{profile.trips_total} trips remaining
+            {profile.trips_remaining}/{profile.trips_total}{" "}
+            {t("dashboard.tripsRemaining").toLowerCase()}
           </p>
         )}
       </div>
 
       <div className="mt-6 rounded-3xl border border-border bg-card p-6">
         {scans === null ? (
-          <p className="text-sm text-muted-foreground">Loading…</p>
+          <p className="text-sm text-muted-foreground">{t("common.loading")}</p>
         ) : scans.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No trips scanned yet.</p>
+          <p className="text-sm text-muted-foreground">{t("trips.noTrips")}</p>
         ) : (
           <ul className="divide-y divide-border">
             {scans.map((s) => {
               const dt = new Date(s.scanned_at);
-              const dayLabel = dt.toLocaleDateString("en-GB", {
+              const dayLabel = dt.toLocaleDateString(lang === "ar" ? "ar-EG" : "en-GB", {
                 timeZone: "Africa/Cairo",
                 weekday: "long",
                 day: "numeric",
-                month: "short",
+                month: lang === "ar" ? "long" : "short",
                 year: "numeric",
               });
-              const timeLabel = dt.toLocaleTimeString("en-US", {
+              const timeLabel = dt.toLocaleTimeString(lang === "ar" ? "ar-EG" : "en-US", {
                 timeZone: "Africa/Cairo",
                 hour: "numeric",
                 minute: "2-digit",
@@ -96,11 +104,13 @@ function TripsPage() {
                   <div className="flex-1">
                     <p className="text-sm font-medium">{dayLabel}</p>
                     <p className="text-xs text-muted-foreground">
-                      {timeLabel} · {s.slot ?? "—"}
+                      {timeLabel} · {s.slot ? formatSlotLabel(s.slot, lang) : "—"}
                     </p>
                   </div>
                   {isAuto && (
-                    <Badge className="bg-warning text-warning-foreground">Auto no-show</Badge>
+                    <Badge className="bg-warning text-warning-foreground">
+                      {t("trips.autoNoShow")}
+                    </Badge>
                   )}
                 </li>
               );

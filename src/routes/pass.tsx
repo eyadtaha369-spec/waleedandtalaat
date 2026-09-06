@@ -4,12 +4,14 @@ import { QRCodeSVG } from "qrcode.react";
 import { Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useLanguage } from "@/hooks/useLanguage";
 import { Logo } from "@/components/Brand";
 import { SmartAvatar } from "@/components/SmartAvatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { cairoNow, morningWindow, prettyDate, returnWindow, toDateKey } from "@/lib/schedule";
+import { cairoNow, morningWindow, returnWindow, toDateKey } from "@/lib/schedule";
 import { subscriptionBadge } from "@/lib/subscription";
+import { formatLocalizedDate, formatSlotLabel } from "@/lib/i18n/dateFormat";
 
 export const Route = createFileRoute("/pass")({
   head: () => ({
@@ -30,6 +32,7 @@ type Booking = { kind: string; slot: string; service_date: string; pickup_stop: 
 
 function PassPage() {
   const { user, profile, loading } = useAuth();
+  const { t, lang } = useLanguage();
   const navigate = useNavigate();
   const [today] = useState(() => toDateKey(cairoNow()));
   const mw = useMemo(() => morningWindow(), []);
@@ -50,7 +53,11 @@ function PassPage() {
   }, [user, mw.serviceDate, rw.serviceDate]);
 
   if (!profile) {
-    return <main className="mx-auto max-w-lg px-4 py-16 text-muted-foreground">Loading…</main>;
+    return (
+      <main className="mx-auto max-w-lg px-4 py-16 text-muted-foreground">
+        {t("common.loading")}
+      </main>
+    );
   }
 
   const morningBooking = bookings.find(
@@ -68,9 +75,9 @@ function PassPage() {
           <Logo size={44} />
           <div>
             <p className="font-display font-semibold">Waleed &amp; Talaat</p>
-            <p className="text-[11px] tracking-[0.25em] uppercase opacity-70">Boarding pass</p>
+            <p className="text-[11px] tracking-[0.25em] uppercase opacity-70">{t("pass.title")}</p>
           </div>
-          <Badge className="btn-gold ms-auto">{prettyDate(today)}</Badge>
+          <Badge className="btn-gold ms-auto">{formatLocalizedDate(today, lang)}</Badge>
         </div>
 
         <div className="flex items-center gap-4 p-6">
@@ -95,13 +102,11 @@ function PassPage() {
         {!morningBooking && !returnBooking ? (
           <div className="flex flex-col items-center gap-3 border-y border-dashed border-border bg-secondary/60 p-8 text-center">
             <Lock className="text-muted-foreground size-6" />
-            <p className="text-sm font-medium">No active booking yet</p>
-            <p className="text-xs text-muted-foreground">
-              Your QR code appears here once you reserve a morning or return seat.
-            </p>
+            <p className="text-sm font-medium">{t("pass.noBookingYet")}</p>
+            <p className="text-xs text-muted-foreground">{t("pass.noBookingBody")}</p>
             <Link to="/dashboard">
               <Button size="sm" className="btn-gold mt-1">
-                Go to bookings
+                {t("pass.goToBookings")}
               </Button>
             </Link>
           </div>
@@ -109,13 +114,17 @@ function PassPage() {
           <div className="divide-y divide-dashed divide-border border-y border-dashed border-border">
             {morningBooking && (
               <PassQr
-                title="Morning departure"
-                detail={`${morningBooking.slot}${morningBooking.pickup_stop ? ` · ${morningBooking.pickup_stop}` : ""}`}
+                title={t("dashboard.morningDeparture")}
+                detail={`${formatSlotLabel(morningBooking.slot, lang)}${morningBooking.pickup_stop ? ` · ${morningBooking.pickup_stop}` : ""}`}
                 payload={payload}
               />
             )}
             {returnBooking && (
-              <PassQr title="Early return" detail={returnBooking.slot} payload={payload} />
+              <PassQr
+                title={t("dashboard.earlyReturn")}
+                detail={formatSlotLabel(returnBooking.slot, lang)}
+                payload={payload}
+              />
             )}
           </div>
         )}
@@ -133,14 +142,21 @@ function PassPage() {
 
         <div className="grid grid-cols-2 gap-4 p-6 text-sm">
           <Cell
-            label={profile.subscription_type === "70_trips" ? "Trips remaining" : "Subscription"}
+            label={
+              profile.subscription_type === "70_trips"
+                ? t("dashboard.tripsRemaining")
+                : t("dashboard.subscription")
+            }
             value={
               profile.subscription_type === "70_trips"
                 ? `${profile.trips_remaining}/${profile.trips_total}`
-                : "Full term"
+                : t("dashboard.fullTerm")
             }
           />
-          <Cell label="Standard return" value="04:00 PM · no booking needed" />
+          <Cell
+            label={t("pass.standardReturn")}
+            value={`${formatSlotLabel("04:00 PM", lang)} · ${t("pass.noBookingNeeded")}`}
+          />
         </div>
       </div>
     </main>

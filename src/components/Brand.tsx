@@ -1,7 +1,8 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { LogOut, Menu } from "lucide-react";
+import { Globe, LogOut, Menu } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useLanguage } from "@/hooks/useLanguage";
 import { Button } from "@/components/ui/button";
 
 export function Logo({ size = 44 }: { size?: number }) {
@@ -28,28 +29,32 @@ export function Wordmark() {
   );
 }
 
-const studentLinks = [
-  { to: "/dashboard", label: "Dashboard" },
-  { to: "/pass", label: "Boarding pass" },
-  { to: "/trips", label: "My trips" },
-  { to: "/daily-pass", label: "Daily pass" },
-];
-
-const adminLinks = [
-  { to: "/admin/manifests", label: "Manifests" },
-  { to: "/admin/installments", label: "Installments" },
-  { to: "/admin/requests", label: "Daily Pass" },
-  { to: "/admin/summer-bookings", label: "Summer Bookings" },
-  { to: "/admin/users", label: "Users" },
-  { to: "/admin/scan", label: "Scan QR" },
-];
-
-const supervisorLinks = [{ to: "/admin/scan", label: "Scan QR" }];
+function useNavLinks() {
+  const { t } = useLanguage();
+  const studentLinks = [
+    { to: "/dashboard", label: t("nav.dashboard") },
+    { to: "/pass", label: t("nav.boardingPass") },
+    { to: "/trips", label: t("nav.myTrips") },
+    { to: "/daily-pass", label: t("nav.dailyPass") },
+  ];
+  const adminLinks = [
+    { to: "/admin/manifests", label: t("nav.manifests") },
+    { to: "/admin/installments", label: t("nav.installments") },
+    { to: "/admin/requests", label: t("nav.adminDailyPass") },
+    { to: "/admin/summer-bookings", label: t("nav.summerBookings") },
+    { to: "/admin/users", label: t("nav.users") },
+    { to: "/admin/scan", label: t("nav.scanQr") },
+  ];
+  const supervisorLinks = [{ to: "/admin/scan", label: t("nav.scanQr") }];
+  return { studentLinks, adminLinks, supervisorLinks };
+}
 
 export function AppHeader() {
   const { user, isAdmin, isSupervisor, signOut } = useAuth();
+  const { t, toggleLanguage } = useLanguage();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [open, setOpen] = useState(false);
+  const { studentLinks, adminLinks, supervisorLinks } = useNavLinks();
 
   // Admins and supervisors never see the student booking links — they
   // get a dedicated nav for their own section instead.
@@ -76,14 +81,17 @@ export function AppHeader() {
               {l.label}
             </Link>
           ))}
+          <Button variant="ghost" size="sm" onClick={toggleLanguage} className="ms-1">
+            <Globe className="size-4" /> {t("nav.langToggle")}
+          </Button>
           {user ? (
-            <Button variant="ghost" size="sm" onClick={() => void signOut()} className="ms-1">
-              <LogOut className="size-4" /> Sign out
+            <Button variant="ghost" size="sm" onClick={() => void signOut()}>
+              <LogOut className="size-4" /> {t("nav.signOut")}
             </Button>
           ) : (
             <Link to="/auth" className="ms-1">
               <Button size="sm" className="btn-gold">
-                Sign in
+                {t("auth.signIn")}
               </Button>
             </Link>
           )}
@@ -108,16 +116,22 @@ export function AppHeader() {
               {l.label}
             </Link>
           ))}
+          <button
+            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-start text-sm"
+            onClick={toggleLanguage}
+          >
+            <Globe className="size-4" /> {t("nav.langToggle")}
+          </button>
           {user ? (
             <button
               className="block w-full rounded-lg px-3 py-2 text-start text-sm"
               onClick={() => void signOut()}
             >
-              Sign out
+              {t("nav.signOut")}
             </button>
           ) : (
             <Link to="/auth" onClick={() => setOpen(false)} className="block px-3 py-2 text-sm">
-              Sign in
+              {t("auth.signIn")}
             </Link>
           )}
         </div>

@@ -4,12 +4,14 @@ import { toast } from "sonner";
 import { Clock, Lock, MoonStar, Sun, Sunset, TicketCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useLanguage } from "@/hooks/useLanguage";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { useRoutes } from "@/hooks/useRoutes";
 import { subscriptionBadge } from "@/lib/subscription";
+import { formatLocalizedDate, formatSlotLabel } from "@/lib/i18n/dateFormat";
 import {
   EarlyReturnSector,
   SECTOR_LABELS,
@@ -21,7 +23,6 @@ import {
   RETURN_SLOTS,
   morningWindow,
   optOutWindow,
-  prettyDate,
   returnWindow,
 } from "@/lib/schedule";
 
@@ -53,6 +54,7 @@ type Booking = {
 
 function Dashboard() {
   const { user, profile, loading } = useAuth();
+  const { t, lang } = useLanguage();
   const navigate = useNavigate();
   const { stopsByRoute } = useRoutes();
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -122,11 +124,11 @@ function Dashboard() {
     if (!user) return;
     if (kind === "return") {
       if (isFourPmReturn && !fourPmStop) {
-        toast.error("Choose a drop-off stop first.");
+        toast.error(t("dashboard.chooseStopFirst"));
         return;
       }
       if (!isFourPmReturn && (!returnSector || !returnStop)) {
-        toast.error("Choose a sector and drop-off stop first.");
+        toast.error(t("dashboard.chooseSectorStopFirst"));
         return;
       }
     }
@@ -146,13 +148,15 @@ function Dashboard() {
       .upsert(payload, { onConflict: "student_id,service_date,kind" });
     setBusy(false);
     if (error) return toast.error(error.message);
-    toast.success(kind === "morning" ? "Morning seat reserved" : "Return seat reserved");
+    toast.success(
+      kind === "morning" ? t("dashboard.morningReserved") : t("dashboard.returnReserved"),
+    );
     void reload();
   };
 
   const cancel = async (id: string) => {
     await supabase.from("bookings").delete().eq("id", id);
-    toast.success("Booking cancelled");
+    toast.success(t("dashboard.bookingCancelled"));
     void reload();
   };
 
@@ -169,7 +173,11 @@ function Dashboard() {
   };
 
   if (loading || !profile) {
-    return <main className="mx-auto max-w-5xl px-4 py-16 text-muted-foreground">Loading…</main>;
+    return (
+      <main className="mx-auto max-w-5xl px-4 py-16 text-muted-foreground">
+        {t("common.loading")}
+      </main>
+    );
   }
 
   return (
@@ -177,10 +185,13 @@ function Dashboard() {
       <div className="surface-navy shadow-luxe flex flex-wrap items-center gap-4 rounded-3xl p-6">
         <ProfileAvatar />
         <div>
-          <p className="text-xs tracking-[0.25em] uppercase opacity-70">Welcome back</p>
-          <h1 className="text-2xl font-bold">{profile.full_name || "Student"}</h1>
+          <p className="text-xs tracking-[0.25em] uppercase opacity-70">
+            {t("dashboard.welcomeBack")}
+          </p>
+          <h1 className="text-2xl font-bold">{profile.full_name || t("dashboard.student")}</h1>
           <p className="mt-1 text-sm opacity-80">
-            {profile.route ?? "No route set"} · {profile.pickup_stop ?? "No stop set"}
+            {profile.route ?? t("dashboard.noRouteSet")} ·{" "}
+            {profile.pickup_stop ?? t("dashboard.noStopSet")}
           </p>
           <Badge
             className={`mt-2 ${subscriptionBadge(profile.subscription_type, profile.payment_status).className}`}
@@ -191,25 +202,27 @@ function Dashboard() {
         </div>
         <div className="border-gilded ms-auto rounded-2xl px-5 py-3 text-center">
           <p className="text-xs opacity-70 uppercase">
-            {profile.subscription_type === "70_trips" ? "Trips remaining" : "Subscription"}
+            {profile.subscription_type === "70_trips"
+              ? t("dashboard.tripsRemaining")
+              : t("dashboard.subscription")}
           </p>
           <p className="text-gilded text-xl font-bold">
             {profile.subscription_type === "70_trips"
               ? `${profile.trips_remaining}/${profile.trips_total}`
-              : "Full term"}
+              : t("dashboard.fullTerm")}
           </p>
           {profile.subscription_type === "70_trips" && (
             <Link
               to="/trips"
               className="mt-1 block text-[11px] underline underline-offset-2 opacity-80"
             >
-              View scan history
+              {t("dashboard.viewScanHistory")}
             </Link>
           )}
         </div>
         <Link to="/pass">
           <Button className="btn-gold">
-            <TicketCheck className="size-4" /> Boarding pass
+            <TicketCheck className="size-4" /> {t("nav.boardingPass")}
           </Button>
         </Link>
       </div>
@@ -217,82 +230,88 @@ function Dashboard() {
       <div className="mt-6 grid gap-5 md:grid-cols-2">
         <Panel
           icon={Sun}
-          title="Morning departure"
-          subtitle={`For ${prettyDate(mw.serviceDate)}`}
+          title={t("dashboard.morningDeparture")}
+          subtitle={`${t("dashboard.for")} ${formatLocalizedDate(mw.serviceDate, lang)}`}
           window={mw.label}
           open={mw.open}
         >
           {morningBooking ? (
             <Confirmed
-              text={`${morningBooking.slot} · ${morningBooking.pickup_stop ?? ""}`}
+              t={t}
+              text={`${formatSlotLabel(morningBooking.slot, lang)} · ${morningBooking.pickup_stop ?? ""}`}
               onCancel={mw.open ? () => void cancel(morningBooking.id) : undefined}
             />
           ) : mw.open ? (
             <div className="space-y-4">
               <div className="rounded-xl border border-border bg-secondary/50 px-3 py-2">
                 <p className="text-[11px] tracking-widest text-muted-foreground uppercase">
-                  Your route
+                  {t("dashboard.yourRoute")}
                 </p>
                 <p className="text-sm font-semibold">
-                  {profile.route ?? "No route assigned — contact admin"}
+                  {profile.route ?? t("dashboard.noRouteContactAdmin")}
                 </p>
               </div>
               <SelectField
-                label="Departure stop"
+                label={t("dashboard.departureStopLabel")}
                 value={stop}
                 options={stopsForMyRoute}
                 onChange={setStop}
               />
               <SlotPicker
+                label={t("dashboard.timeSlot")}
                 options={[...MORNING_SLOTS]}
                 value={morningSlot}
                 onChange={setMorningSlot}
+                lang={lang}
               />
               <Button
                 className="btn-gold w-full"
                 disabled={busy || !profile.route}
                 onClick={() => void book("morning")}
               >
-                Reserve morning seat
+                {t("dashboard.reserveSeat")}
               </Button>
             </div>
           ) : (
-            <Closed text="Morning booking opens at 12:00 PM and closes at 7:00 PM." />
+            <Closed text={t("dashboard.morningClosedNote")} />
           )}
         </Panel>
 
         <Panel
           icon={Sunset}
-          title="Early return"
-          subtitle={`For ${prettyDate(rw.serviceDate)}`}
+          title={t("dashboard.earlyReturn")}
+          subtitle={`${t("dashboard.for")} ${formatLocalizedDate(rw.serviceDate, lang)}`}
           window={rw.label}
           open={rw.open}
         >
           {returnBooking ? (
             <Confirmed
-              text={`${returnBooking.slot} · ${returnBooking.sector ? SECTOR_LABELS[returnBooking.sector as EarlyReturnSector] + " · " : ""}${returnBooking.pickup_stop ?? ""}`}
+              t={t}
+              text={`${formatSlotLabel(returnBooking.slot, lang)} · ${returnBooking.sector ? SECTOR_LABELS[returnBooking.sector as EarlyReturnSector] + " · " : ""}${returnBooking.pickup_stop ?? ""}`}
               onCancel={rw.open ? () => void cancel(returnBooking.id) : undefined}
             />
           ) : rw.open ? (
             <div className="space-y-4">
               <SlotPicker
+                label={t("dashboard.timeSlot")}
                 options={RETURN_SLOT_CHOICES}
                 value={returnSlot}
                 onChange={setReturnSlot}
+                lang={lang}
               />
 
               {isFourPmReturn ? (
                 <>
                   <div className="rounded-xl border border-border bg-secondary/50 px-3 py-2">
                     <p className="text-[11px] tracking-widest text-muted-foreground uppercase">
-                      Your route
+                      {t("dashboard.yourRoute")}
                     </p>
                     <p className="text-sm font-semibold">
-                      {profile.route ?? "No route assigned — contact admin"}
+                      {profile.route ?? t("dashboard.noRouteContactAdmin")}
                     </p>
                   </div>
                   <SelectField
-                    label="Drop-off stop"
+                    label={t("dashboard.dropoffStop")}
                     value={fourPmStop}
                     options={stopsForMyRoute}
                     onChange={setFourPmStop}
@@ -301,7 +320,7 @@ function Dashboard() {
               ) : (
                 <>
                   <div className="space-y-2">
-                    <Label>Sector (relative to Sidi Gaber)</Label>
+                    <Label>{t("dashboard.sector")}</Label>
                     <div className="grid grid-cols-2 gap-2">
                       {(Object.keys(SECTOR_LABELS) as EarlyReturnSector[]).map((sector) => (
                         <button
@@ -324,7 +343,7 @@ function Dashboard() {
                   </div>
                   {returnSector && (
                     <SelectField
-                      label="Drop-off stop"
+                      label={t("dashboard.dropoffStop")}
                       value={returnStop}
                       options={stopsForSector(returnSector)}
                       onChange={setReturnStop}
@@ -341,11 +360,11 @@ function Dashboard() {
                 }
                 onClick={() => void book("return")}
               >
-                Reserve return seat
+                {t("dashboard.reserveReturnSeat")}
               </Button>
             </div>
           ) : (
-            <Closed text="Early return booking opens at 6:30 AM and closes at 10:30 AM." />
+            <Closed text={t("dashboard.returnClosedNote")} />
           )}
         </Panel>
       </div>
@@ -354,27 +373,24 @@ function Dashboard() {
         <div className="flex items-start gap-3">
           <MoonStar className="text-accent mt-1 size-5 shrink-0" />
           <div className="flex-1">
-            <h2 className="text-lg font-semibold">The 4:00 PM bus needs no booking</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Every subscribed student has a guaranteed seat on the 4:00 PM return by default — no
-              action needed. If you'd like to pin down your exact drop-off stop, you can also book
-              4:00 PM above like any other return slot. Only tell us if you are <em>not</em> coming,
-              so we can right-size the fleet.
-            </p>
+            <h2 className="text-lg font-semibold">{t("dashboard.fourPmTitle")}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{t("dashboard.fourPmBody")}</p>
             <div className="mt-4 flex flex-wrap items-center gap-3">
               <Button
                 variant={optedOut ? "secondary" : "outline"}
                 disabled={busy || !ow.open}
                 onClick={() => void toggleOptOut()}
               >
-                {optedOut
-                  ? "Undo — I will use the 4:00 PM bus"
-                  : "I won't use the 4:00 PM bus today"}
+                {optedOut ? t("dashboard.undoOptOut") : t("dashboard.optOutButton")}
               </Button>
               <span className="text-xs text-muted-foreground">
-                {ow.open ? "Available until 3:30 PM" : "Closed for today (after 3:30 PM)"}
+                {ow.open ? t("dashboard.availableUntil") : t("dashboard.closedForToday")}
               </span>
-              {optedOut && <Badge className="bg-warning text-warning-foreground">Opted out</Badge>}
+              {optedOut && (
+                <Badge className="bg-warning text-warning-foreground">
+                  {t("dashboard.optedOut")}
+                </Badge>
+              )}
             </div>
           </div>
         </div>
@@ -418,17 +434,21 @@ function Panel({
 }
 
 function SlotPicker({
+  label,
   options,
   value,
   onChange,
+  lang,
 }: {
+  label: string;
   options: string[];
   value: string;
   onChange: (v: string) => void;
+  lang: "ar" | "en";
 }) {
   return (
     <div className="space-y-2">
-      <Label>Time slot</Label>
+      <Label>{label}</Label>
       <div className="grid grid-cols-2 gap-3">
         {options.map((o) => (
           <button
@@ -440,7 +460,7 @@ function SlotPicker({
                 : "border-border hover:bg-secondary"
             }`}
           >
-            {o}
+            {formatSlotLabel(o, lang)}
           </button>
         ))}
       </div>
@@ -475,14 +495,24 @@ function SelectField({
   );
 }
 
-function Confirmed({ text, onCancel }: { text: string; onCancel?: () => void }) {
+function Confirmed({
+  text,
+  onCancel,
+  t,
+}: {
+  text: string;
+  onCancel?: () => void;
+  t: (key: string) => string;
+}) {
   return (
     <div className="rounded-2xl border border-border bg-secondary p-5">
-      <p className="text-xs tracking-widest text-muted-foreground uppercase">Confirmed</p>
+      <p className="text-xs tracking-widest text-muted-foreground uppercase">
+        {t("dashboard.confirmed")}
+      </p>
       <p className="mt-1 text-xl font-bold">{text}</p>
       {onCancel && (
         <Button variant="ghost" size="sm" className="mt-3" onClick={onCancel}>
-          Cancel booking
+          {t("dashboard.cancelBooking")}
         </Button>
       )}
     </div>

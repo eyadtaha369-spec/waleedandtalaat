@@ -5,6 +5,8 @@ import { Logo } from "@/components/Brand";
 import { Button } from "@/components/ui/button";
 import { ExamBookingModal } from "@/components/ExamBookingModal";
 import { MORNING_SLOTS, RETURN_SLOTS } from "@/lib/schedule";
+import { useLanguage } from "@/hooks/useLanguage";
+import { formatSlotLabel } from "@/lib/i18n/dateFormat";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -25,26 +27,16 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
-const features = [
-  {
-    icon: Ticket,
-    title: "Two booking windows",
-    body: "Morning seats open 12:00 PM–7:00 PM the day before. Early returns open 6:30 AM–10:30 AM.",
-  },
-  {
-    icon: QrCode,
-    title: "Digital boarding pass",
-    body: "A live QR pass with your photo, route, package counter and today's booking status.",
-  },
-  {
-    icon: ShieldCheck,
-    title: "Supervisor control",
-    body: "Camera scanning, per-slot manifests, daily pass approvals and bulk student import.",
-  },
-];
-
 function Index() {
   const [examModalOpen, setExamModalOpen] = useState(false);
+  const { t, lang } = useLanguage();
+
+  const features = [
+    { icon: Ticket, title: t("landing.feature1Title"), body: t("landing.feature1Body") },
+    { icon: QrCode, title: t("landing.feature2Title"), body: t("landing.feature2Body") },
+    { icon: ShieldCheck, title: t("landing.feature3Title"), body: t("landing.feature3Body") },
+  ];
+
   return (
     <main>
       <section className="surface-navy relative overflow-hidden">
@@ -52,29 +44,26 @@ function Index() {
         <div className="relative mx-auto grid max-w-6xl gap-10 px-4 py-20 md:grid-cols-2 md:items-center md:py-28">
           <div>
             <span className="border-gilded inline-flex rounded-full px-4 py-1.5 text-xs tracking-[0.25em] uppercase">
-              Alexandria ⇄ Alamein
+              {t("landing.tagline")}
             </span>
             <h1 className="mt-6 text-4xl leading-tight font-bold md:text-6xl">
-              The <span className="text-gilded">executive</span> student shuttle,
-              <br /> booked in seconds.
+              {t("landing.title1")} <span className="text-gilded">{t("landing.titleGold")}</span>{" "}
+              {t("landing.title2")}
             </h1>
-            <p className="mt-5 max-w-lg text-sm opacity-80 md:text-base">
-              وليد وطلعت — daily transportation for students of Alamein International University,
-              with reserved seats, verified boarding and a supervisor dashboard built for the road.
-            </p>
+            <p className="mt-5 max-w-lg text-sm opacity-80 md:text-base">{t("landing.subtitle")}</p>
             <div className="mt-6">
               <button
                 type="button"
                 onClick={() => setExamModalOpen(true)}
                 className="animate-pulse rounded-2xl bg-gradient-to-r from-[var(--gold)] to-amber-400 px-6 py-4 text-lg font-bold text-black shadow-lg transition-transform hover:scale-105"
               >
-                حجز أيام الامتحانات 📝
+                {t("landing.examCta")}
               </button>
             </div>
             <div className="mt-6 flex flex-wrap gap-3">
               <Link to="/auth">
                 <Button size="lg" className="btn-gold">
-                  Student sign in
+                  {t("landing.studentSignIn")}
                 </Button>
               </Link>
               <Link to="/daily-pass">
@@ -83,7 +72,7 @@ function Index() {
                   variant="outline"
                   className="border-gilded bg-transparent text-inherit hover:bg-white/10"
                 >
-                  Request a daily pass
+                  {t("landing.requestDailyPass")}
                 </Button>
               </Link>
             </div>
@@ -92,9 +81,15 @@ function Index() {
             <div className="border-gilded shadow-luxe rounded-3xl bg-white/5 p-8 backdrop-blur">
               <Logo size={140} />
               <div className="mt-6 space-y-3 text-sm">
-                <Row label="Morning departures" value={MORNING_SLOTS.join("  •  ")} />
-                <Row label="Early returns" value={RETURN_SLOTS.join("  •  ")} />
-                <Row label="Standard return" value="04:00 PM — no booking" />
+                <Row
+                  label={t("landing.morningDepartures")}
+                  value={MORNING_SLOTS.map((s) => formatSlotLabel(s, lang)).join("  •  ")}
+                />
+                <Row
+                  label={t("landing.earlyReturns")}
+                  value={RETURN_SLOTS.map((s) => formatSlotLabel(s, lang)).join("  •  ")}
+                />
+                <Row label={t("landing.standardReturn")} value={t("landing.standardReturnValue")} />
               </div>
             </div>
           </div>
@@ -116,7 +111,7 @@ function Index() {
       <footer className="surface-navy">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-4 py-8 text-sm opacity-80">
           <BusFront className="size-5" />
-          <span>Waleed &amp; Talaat Student Transportation — وليد وطلعت</span>
+          <span>{t("landing.footer")}</span>
         </div>
       </footer>
 

@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useRoutes } from "@/hooks/useRoutes";
+import { useLanguage } from "@/hooks/useLanguage";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -29,6 +30,7 @@ function AuthPage() {
   const navigate = useNavigate();
   const { user, isAdmin, isSupervisor, loading } = useAuth();
   const { routes, stopsByRoute } = useRoutes();
+  const { t } = useLanguage();
   const [busy, setBusy] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -57,7 +59,7 @@ function AuthPage() {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setBusy(false);
     if (error) return toast.error(error.message);
-    toast.success("Welcome back");
+    toast.success(t("auth.welcomeBack"));
     // Redirect is handled by the effect above once roles finish loading.
   };
 
@@ -79,7 +81,7 @@ function AuthPage() {
     });
     setBusy(false);
     if (error) return toast.error(error.message);
-    toast.success("Account created — you can sign in now.");
+    toast.success(t("auth.accountCreated"));
   };
 
   return (
@@ -93,23 +95,28 @@ function AuthPage() {
 
         <Tabs defaultValue="signin" className="mt-6">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="signin">Sign in</TabsTrigger>
-            <TabsTrigger value="signup">Create account</TabsTrigger>
+            <TabsTrigger value="signin">{t("auth.signIn")}</TabsTrigger>
+            <TabsTrigger value="signup">{t("auth.signUp")}</TabsTrigger>
           </TabsList>
 
           <TabsContent value="signin" className="space-y-4 pt-4">
-            <Field label="Email" value={email} onChange={setEmail} type="email" />
-            <Field label="Password" value={password} onChange={setPassword} type="password" />
+            <Field label={t("auth.email")} value={email} onChange={setEmail} type="email" />
+            <Field
+              label={t("auth.password")}
+              value={password}
+              onChange={setPassword}
+              type="password"
+            />
             <Button className="btn-gold w-full" disabled={busy} onClick={() => void signIn()}>
-              Sign in
+              {t("auth.signIn")}
             </Button>
           </TabsContent>
 
           <TabsContent value="signup" className="space-y-4 pt-4">
-            <Field label="Full name" value={fullName} onChange={setFullName} />
-            <Field label="WhatsApp number" value={phone} onChange={setPhone} />
+            <Field label={t("auth.fullName")} value={fullName} onChange={setFullName} />
+            <Field label={t("auth.phone")} value={phone} onChange={setPhone} />
             <div className="space-y-2">
-              <Label>Route</Label>
+              <Label>{t("auth.route")}</Label>
               <select
                 className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                 value={route}
@@ -124,7 +131,7 @@ function AuthPage() {
               </select>
             </div>
             <div className="space-y-2">
-              <Label>Pickup stop</Label>
+              <Label>{t("auth.pickupStop")}</Label>
               <select
                 className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                 value={pickupStop}
@@ -135,10 +142,15 @@ function AuthPage() {
                 ))}
               </select>
             </div>
-            <Field label="Email" value={email} onChange={setEmail} type="email" />
-            <Field label="Password" value={password} onChange={setPassword} type="password" />
+            <Field label={t("auth.email")} value={email} onChange={setEmail} type="email" />
+            <Field
+              label={t("auth.password")}
+              value={password}
+              onChange={setPassword}
+              type="password"
+            />
             <Button className="btn-gold w-full" disabled={busy} onClick={() => void signUp()}>
-              Create account
+              {t("auth.signUp")}
             </Button>
           </TabsContent>
         </Tabs>

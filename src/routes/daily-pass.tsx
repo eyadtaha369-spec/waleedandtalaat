@@ -4,11 +4,13 @@ import { z } from "zod";
 import { toast } from "sonner";
 import { CheckCircle2, Hourglass } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useLanguage } from "@/hooks/useLanguage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useRoutes } from "@/hooks/useRoutes";
 import { ALL_SLOTS } from "@/lib/schedule";
+import { formatSlotLabel } from "@/lib/i18n/dateFormat";
 
 export const Route = createFileRoute("/daily-pass")({
   head: () => ({
@@ -40,6 +42,7 @@ const schema = z.object({
 });
 
 function DailyPass() {
+  const { t, lang } = useLanguage();
   const { routes, stopsByRoute } = useRoutes();
   const [form, setForm] = useState({
     full_name: "",
@@ -78,32 +81,25 @@ function DailyPass() {
         {sent ? (
           <div className="text-center">
             <Hourglass className="text-accent mx-auto size-10" />
-            <h1 className="mt-4 text-xl font-bold">
-              Your daily pass request is pending admin approval.
-            </h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              A supervisor will confirm your seat on WhatsApp shortly. Please keep your phone
-              nearby.
-            </p>
+            <h1 className="mt-4 text-xl font-bold">{t("dailyPass.pendingTitle")}</h1>
+            <p className="mt-2 text-sm text-muted-foreground">{t("dailyPass.pendingBody")}</p>
             <div className="mt-6 rounded-2xl border border-border bg-secondary p-4 text-start text-sm">
               <p className="font-semibold">{form.full_name}</p>
               <p className="text-muted-foreground">
-                {form.route} · {form.pickup_stop} · {form.slot}
+                {form.route} · {form.pickup_stop} · {formatSlotLabel(form.slot, lang)}
               </p>
             </div>
             <Button variant="ghost" className="mt-5" onClick={() => setSent(false)}>
-              Submit another request
+              {t("dailyPass.submitAnother")}
             </Button>
           </div>
         ) : (
           <>
-            <h1 className="text-2xl font-bold">Daily pass request</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              For non-subscribers. No account or password needed.
-            </p>
+            <h1 className="text-2xl font-bold">{t("dailyPass.title")}</h1>
+            <p className="mt-1 text-sm text-muted-foreground">{t("dailyPass.subtitle")}</p>
             <div className="mt-6 space-y-4">
               <div className="space-y-2">
-                <Label>Full name</Label>
+                <Label>{t("dailyPass.fullName")}</Label>
                 <Input
                   maxLength={100}
                   value={form.full_name}
@@ -111,7 +107,7 @@ function DailyPass() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>WhatsApp number</Label>
+                <Label>{t("dailyPass.whatsapp")}</Label>
                 <Input
                   maxLength={20}
                   inputMode="tel"
@@ -120,7 +116,7 @@ function DailyPass() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Route</Label>
+                <Label>{t("dailyPass.route")}</Label>
                 <select
                   className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                   value={form.route}
@@ -138,7 +134,7 @@ function DailyPass() {
                 </select>
               </div>
               <div className="space-y-2">
-                <Label>Pickup stop</Label>
+                <Label>{t("dailyPass.pickupStop")}</Label>
                 <select
                   className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                   value={form.pickup_stop}
@@ -150,19 +146,21 @@ function DailyPass() {
                 </select>
               </div>
               <div className="space-y-2">
-                <Label>Desired time slot</Label>
+                <Label>{t("dailyPass.timeSlot")}</Label>
                 <select
                   className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                   value={form.slot}
                   onChange={(e) => setForm({ ...form, slot: e.target.value })}
                 >
                   {ALL_SLOTS.map((s) => (
-                    <option key={s}>{s}</option>
+                    <option key={s} value={s}>
+                      {formatSlotLabel(s, lang)}
+                    </option>
                   ))}
                 </select>
               </div>
               <Button className="btn-gold w-full" disabled={busy} onClick={() => void submit()}>
-                <CheckCircle2 className="size-4" /> Submit request
+                <CheckCircle2 className="size-4" /> {t("dailyPass.submit")}
               </Button>
             </div>
           </>

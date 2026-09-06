@@ -51,10 +51,15 @@ export const EXAM_RETURN_NOTE = "العودة بعد انتهاء الامتحا
 export const COMPANION_RELATIONS = ["أب", "أم", "أخ/أخت", "آخر"] as const;
 
 export const COMPANION_FEE_EGP = 250;
+export const INSTAPAY_NUMBER = "01010202281";
 
 export const COMPANION_PAYMENT_NOTICE =
-  `تنويه: تكلفة حجز مقعد المرافق (${COMPANION_FEE_EGP} جنيه للذهاب والعودة). ` +
-  `يرجى تحويل المبلغ عبر InstaPay وإرفاق صورة الإيصال لتأكيد الحجز.`;
+  `💳 برجاء تحويل مبلغ (${COMPANION_FEE_EGP} جنيه) لحجز مقعد المرافق عبر InstaPay أو محفظة إلكترونية على الرقم التالي:\n` +
+  `📱 ${INSTAPAY_NUMBER}\n` +
+  `ثم قم بإرفاق صورة إيصال / لقطة الشاشة للتحويل أعلاه لتأكيد الحجز.`;
+
+export const DUPLICATE_BOOKING_MESSAGE =
+  "عفواً، يوجد حجز مسجل بالفعل بهذا الرقم لهذا اليوم! لا يمكن التكرار.";
 
 function toWhatsAppNumber(phone: string): string {
   const digits = phone.replace(/\D/g, "");

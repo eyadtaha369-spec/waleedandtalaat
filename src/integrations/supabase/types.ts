@@ -458,6 +458,10 @@ export type Database = {
           trips_total: number;
         }[];
       };
+      check_exam_duplicate: {
+        Args: { p_phone: string; p_exam_date: string };
+        Returns: boolean;
+      };
       get_exam_pass: {
         Args: { p_token: string };
         Returns: {

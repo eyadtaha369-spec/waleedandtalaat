@@ -19,6 +19,7 @@ import {
   EXAM_RETURN_NOTE,
   COMPANION_RELATIONS,
   COMPANION_PAYMENT_NOTICE,
+  DUPLICATE_BOOKING_MESSAGE,
 } from "@/lib/examBooking";
 
 type CompanionChoice = "no" | "yes";
@@ -80,6 +81,21 @@ export function ExamBookingModal({
 
     setBusy(true);
 
+    const { data: isDuplicate, error: dupError } = await supabase.rpc("check_exam_duplicate", {
+      p_phone: phone.trim(),
+      p_exam_date: examDate,
+    });
+    if (dupError) {
+      setBusy(false);
+      toast.error(dupError.message);
+      return;
+    }
+    if (isDuplicate) {
+      setBusy(false);
+      toast.error(DUPLICATE_BOOKING_MESSAGE);
+      return;
+    }
+
     let receiptPath: string | null = null;
     if (hasCompanion && receiptFile) {
       const ext = receiptFile.name.split(".").pop() ?? "jpg";
@@ -108,6 +124,10 @@ export function ExamBookingModal({
       receipt_url: receiptPath,
     });
     setBusy(false);
+    if (error?.code === "23505") {
+      toast.error(DUPLICATE_BOOKING_MESSAGE);
+      return;
+    }
     if (error) {
       toast.error(error.message);
       return;
@@ -243,9 +263,6 @@ export function ExamBookingModal({
                       ))}
                     </select>
                   </div>
-                  <div className="rounded-lg border border-warning/40 bg-warning/15 p-3 text-xs text-foreground">
-                    {COMPANION_PAYMENT_NOTICE}
-                  </div>
                   <div className="space-y-2">
                     <Label>صورة إيصال التحويل</Label>
                     <Input
@@ -253,6 +270,9 @@ export function ExamBookingModal({
                       accept="image/*,.pdf"
                       onChange={(e) => setReceiptFile(e.target.files?.[0] ?? null)}
                     />
+                  </div>
+                  <div className="whitespace-pre-line rounded-lg border-2 border-warning bg-warning/20 p-3 text-sm font-medium text-foreground">
+                    {COMPANION_PAYMENT_NOTICE}
                   </div>
                 </div>
               )}

@@ -49,12 +49,15 @@ type ExamBooking = {
 
 const SITE_ORIGIN = typeof window !== "undefined" ? window.location.origin : "";
 
+type StatusFilter = "not_rejected" | "all" | "pending" | "confirmed" | "rejected";
+
 function SummerBookingsPage() {
   const [bookings, setBookings] = useState<ExamBooking[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [dateFilter, setDateFilter] = useState<string>("all");
   const [stopFilter, setStopFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("not_rejected");
 
   const load = async () => {
     setLoading(true);
@@ -133,11 +136,19 @@ function SummerBookingsPage() {
     void load();
   };
 
-  const filtered = bookings.filter((b) => {
+  const dateAndStopMatched = bookings.filter((b) => {
     if (dateFilter !== "all" && b.exam_date !== dateFilter) return false;
     if (stopFilter !== "all" && b.pickup_stop !== stopFilter) return false;
     return true;
   });
+
+  const filtered = dateAndStopMatched.filter((b) => {
+    if (statusFilter === "all") return true;
+    if (statusFilter === "not_rejected") return b.status !== "rejected";
+    return b.status === statusFilter;
+  });
+
+  const acceptedCount = dateAndStopMatched.filter((b) => b.status === "confirmed").length;
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8">
@@ -177,8 +188,21 @@ function SummerBookingsPage() {
               </option>
             ))}
           </select>
-          <Badge className="btn-gold">
-            {filtered.length} request{filtered.length === 1 ? "" : "s"}
+          <select
+            className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+          >
+            <option value="not_rejected">Hide rejected</option>
+            <option value="all">All statuses</option>
+            <option value="pending">Pending only</option>
+            <option value="confirmed">Accepted only</option>
+            <option value="rejected">Rejected only</option>
+          </select>
+          <Badge className="btn-gold">{filtered.length} shown</Badge>
+          <Badge className="bg-success text-success-foreground">
+            🟢 {acceptedCount} accepted
+            {dateFilter !== "all" ? ` on ${examDateLabel(dateFilter)}` : ""}
           </Badge>
         </div>
 

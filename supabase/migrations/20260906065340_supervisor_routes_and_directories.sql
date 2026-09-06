@@ -39,7 +39,10 @@ $$;
 revoke all on function public.update_staff_user(uuid, text, text, text, text) from public, anon;
 grant execute on function public.update_staff_user(uuid, text, text, text, text) to authenticated;
 
--- list_staff_users now also returns assigned_route.
+-- list_staff_users now also returns assigned_route. Must drop first:
+-- adding a column changes the return type (OUT parameters), which
+-- CREATE OR REPLACE can't do on its own.
+drop function if exists public.list_staff_users();
 create or replace function public.list_staff_users()
 returns table (
   user_id uuid,

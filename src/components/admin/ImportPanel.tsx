@@ -51,7 +51,7 @@ type ImportResult = {
   username: string;
   email: string;
   temp_password: string;
-  status: "created" | "failed";
+  status: "created" | "updated" | "failed";
   error?: string;
 };
 
@@ -163,11 +163,14 @@ export function ImportPanel() {
     const created = (data?.results as ImportResult[]) ?? [];
     setResults(created);
     const failCount = created.filter((r) => r.status === "failed").length;
-    toast.success(
-      failCount === 0
-        ? `${created.length} ${t("import.accountsCreated")}`
-        : `${created.length - failCount} ${t("import.created").toLowerCase()}, ${failCount} ${t("import.failed").toLowerCase()}`,
-    );
+    const updatedCount = created.filter((r) => r.status === "updated").length;
+    const createdCount = created.length - failCount - updatedCount;
+    const parts = [
+      createdCount > 0 ? `${createdCount} ${t("import.accountsCreated")}` : null,
+      updatedCount > 0 ? `${updatedCount} ${t("import.updated")}` : null,
+      failCount > 0 ? `${failCount} ${t("import.failed").toLowerCase()}` : null,
+    ].filter(Boolean);
+    toast.success(parts.join(", "));
   };
 
   const downloadCredentials = () => {
@@ -198,7 +201,9 @@ export function ImportPanel() {
           <code dir="rtl">رقم الطالب</code>, <code dir="rtl">4x6 صورة شخصية</code>,{" "}
           <code dir="rtl">الخط</code>, and <code dir="rtl">برجاء</code> for the subscription plan
           (سداد كامل / قسط / عرض الدحيحة / 70 رحلة / اسبوعي). Payment amount, receipt and other
-          columns are ignored automatically.
+          columns are ignored automatically. A row whose phone number already matches an existing
+          student updates that student's profile instead of creating a duplicate account — remaining
+          trip balance is never touched by an update.
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <input
@@ -242,7 +247,7 @@ export function ImportPanel() {
             </TableHeader>
             <TableBody>
               {rows.map((r) => {
-                const outcome = results.find((res) => res.username === r.username);
+                const outcome = results.find((res) => res.phone === r.phone);
                 return (
                   <TableRow key={r.username}>
                     <TableCell>
@@ -289,6 +294,8 @@ export function ImportPanel() {
                           >
                             {t("import.sendWhatsapp")}
                           </a>
+                        ) : outcome?.status === "updated" ? (
+                          <span className="text-accent">{t("import.updated")}</span>
                         ) : outcome ? (
                           <span className="text-destructive">{t("import.failed")}</span>
                         ) : (

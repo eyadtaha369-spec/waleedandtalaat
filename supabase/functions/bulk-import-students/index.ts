@@ -3,6 +3,11 @@
 // service role key (server-side only) so it can call the Auth admin API,
 // which the browser client is never trusted with.
 //
+// Upsert by phone: a row whose phone number already matches an existing
+// student profile updates that profile in place instead of creating a
+// second account. trips_remaining is deliberately never touched on an
+// update — silently refilling it would hand out free trips.
+//
 // Deploy with: supabase functions deploy bulk-import-students
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
@@ -26,6 +31,10 @@ type ImportRow = {
   username: string;
   temp_password: string;
 };
+
+function normalizePhone(phone: string): string {
+  return phone.replace(/\D/g, "");
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -57,17 +66,62 @@ Deno.serve(async (req) => {
       return json({ error: "No students provided" }, 400);
     }
 
+    // Build a normalized-phone -> profile lookup once, up front, so
+    // every row in the batch is checked against the same snapshot
+    // (and against each other's phone numbers if a row is itself a
+    // fresh account — handled by refreshing the map after each create).
+    const { data: existingProfiles } = await admin.from("profiles").select("id, phone, username");
+    const byPhone = new Map<string, { id: string; username: string | null }>();
+    for (const p of existingProfiles ?? []) {
+      if (p.phone) byPhone.set(normalizePhone(p.phone), { id: p.id, username: p.username });
+    }
+
     const results: Array<{
       full_name: string;
       phone: string;
       username: string;
       email: string;
       temp_password: string;
-      status: "created" | "failed";
+      status: "created" | "updated" | "failed";
       error?: string;
     }> = [];
 
     for (const row of students) {
+      const normalized = normalizePhone(row.phone);
+      const existing = normalized ? byPhone.get(normalized) : undefined;
+
+      if (existing) {
+        // Update in place — no new auth account, no password change,
+        // no login sent out. trips_remaining is intentionally left
+        // alone; only trips_total (the plan's stated size) updates.
+        const { error: updateError } = await admin
+          .from("profiles")
+          .update({
+            full_name: row.full_name,
+            route: row.route,
+            pickup_stop: row.pickup_stop ?? null,
+            photo_url: row.photo_url ?? null,
+            subscription_type: row.subscription_type,
+            payment_status: row.payment_status,
+            installment_status: row.installment_status ?? "none",
+            initial_amount_paid: row.initial_amount_paid ?? null,
+            payment_method: row.payment_method ?? null,
+            trips_total: row.trips_total,
+          })
+          .eq("id", existing.id);
+
+        results.push({
+          full_name: row.full_name,
+          phone: row.phone,
+          username: existing.username ?? "",
+          email: "",
+          temp_password: "",
+          status: updateError ? "failed" : "updated",
+          error: updateError?.message,
+        });
+        continue;
+      }
+
       const email = `${row.username}@wt-shuttle.app`;
       const { data: created, error: createError } = await admin.auth.admin.createUser({
         email,
@@ -105,6 +159,11 @@ Deno.serve(async (req) => {
       // We still need to store the chosen username since signup metadata
       // doesn't include it.
       await admin.from("profiles").update({ username: row.username }).eq("id", created.user.id);
+
+      // Record this new account so a later row in the same batch with
+      // the same phone (e.g. a duplicated line in the sheet) updates
+      // it instead of creating yet another account.
+      if (normalized) byPhone.set(normalized, { id: created.user.id, username: row.username });
 
       results.push({
         full_name: row.full_name,

@@ -377,6 +377,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     "import.tempPassword": "كلمة المرور المؤقتة",
     "import.created": "تم الإنشاء",
     "import.failed": "فشل",
+    "import.updated": "تم التحديث",
     "recover.title": "استرجاع بيانات الدخول للطلاب الحاليين",
     "recover.desc":
       "للحسابات التي أُنشئت بالفعل ولم يتم إرسال اسم المستخدم/كلمة المرور الأصلية لها — لا يمكن استرجاع كلمة المرور الأصلية (مشفّرة)، لذا يتم إنشاء كلمة جديدة لكل طالب مدرج.",
@@ -775,6 +776,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     "import.tempPassword": "Temp password",
     "import.created": "Created",
     "import.failed": "Failed",
+    "import.updated": "Updated",
     "recover.title": "Recover credentials for existing students",
     "recover.desc":
       "For accounts already created whose original username/password were never sent out — the original password can't be recovered (it's hashed), so this generates a fresh one for every listed student.",

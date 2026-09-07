@@ -396,7 +396,10 @@ export function ImportPanel() {
                         ) : outcome?.status === "updated" ? (
                           <span className="text-accent">{t("import.updated")}</span>
                         ) : outcome ? (
-                          <span className="text-destructive">{t("import.failed")}</span>
+                          <span className="text-destructive" title={outcome.error}>
+                            {t("import.failed")}
+                            {outcome.error ? `: ${outcome.error}` : ""}
+                          </span>
                         ) : (
                           "—"
                         )}

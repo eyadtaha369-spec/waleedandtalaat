@@ -69,9 +69,12 @@ export function credentialsWhatsAppLink(opts: {
   temp_password: string;
 }): string {
   const message =
-    `Hi ${opts.full_name}! Your Waleed & Talaat account is ready ✅\n` +
-    `Login email: ${opts.email}\n` +
-    `Password: ${opts.temp_password}\n\n` +
-    `Sign in at ${typeof window !== "undefined" ? window.location.origin : ""}/auth`;
+    `أهلاً بك يا ${opts.full_name} 👋\n` +
+    `تم إنشاء حسابك بنجاح في منصة "وليد وطلعت" للخدمات اللوجستية لنقل الطلاب 🚌\n` +
+    `بيانات تسجيل الدخول الخاصة بك:\n` +
+    `👤 اسم المستخدم (Username): ${opts.email}\n` +
+    `🔑 كلمة السر (Password): ${opts.temp_password}\n` +
+    `🔗 رابط تسجيل الدخول للمنصة:\n` +
+    `${typeof window !== "undefined" ? window.location.origin : "https://waleedandtalaat.vercel.app"}/auth`;
   return `https://wa.me/${toWhatsAppNumber(opts.phone)}?text=${encodeURIComponent(message)}`;
 }

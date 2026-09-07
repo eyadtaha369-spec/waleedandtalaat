@@ -18,6 +18,8 @@ import {
 } from "@/components/ui/table";
 import { subscriptionBadge } from "@/lib/subscription";
 import { openGroupInvite } from "@/lib/whatsappGroups";
+import { generateTempPassword, credentialsWhatsAppLink } from "@/lib/credentials";
+import { edgeFunctionErrorMessage } from "@/lib/functionsError";
 
 export const Route = createFileRoute("/supervisor/students")({
   head: () => ({ meta: [{ title: "My route's students — Waleed & Talaat" }] }),
@@ -37,6 +39,7 @@ type StudentRow = {
   trips_remaining: number;
   trips_total: number;
   whatsapp_invited_at: string | null;
+  username: string | null;
 };
 
 function SupervisorStudentsPage() {
@@ -47,6 +50,7 @@ function SupervisorStudentsPage() {
   const [groupLink, setGroupLink] = useState<string | null>(null);
   const [broadcasting, setBroadcasting] = useState(false);
   const [resettingRoute, setResettingRoute] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -132,6 +136,30 @@ function SupervisorStudentsPage() {
     }
   };
 
+  const sendCredentials = async (s: StudentRow) => {
+    if (!s.username || !s.phone) return;
+    setBusyId(s.user_id);
+    const newPassword = generateTempPassword();
+    const { data, error } = await supabase.functions.invoke("manage-staff", {
+      body: { action: "reset_password", user_id: s.user_id, new_password: newPassword },
+    });
+    setBusyId(null);
+    if (error || data?.error) {
+      toast.error(
+        data?.error ?? (await edgeFunctionErrorMessage(error, "Could not reset password")),
+      );
+      return;
+    }
+    const link = credentialsWhatsAppLink({
+      full_name: s.full_name,
+      phone: s.phone,
+      email: `${s.username}@wt-shuttle.app`,
+      temp_password: newPassword,
+    });
+    window.open(link, "_blank");
+    toast.success(t("students.credentialsSent"));
+  };
+
   const resetRouteStatus = async () => {
     if (!profile?.assigned_route) return;
     if (!window.confirm(t("whatsapp.confirmResetRoute"))) return;
@@ -191,6 +219,8 @@ function SupervisorStudentsPage() {
                 <TableHead>{t("common.stop")}</TableHead>
                 <TableHead>{t("dashboard.subscription")}</TableHead>
                 <TableHead>{t("dashboard.tripsRemaining")}</TableHead>
+                <TableHead>{t("students.username")}</TableHead>
+                <TableHead>{t("students.source")}</TableHead>
                 <TableHead>{t("whatsapp.status")}</TableHead>
                 <TableHead className="text-end">{t("common.actions")}</TableHead>
               </TableRow>
@@ -215,6 +245,10 @@ function SupervisorStudentsPage() {
                         <span className="text-muted-foreground">—</span>
                       )}
                     </TableCell>
+                    <TableCell className="font-mono text-xs">{s.username ?? "—"}</TableCell>
+                    <TableCell className="text-xs">
+                      {s.username ? t("students.sourceBulkImport") : t("students.sourceSelfSignup")}
+                    </TableCell>
                     <TableCell>
                       {s.whatsapp_invited_at ? (
                         <Badge className="bg-success text-success-foreground">
@@ -228,9 +262,19 @@ function SupervisorStudentsPage() {
                     </TableCell>
                     <TableCell className="text-end">
                       <div className="flex justify-end gap-1">
+                        {s.username && s.phone && (
+                          <Button
+                            size="sm"
+                            className="bg-success text-success-foreground hover:bg-success/90"
+                            disabled={busyId === s.user_id}
+                            onClick={() => void sendCredentials(s)}
+                          >
+                            <MessageCircle className="size-4" /> {t("students.sendCredentials")}
+                          </Button>
+                        )}
                         <Button
                           size="sm"
-                          className="bg-success text-success-foreground hover:bg-success/90"
+                          className="bg-accent text-accent-foreground hover:bg-accent/90"
                           onClick={() => sendInvite(s)}
                         >
                           <MessageCircle className="size-4" /> {t("whatsapp.sendInvite")}

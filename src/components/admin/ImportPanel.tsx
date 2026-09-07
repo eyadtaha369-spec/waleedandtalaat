@@ -103,13 +103,23 @@ function isReddishHex(hex: string): boolean {
 }
 
 function sheetRowHasRedFill(sheet: XLSX.WorkSheet, rowIndex: number, colCount: number): boolean {
+  // Real rosters have incidental colored cells (a flagged receipt
+  // link, a stray empty cell with leftover formatting) that don't
+  // mean "this student is cancelled" — only treat the row as
+  // genuinely marked when most of its actual data is red, not just
+  // one or two cells.
+  let redCount = 0;
+  let populatedCount = 0;
   for (let c = 0; c < colCount; c++) {
     const cell = sheet[XLSX.utils.encode_cell({ r: rowIndex, c })];
+    if (cell?.v === undefined || cell.v === null || cell.v === "") continue;
+    populatedCount++;
     const style = cell?.s as { fgColor?: { rgb?: string }; bgColor?: { rgb?: string } } | undefined;
     const rgb = style?.fgColor?.rgb ?? style?.bgColor?.rgb;
-    if (rgb && isReddishHex(rgb)) return true;
+    if (rgb && isReddishHex(rgb)) redCount++;
   }
-  return false;
+  if (populatedCount === 0) return false;
+  return redCount >= 4 && redCount / populatedCount >= 0.5;
 }
 
 function rowsToParsed(

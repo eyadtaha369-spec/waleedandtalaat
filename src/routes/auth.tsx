@@ -7,8 +7,6 @@ import { Logo } from "@/components/Brand";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useRoutes } from "@/hooks/useRoutes";
 import { useLanguage } from "@/hooks/useLanguage";
 
 export const Route = createFileRoute("/auth")({
@@ -26,26 +24,19 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
 });
 
+// Self-signup is intentionally removed: accounts are only ever issued
+// by an admin (bulk import or manual credential reset). If someone
+// still needs to sign up directly via the Supabase API despite this,
+// disable "Allow new users to sign up" in the Supabase dashboard under
+// Authentication → Settings — that's the actual enforcement; this page
+// just no longer offers the option.
 function AuthPage() {
   const navigate = useNavigate();
   const { user, isAdmin, isSupervisor, loading } = useAuth();
-  const { routes, stopsByRoute } = useRoutes();
   const { t } = useLanguage();
   const [busy, setBusy] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [fullName, setFullName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [route, setRoute] = useState<string>("");
-  const [pickupStop, setPickupStop] = useState<string>("");
-
-  useEffect(() => {
-    if (!route && routes.length > 0) {
-      setRoute(routes[0]!);
-      setPickupStop(stopsByRoute[routes[0]!]?.[0] ?? "");
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [routes]);
 
   useEffect(() => {
     if (loading || !user) return;
@@ -63,27 +54,6 @@ function AuthPage() {
     // Redirect is handled by the effect above once roles finish loading.
   };
 
-  const signUp = async () => {
-    setBusy(true);
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/dashboard`,
-        data: {
-          full_name: fullName,
-          phone,
-          route,
-          pickup_stop: pickupStop,
-          subscription_type: "full_term",
-        },
-      },
-    });
-    setBusy(false);
-    if (error) return toast.error(error.message);
-    toast.success(t("auth.accountCreated"));
-  };
-
   return (
     <main className="surface-navy flex min-h-[calc(100vh-64px)] items-center justify-center px-4 py-14">
       <div className="shadow-luxe w-full max-w-md rounded-3xl bg-card p-8 text-card-foreground">
@@ -93,67 +63,18 @@ function AuthPage() {
           <p className="text-sm text-muted-foreground">Student & supervisor access</p>
         </div>
 
-        <Tabs defaultValue="signin" className="mt-6">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="signin">{t("auth.signIn")}</TabsTrigger>
-            <TabsTrigger value="signup">{t("auth.signUp")}</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="signin" className="space-y-4 pt-4">
-            <Field label={t("auth.email")} value={email} onChange={setEmail} type="email" />
-            <Field
-              label={t("auth.password")}
-              value={password}
-              onChange={setPassword}
-              type="password"
-            />
-            <Button className="btn-gold w-full" disabled={busy} onClick={() => void signIn()}>
-              {t("auth.signIn")}
-            </Button>
-          </TabsContent>
-
-          <TabsContent value="signup" className="space-y-4 pt-4">
-            <Field label={t("auth.fullName")} value={fullName} onChange={setFullName} />
-            <Field label={t("auth.phone")} value={phone} onChange={setPhone} />
-            <div className="space-y-2">
-              <Label>{t("auth.route")}</Label>
-              <select
-                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                value={route}
-                onChange={(e) => {
-                  setRoute(e.target.value);
-                  setPickupStop(stopsByRoute[e.target.value]?.[0] ?? "");
-                }}
-              >
-                {routes.map((r) => (
-                  <option key={r}>{r}</option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-2">
-              <Label>{t("auth.pickupStop")}</Label>
-              <select
-                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                value={pickupStop}
-                onChange={(e) => setPickupStop(e.target.value)}
-              >
-                {(stopsByRoute[route] ?? []).map((s) => (
-                  <option key={s}>{s}</option>
-                ))}
-              </select>
-            </div>
-            <Field label={t("auth.email")} value={email} onChange={setEmail} type="email" />
-            <Field
-              label={t("auth.password")}
-              value={password}
-              onChange={setPassword}
-              type="password"
-            />
-            <Button className="btn-gold w-full" disabled={busy} onClick={() => void signUp()}>
-              {t("auth.signUp")}
-            </Button>
-          </TabsContent>
-        </Tabs>
+        <div className="mt-6 space-y-4">
+          <Field label={t("auth.email")} value={email} onChange={setEmail} type="email" />
+          <Field
+            label={t("auth.password")}
+            value={password}
+            onChange={setPassword}
+            type="password"
+          />
+          <Button className="btn-gold w-full" disabled={busy} onClick={() => void signIn()}>
+            {t("auth.signIn")}
+          </Button>
+        </div>
       </div>
     </main>
   );

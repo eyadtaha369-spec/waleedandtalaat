@@ -567,6 +567,14 @@ export type Database = {
         Args: { p_student_ids: string[] };
         Returns: number;
       };
+      reset_whatsapp_invited: {
+        Args: { p_student_ids: string[] };
+        Returns: number;
+      };
+      reset_route_whatsapp_status: {
+        Args: { p_route: string | null };
+        Returns: number;
+      };
       list_confirmed_daily_passes: {
         Args: Record<string, never>;
         Returns: {

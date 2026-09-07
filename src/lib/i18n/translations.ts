@@ -342,7 +342,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     "whatsapp.linkSaved": "تم حفظ رابط الجروب",
     "whatsapp.status": "حالة الواتساب",
     "whatsapp.invited": "تم الدعوة",
-    "whatsapp.pending": "معلق",
+    "whatsapp.pending": "غير مدعو",
     "whatsapp.sendInvite": "إرسال دعوة الجروب",
     "whatsapp.selectAll": "تحديد الكل",
     "whatsapp.broadcast": "إرسال دعوات الجروب للخط المحدد",
@@ -354,6 +354,11 @@ export const translations: Record<Lang, Record<string, string>> = {
     "whatsapp.sendInviteNewStudents": "إرسال الدعوات للطلاب الجدد",
     "whatsapp.noLinkForRoute": "لا يوجد رابط جروب لخط هذا الطالب بعد",
     "whatsapp.noNewStudents": "لا يوجد طلاب جدد بحاجة لدعوة.",
+    "whatsapp.resetStatus": "إعادة تعيين",
+    "whatsapp.resetRouteButton": "إعادة تعيين حالة الواتساب للخط",
+    "whatsapp.statusReset": "تم إعادة تعيين الحالة",
+    "whatsapp.confirmResetRoute":
+      'سيتم إعادة تعيين حالة كل طلاب هذا الخط إلى "لم تتم الدعوة". متابعة؟',
 
     // Import
     "import.chooseFile": "اختيار ملف",
@@ -736,7 +741,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     "whatsapp.linkSaved": "Group link saved",
     "whatsapp.status": "WhatsApp Status",
     "whatsapp.invited": "Invited",
-    "whatsapp.pending": "Pending",
+    "whatsapp.pending": "Not Invited",
     "whatsapp.sendInvite": "Send Group Invite",
     "whatsapp.selectAll": "Select all",
     "whatsapp.broadcast": "Broadcast Group Invites to Filtered Route",
@@ -748,6 +753,11 @@ export const translations: Record<Lang, Record<string, string>> = {
     "whatsapp.sendInviteNewStudents": "Send invites to new students",
     "whatsapp.noLinkForRoute": "This student's route has no group link yet",
     "whatsapp.noNewStudents": "No new students need an invite.",
+    "whatsapp.resetStatus": "Reset",
+    "whatsapp.resetRouteButton": "Reset WhatsApp Status for Route",
+    "whatsapp.statusReset": "Status reset",
+    "whatsapp.confirmResetRoute":
+      "This resets every student on this route back to Not Invited. Continue?",
 
     "import.chooseFile": "Choose file",
     "import.createAccounts": "Create accounts",

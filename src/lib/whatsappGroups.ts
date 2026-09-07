@@ -23,3 +23,25 @@ export function groupInviteLink(
     groupInviteMessage(fullName, routeName, groupLink),
   )}`;
 }
+
+/**
+ * Opens the invite link and reports whether it actually opened.
+ * window.open() returns null (or, in some browsers, a closed window
+ * reference) when a popup blocker intercepts it — callers must check
+ * this before recording the invite as sent, or a blocked popup gets
+ * silently recorded as delivered.
+ */
+export function openGroupInvite(
+  fullName: string,
+  phone: string,
+  routeName: string,
+  groupLink: string,
+): boolean {
+  // No "noopener" here on purpose: with it, window.open() returns
+  // null even on success in most browsers, which would make this
+  // success check meaningless. wa.me is a fixed, trusted domain, so
+  // the usual reverse-tabnabbing risk noopener guards against
+  // doesn't apply.
+  const win = window.open(groupInviteLink(fullName, phone, routeName, groupLink), "_blank");
+  return !!win && !win.closed;
+}

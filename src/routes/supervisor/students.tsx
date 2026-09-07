@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { ArrowLeft, MessageCircle, Rocket, UsersRound } from "lucide-react";
+import { ArrowLeft, MessageCircle, RotateCcw, Rocket, UsersRound } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/hooks/useLanguage";
@@ -17,7 +17,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { subscriptionBadge } from "@/lib/subscription";
-import { groupInviteLink } from "@/lib/whatsappGroups";
+import { openGroupInvite } from "@/lib/whatsappGroups";
 
 export const Route = createFileRoute("/supervisor/students")({
   head: () => ({ meta: [{ title: "My route's students — Waleed & Talaat" }] }),
@@ -46,18 +46,21 @@ function SupervisorStudentsPage() {
   const [loading, setLoading] = useState(true);
   const [groupLink, setGroupLink] = useState<string | null>(null);
   const [broadcasting, setBroadcasting] = useState(false);
+  const [resettingRoute, setResettingRoute] = useState(false);
+
+  const load = async () => {
+    setLoading(true);
+    const { data, error } = await supabase.rpc("list_my_route_students");
+    setLoading(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    setStudents((data as StudentRow[]) ?? []);
+  };
 
   useEffect(() => {
-    void (async () => {
-      setLoading(true);
-      const { data, error } = await supabase.rpc("list_my_route_students");
-      setLoading(false);
-      if (error) {
-        toast.error(error.message);
-        return;
-      }
-      setStudents((data as StudentRow[]) ?? []);
-    })();
+    void load();
   }, []);
 
   useEffect(() => {
@@ -70,6 +73,7 @@ function SupervisorStudentsPage() {
   }, [profile?.assigned_route]);
 
   const markInvited = async (ids: string[]) => {
+    if (ids.length === 0) return;
     await supabase.rpc("mark_whatsapp_invited", { p_student_ids: ids });
     setStudents((prev) =>
       (prev ?? []).map((s) =>
@@ -78,17 +82,22 @@ function SupervisorStudentsPage() {
     );
   };
 
+  const resetInvited = async (ids: string[]) => {
+    await supabase.rpc("reset_whatsapp_invited", { p_student_ids: ids });
+    setStudents((prev) =>
+      (prev ?? []).map((s) => (ids.includes(s.user_id) ? { ...s, whatsapp_invited_at: null } : s)),
+    );
+    toast.success(t("whatsapp.statusReset"));
+  };
+
   const sendInvite = (s: StudentRow) => {
     if (!groupLink || !s.phone) {
       toast.error(t("whatsapp.noLinkForRoute"));
       return;
     }
-    window.open(
-      groupInviteLink(s.full_name, s.phone, profile?.assigned_route ?? "", groupLink),
-      "_blank",
-      "noopener,noreferrer",
-    );
-    void markInvited([s.user_id]);
+    const opened = openGroupInvite(s.full_name, s.phone, profile?.assigned_route ?? "", groupLink);
+    if (opened) void markInvited([s.user_id]);
+    else toast.error(t("whatsapp.popupNote"));
   };
 
   const sendToNewStudents = async () => {
@@ -102,18 +111,35 @@ function SupervisorStudentsPage() {
       return;
     }
     setBroadcasting(true);
-    targets.forEach((s, i) => {
-      setTimeout(() => {
-        window.open(
-          groupInviteLink(s.full_name, s.phone!, profile?.assigned_route ?? "", groupLink),
-          "_blank",
-          "noopener,noreferrer",
-        );
-      }, i * 400);
-    });
-    await markInvited(targets.map((s) => s.user_id));
+    const successfulIds: string[] = [];
+    for (let i = 0; i < targets.length; i++) {
+      const s = targets[i]!;
+      const opened = openGroupInvite(
+        s.full_name,
+        s.phone!,
+        profile?.assigned_route ?? "",
+        groupLink,
+      );
+      if (opened) successfulIds.push(s.user_id);
+      if (i < targets.length - 1) await new Promise((r) => setTimeout(r, 400));
+    }
+    await markInvited(successfulIds);
     setBroadcasting(false);
-    toast.success(t("whatsapp.popupNote"), { duration: 8000 });
+    if (successfulIds.length < targets.length) {
+      toast.error(t("whatsapp.popupNote"), { duration: 8000 });
+    } else {
+      toast.success(`${successfulIds.length} ✓`);
+    }
+  };
+
+  const resetRouteStatus = async () => {
+    if (!profile?.assigned_route) return;
+    if (!window.confirm(t("whatsapp.confirmResetRoute"))) return;
+    setResettingRoute(true);
+    await supabase.rpc("reset_route_whatsapp_status", { p_route: profile.assigned_route });
+    setResettingRoute(false);
+    toast.success(t("whatsapp.statusReset"));
+    void load();
   };
 
   return (
@@ -133,7 +159,14 @@ function SupervisorStudentsPage() {
       </div>
 
       <div className="mt-6 rounded-3xl border border-border bg-card p-6">
-        <div className="flex flex-wrap items-center justify-end">
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <Button
+            variant="outline"
+            disabled={resettingRoute}
+            onClick={() => void resetRouteStatus()}
+          >
+            <RotateCcw className="size-4" /> {t("whatsapp.resetRouteButton")}
+          </Button>
           <Button
             className="btn-gold"
             disabled={broadcasting}
@@ -158,6 +191,7 @@ function SupervisorStudentsPage() {
                 <TableHead>{t("common.stop")}</TableHead>
                 <TableHead>{t("dashboard.subscription")}</TableHead>
                 <TableHead>{t("dashboard.tripsRemaining")}</TableHead>
+                <TableHead>{t("whatsapp.status")}</TableHead>
                 <TableHead className="text-end">{t("common.actions")}</TableHead>
               </TableRow>
             </TableHeader>
@@ -181,14 +215,36 @@ function SupervisorStudentsPage() {
                         <span className="text-muted-foreground">—</span>
                       )}
                     </TableCell>
+                    <TableCell>
+                      {s.whatsapp_invited_at ? (
+                        <Badge className="bg-success text-success-foreground">
+                          🟢 {t("whatsapp.invited")}
+                        </Badge>
+                      ) : (
+                        <Badge className="bg-destructive text-destructive-foreground">
+                          🔴 {t("whatsapp.pending")}
+                        </Badge>
+                      )}
+                    </TableCell>
                     <TableCell className="text-end">
-                      <Button
-                        size="sm"
-                        className="bg-success text-success-foreground hover:bg-success/90"
-                        onClick={() => sendInvite(s)}
-                      >
-                        <MessageCircle className="size-4" /> {t("whatsapp.sendInvite")}
-                      </Button>
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          size="sm"
+                          className="bg-success text-success-foreground hover:bg-success/90"
+                          onClick={() => sendInvite(s)}
+                        >
+                          <MessageCircle className="size-4" /> {t("whatsapp.sendInvite")}
+                        </Button>
+                        {s.whatsapp_invited_at && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => void resetInvited([s.user_id])}
+                          >
+                            <RotateCcw className="size-4" /> {t("whatsapp.resetStatus")}
+                          </Button>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 );

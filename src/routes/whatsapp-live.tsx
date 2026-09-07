@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { ArrowLeft, MessageCircle, Radio } from "lucide-react";
+import { ArrowLeft, MessageCircle, Radio, RotateCcw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/hooks/useLanguage";
@@ -17,7 +17,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { groupInviteLink } from "@/lib/whatsappGroups";
+import { openGroupInvite } from "@/lib/whatsappGroups";
 
 export const Route = createFileRoute("/whatsapp-live")({
   head: () => ({ meta: [{ title: "WhatsApp Live Group Hub — Waleed & Talaat" }] }),
@@ -51,6 +51,7 @@ function WhatsAppLivePage() {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [broadcasting, setBroadcasting] = useState(false);
+  const [resettingRoute, setResettingRoute] = useState(false);
 
   // Supervisors are locked to their own route the whole time.
   const effectiveRoute = isAdmin ? routeFilter : (profile?.assigned_route ?? "");
@@ -130,18 +131,27 @@ function WhatsAppLivePage() {
     );
   };
 
+  const resetInvited = async (ids: string[]) => {
+    const { error } = await supabase.rpc("reset_whatsapp_invited", { p_student_ids: ids });
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    setStudents((prev) =>
+      prev.map((s) => (ids.includes(s.user_id) ? { ...s, whatsapp_invited_at: null } : s)),
+    );
+    toast.success(t("whatsapp.statusReset"));
+  };
+
   const sendInvite = (s: StudentRow) => {
     const link = linkForStudentRoute(s.route);
     if (!link || !s.phone) {
       toast.error(t("whatsapp.linkMissingForRoute"));
       return;
     }
-    window.open(
-      groupInviteLink(s.full_name, s.phone, s.route ?? "", link),
-      "_blank",
-      "noopener,noreferrer",
-    );
-    void markInvited([s.user_id]);
+    const opened = openGroupInvite(s.full_name, s.phone, s.route ?? "", link);
+    if (opened) void markInvited([s.user_id]);
+    else toast.error(t("whatsapp.popupNote"));
   };
 
   const toggleSelect = (id: string) => {
@@ -167,25 +177,36 @@ function WhatsAppLivePage() {
       return;
     }
     setBroadcasting(true);
-    const targets = students.filter((s) => selected.has(s.user_id) && s.phone);
-    const invitedIds: string[] = [];
-    targets.forEach((s, i) => {
-      const link = linkForStudentRoute(s.route);
-      if (!link || !s.phone) return;
-      setTimeout(() => {
-        window.open(
-          groupInviteLink(s.full_name, s.phone!, s.route ?? "", link),
-          "_blank",
-          "noopener,noreferrer",
-        );
-      }, i * 400);
-      invitedIds.push(s.user_id);
-    });
-    if (invitedIds.length > 0) {
-      await markInvited(invitedIds);
+    const targets = students.filter(
+      (s) => selected.has(s.user_id) && s.phone && linkForStudentRoute(s.route),
+    );
+    const successfulIds: string[] = [];
+    for (let i = 0; i < targets.length; i++) {
+      const s = targets[i]!;
+      const link = linkForStudentRoute(s.route)!;
+      const opened = openGroupInvite(s.full_name, s.phone!, s.route ?? "", link);
+      if (opened) successfulIds.push(s.user_id);
+      if (i < targets.length - 1) await new Promise((r) => setTimeout(r, 400));
+    }
+    if (successfulIds.length > 0) {
+      await markInvited(successfulIds);
     }
     setBroadcasting(false);
-    toast.success(t("whatsapp.popupNote"), { duration: 8000 });
+    if (successfulIds.length < targets.length) {
+      toast.error(t("whatsapp.popupNote"), { duration: 8000 });
+    } else {
+      toast.success(`${successfulIds.length} ✓`);
+    }
+  };
+
+  const resetRouteStatus = async () => {
+    if (!effectiveRoute || effectiveRoute === "all") return;
+    if (!window.confirm(t("whatsapp.confirmResetRoute"))) return;
+    setResettingRoute(true);
+    await supabase.rpc("reset_route_whatsapp_status", { p_route: effectiveRoute });
+    setResettingRoute(false);
+    toast.success(t("whatsapp.statusReset"));
+    void load(effectiveRoute);
   };
 
   return (
@@ -261,7 +282,15 @@ function WhatsAppLivePage() {
             {t("whatsapp.selectAll")}
           </label>
           <Button
-            className="btn-gold ms-auto"
+            variant="outline"
+            className="ms-auto"
+            disabled={!effectiveRoute || effectiveRoute === "all" || resettingRoute}
+            onClick={() => void resetRouteStatus()}
+          >
+            <RotateCcw className="size-4" /> {t("whatsapp.resetRouteButton")}
+          </Button>
+          <Button
+            className="btn-gold"
             disabled={broadcasting || selected.size === 0}
             onClick={() => void broadcast()}
           >
@@ -301,18 +330,29 @@ function WhatsAppLivePage() {
                   <TableCell>
                     {s.whatsapp_invited_at ? (
                       <Badge className="bg-success text-success-foreground">
-                        {t("whatsapp.invited")}
+                        🟢 {t("whatsapp.invited")}
                       </Badge>
                     ) : (
-                      <Badge className="bg-muted text-muted-foreground">
-                        {t("whatsapp.pending")}
+                      <Badge className="bg-destructive text-destructive-foreground">
+                        🔴 {t("whatsapp.pending")}
                       </Badge>
                     )}
                   </TableCell>
                   <TableCell className="text-end">
-                    <Button size="sm" variant="outline" onClick={() => sendInvite(s)}>
-                      <MessageCircle className="size-4" /> {t("whatsapp.sendInvite")}
-                    </Button>
+                    <div className="flex justify-end gap-1">
+                      <Button size="sm" variant="outline" onClick={() => sendInvite(s)}>
+                        <MessageCircle className="size-4" /> {t("whatsapp.sendInvite")}
+                      </Button>
+                      {s.whatsapp_invited_at && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => void resetInvited([s.user_id])}
+                        >
+                          <RotateCcw className="size-4" /> {t("whatsapp.resetStatus")}
+                        </Button>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}

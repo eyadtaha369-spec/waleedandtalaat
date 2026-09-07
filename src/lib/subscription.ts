@@ -3,9 +3,14 @@ export type PaymentStatus = "paid_full" | "installment_pending";
 export type InstallmentStatus = "none" | "pending_second" | "completed";
 
 /**
- * Maps the roster sheet's "برجاء" (plan choice) column to our stored
+ * Maps the roster sheet's plan-choice column text to our stored
  * subscription_type + payment_status + installment_status, plus a
  * trips_total override for plans that come with a fixed trip count.
+ *
+ * Keyword-based (substring) rather than exact-match on purpose: real
+ * sheet values vary in phrasing/whitespace ("70 رحلة" vs "٧٠ رحلة" vs
+ * "باقة 70 رحلة"), and an exact match silently falls through to a
+ * hardcoded default the moment the wording differs at all.
  */
 export function mapSubscriptionChoice(raw: string): {
   subscription_type: SubscriptionType;
@@ -14,37 +19,34 @@ export function mapSubscriptionChoice(raw: string): {
   trips_total?: number;
 } {
   const v = raw.trim();
-  if (v === "قسط")
-    return {
-      subscription_type: "full_term",
-      payment_status: "installment_pending",
-      installment_status: "pending_second",
-    };
-  if (v === "سداد كامل")
-    return {
-      subscription_type: "full_term",
-      payment_status: "paid_full",
-      installment_status: "none",
-    };
-  if (v === "عرض الدحيحة")
-    return {
-      subscription_type: "top_student_offer",
-      payment_status: "paid_full",
-      installment_status: "none",
-    };
-  if (v === "70 رحلة")
-    return {
-      subscription_type: "70_trips",
-      payment_status: "paid_full",
-      installment_status: "none",
-      trips_total: 70,
-    };
-  if (v === "اسبوعي")
-    return { subscription_type: "weekly", payment_status: "paid_full", installment_status: "none" };
+
+  let subscription_type: SubscriptionType = "full_term";
+  let trips_total: number | undefined;
+  if (v.includes("70") || v.includes("٧٠") || v.includes("رحلة")) {
+    subscription_type = "70_trips";
+    trips_total = 70;
+  } else if (v.includes("أسبوعي") || v.includes("اسبوعي")) {
+    subscription_type = "weekly";
+  } else if (v.includes("دحيحة") || v.includes("متفوق")) {
+    subscription_type = "top_student_offer";
+  } else if (v.includes("ترم") || v.includes("كامل")) {
+    subscription_type = "full_term";
+  }
+
+  let payment_status: PaymentStatus = "paid_full";
+  let installment_status: InstallmentStatus = "none";
+  if (v.includes("قسط") || v.includes("متبقي") || v.includes("مؤجل")) {
+    payment_status = "installment_pending";
+    installment_status = "pending_second";
+  } else if (v.includes("مسدد") || v.includes("كامل") || v.includes("مدفوع")) {
+    payment_status = "paid_full";
+  }
+
   return {
-    subscription_type: "full_term",
-    payment_status: "paid_full",
-    installment_status: "none",
+    subscription_type,
+    payment_status,
+    installment_status,
+    ...(trips_total !== undefined ? { trips_total } : {}),
   };
 }
 

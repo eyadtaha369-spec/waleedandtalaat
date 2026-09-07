@@ -55,11 +55,27 @@ type ImportResult = {
   error?: string;
 };
 
-/** Pulls a value out of a row by trying several possible header spellings, in order. */
+/**
+ * Pulls a value out of a row by trying several possible header
+ * spellings, in order — exact key match first, then falling back to
+ * any column whose actual header CONTAINS one of the given terms.
+ * The fallback matters: a real sheet's header is often longer/more
+ * specific than the short term we search for (e.g. the actual column
+ * is "برجاء الاختيار من الآتي", not just "برجاء") — an exact-only
+ * match would silently find nothing and this column would always
+ * read as empty.
+ */
 function pick(row: Record<string, unknown>, keys: string[]): string {
   for (const k of keys) {
     const v = row[k];
     if (v !== undefined && v !== null && String(v).trim() !== "") return String(v).trim();
+  }
+  for (const k of keys) {
+    const matchKey = Object.keys(row).find((rk) => rk.includes(k));
+    if (matchKey) {
+      const v = row[matchKey];
+      if (v !== undefined && v !== null && String(v).trim() !== "") return String(v).trim();
+    }
   }
   return "";
 }
@@ -139,7 +155,7 @@ function rowsToParsed(
     const name = pick(r, ["اسم الطالب", "Name", "Full Name"]);
     const phone = pick(r, ["رقم الطالب", "WhatsApp Number", "Phone"]);
     const rawRoute = pick(r, ["الخط", "Route"]);
-    const planRaw = pick(r, ["برجاء", "Subscription Type"]);
+    const planRaw = pick(r, ["برجاء الاختيار من الآتي", "برجاء", "Subscription Type"]);
     const plan = mapSubscriptionChoice(planRaw);
     const explicitTrips = Number(pick(r, ["Initial Trips Count", "Trips"]) || 0) || 0;
     parsed.push({
@@ -147,7 +163,7 @@ function rowsToParsed(
       phone,
       route: normalizeRouteName(rawRoute),
       photo_url: normalizePhotoUrl(pick(r, ["4x6 صورة شخصية", "Photo URL", "photo_url"])),
-      pickup_stop: pick(r, ["Pickup Stop"]),
+      pickup_stop: pick(r, ["برجاء كتابة نقطة الركوب", "Pickup Stop"]),
       subscription_type: plan.subscription_type,
       payment_status: plan.payment_status,
       installment_status: plan.installment_status,
@@ -290,15 +306,18 @@ export function ImportPanel() {
         <p className="mt-1 text-sm text-muted-foreground">
           Upload the roster sheet (.xlsx or .csv) with columns: <code dir="rtl">اسم الطالب</code>,{" "}
           <code dir="rtl">رقم الطالب</code>, <code dir="rtl">4x6 صورة شخصية</code>,{" "}
-          <code dir="rtl">الخط</code>, and <code dir="rtl">برجاء</code> for the subscription plan
-          (سداد كامل / قسط / عرض الدحيحة / 70 رحلة / اسبوعي). Payment amount, receipt and other
-          columns are ignored automatically. A row whose phone number already matches an existing
-          student updates that student's profile instead of creating a duplicate account — remaining
-          trip balance is never touched by an update. Rows mentioning مسترد / استرداد / ملغي /
-          refunded / cancelled anywhere, or manually filled with a red cell color, are skipped
-          automatically. Note: colors applied via Excel's Conditional Formatting rules (rather than
-          a manually-set cell fill) can't be detected this way — add one of the keywords above too
-          for those rows to guarantee they're skipped.
+          <code dir="rtl">الخط</code>, and <code dir="rtl">برجاء الاختيار من الآتي</code> for the
+          subscription plan — matched by keyword, not exact wording, so any phrasing containing قسط
+          / سداد / كامل / مسدد / 70 / رحلة / أسبوعي / اسبوعي / دحيحة is read correctly. Payment
+          amount, receipt and other columns are ignored automatically. A row whose phone number
+          already matches an existing student updates that student's profile instead of creating a
+          duplicate account — remaining trip balance is never touched by an update, but
+          subscription/payment fields are refreshed, so re-uploading the same corrected sheet fixes
+          any student who previously imported with the wrong plan. Rows mentioning مسترد / استرداد /
+          ملغي / refunded / cancelled anywhere, or manually filled with a red cell color, are
+          skipped automatically. Note: colors applied via Excel's Conditional Formatting rules
+          (rather than a manually-set cell fill) can't be detected this way — add one of the
+          keywords above too for those rows to guarantee they're skipped.
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <input

@@ -43,7 +43,7 @@ export const EXAM_STOPS: { name: string; time: string }[] = [
   { name: "قناه السويس عند الرادار", time: "6:55 AM" },
   { name: "الموقف عند بنزينة chill out", time: "7:00 AM" },
   { name: "الـ 21 عند حلواني خالد", time: "7:15 AM" },
-  { name: "فتحة البرج على الساحل", time: "7:35 AM" },
+  { name: "صنية الجهاز امام مكتبة شادي", time: "7:35 AM" },
 ];
 
 export const EXAM_RETURN_NOTE = "العودة بعد انتهاء الامتحان (سيتم تحديد الميعاد لاحقاً)";

@@ -60,6 +60,7 @@ function SummerBookingsPage() {
   const [dateFilter, setDateFilter] = useState<string>("all");
   const [stopFilter, setStopFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("not_rejected");
+  const [scannedToday, setScannedToday] = useState<number | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -77,8 +78,19 @@ function SummerBookingsPage() {
     setBookings((data as ExamBooking[]) ?? []);
   };
 
+  const loadScannedCount = async () => {
+    const { data } = await supabase.rpc("count_today_scanned_exam_passes");
+    setScannedToday((data as number) ?? 0);
+  };
+
   useEffect(() => {
     void load();
+    void loadScannedCount();
+    // Poll rather than a realtime subscription (untested on this
+    // project) — still keeps the count fresh across devices/sessions
+    // without needing to reload the whole page.
+    const interval = setInterval(() => void loadScannedCount(), 20000);
+    return () => clearInterval(interval);
   }, []);
 
   const viewReceipt = async (path: string) => {
@@ -181,6 +193,15 @@ function SummerBookingsPage() {
         <Link to="/admin" className="text-sm text-white/80 hover:text-white">
           <ArrowLeft className="me-1 inline size-4" /> {t("common.backToConsole")}
         </Link>
+      </div>
+
+      <div className="mt-6 rounded-2xl border border-gilded p-5 text-center">
+        <p className="text-xs tracking-widest text-muted-foreground uppercase">
+          {t("summer.scannedToday")}
+        </p>
+        <p className="text-gilded mt-1 text-3xl font-bold">
+          {scannedToday === null ? "…" : scannedToday}
+        </p>
       </div>
 
       <div className="mt-6 rounded-3xl border border-border bg-card p-6">

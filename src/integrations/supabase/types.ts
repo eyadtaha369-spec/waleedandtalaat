@@ -483,6 +483,10 @@ export type Database = {
           trips_total: number;
         }[];
       };
+      count_today_scanned_exam_passes: {
+        Args: Record<string, never>;
+        Returns: number;
+      };
       check_exam_duplicate: {
         Args: { p_phone: string; p_exam_date: string };
         Returns: boolean;

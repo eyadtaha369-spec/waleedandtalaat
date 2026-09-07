@@ -31,9 +31,21 @@ export function ScannerPanel() {
   const [dateOverride, setDateOverride] = useState<string>("");
   const [scanning, setScanning] = useState(false);
   const [result, setResult] = useState<ScanResult | null>(null);
+  const [scannedToday, setScannedToday] = useState<number | null>(null);
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const lockRef = useRef(false);
   const todayKey = toDateKey(cairoNow());
+
+  const loadScannedCount = async () => {
+    const { data } = await supabase.rpc("count_today_scanned_exam_passes");
+    setScannedToday((data as number) ?? 0);
+  };
+
+  useEffect(() => {
+    void loadScannedCount();
+    const interval = setInterval(() => void loadScannedCount(), 20000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -102,6 +114,9 @@ export function ScannerPanel() {
         tripsRemaining: data.trips_remaining ?? null,
         hasCompanion: !!data.has_companion,
       });
+      if (payload.exam && data.status === "booked") {
+        void loadScannedCount();
+      }
     } catch {
       toast.error(t("scanner.unrecognizedQr"));
     } finally {
@@ -112,66 +127,76 @@ export function ScannerPanel() {
   };
 
   return (
-    <div className="grid gap-5 md:grid-cols-[1.1fr_1fr]">
-      <section className="rounded-3xl border border-border bg-card p-6">
-        <div className="flex flex-wrap items-center gap-3">
-          <Label>{t("scanner.checkingSlot")}</Label>
-          <select
-            className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-            value={slot}
-            onChange={(e) => setSlot(e.target.value)}
-            disabled={scanning}
-          >
-            {ALL_SLOTS.map((s) => (
-              <option key={s}>{s}</option>
-            ))}
-          </select>
-          <Button
-            className={scanning ? "" : "btn-gold"}
-            variant={scanning ? "destructive" : "default"}
-            onClick={() => void (scanning ? stop() : start())}
-          >
-            <ScanLine className="size-4" />{" "}
-            {scanning ? t("scanner.stopScanner") : t("scanner.startScanner")}
-          </Button>
-        </div>
-
-        {isAdmin && (
-          <div className="mt-3 flex flex-wrap items-center gap-3">
-            <Label>{t("scanner.testDateOverride")}</Label>
-            <input
-              type="date"
-              className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-              value={dateOverride}
-              onChange={(e) => setDateOverride(e.target.value)}
+    <div>
+      <div className="mb-5 rounded-2xl border border-gilded p-4 text-center">
+        <p className="text-xs tracking-widest text-muted-foreground uppercase">
+          {t("summer.scannedToday")}
+        </p>
+        <p className="text-gilded mt-1 text-2xl font-bold">
+          {scannedToday === null ? "…" : scannedToday}
+        </p>
+      </div>
+      <div className="grid gap-5 md:grid-cols-[1.1fr_1fr]">
+        <section className="rounded-3xl border border-border bg-card p-6">
+          <div className="flex flex-wrap items-center gap-3">
+            <Label>{t("scanner.checkingSlot")}</Label>
+            <select
+              className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+              value={slot}
+              onChange={(e) => setSlot(e.target.value)}
               disabled={scanning}
-            />
-            {dateOverride && (
-              <Button size="sm" variant="ghost" onClick={() => setDateOverride("")}>
-                {t("scanner.resetToToday")} ({todayKey})
-              </Button>
+            >
+              {ALL_SLOTS.map((s) => (
+                <option key={s}>{s}</option>
+              ))}
+            </select>
+            <Button
+              className={scanning ? "" : "btn-gold"}
+              variant={scanning ? "destructive" : "default"}
+              onClick={() => void (scanning ? stop() : start())}
+            >
+              <ScanLine className="size-4" />{" "}
+              {scanning ? t("scanner.stopScanner") : t("scanner.startScanner")}
+            </Button>
+          </div>
+
+          {isAdmin && (
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <Label>{t("scanner.testDateOverride")}</Label>
+              <input
+                type="date"
+                className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+                value={dateOverride}
+                onChange={(e) => setDateOverride(e.target.value)}
+                disabled={scanning}
+              />
+              {dateOverride && (
+                <Button size="sm" variant="ghost" onClick={() => setDateOverride("")}>
+                  {t("scanner.resetToToday")} ({todayKey})
+                </Button>
+              )}
+            </div>
+          )}
+
+          <div className="mt-5 overflow-hidden rounded-2xl border border-dashed border-border bg-secondary/50">
+            <div id={SCANNER_ELEMENT_ID} className="mx-auto aspect-square max-w-sm" />
+            {!scanning && (
+              <p className="p-8 text-center text-sm text-muted-foreground">
+                {t("scanner.pointCamera")}
+              </p>
             )}
           </div>
-        )}
+        </section>
 
-        <div className="mt-5 overflow-hidden rounded-2xl border border-dashed border-border bg-secondary/50">
-          <div id={SCANNER_ELEMENT_ID} className="mx-auto aspect-square max-w-sm" />
-          {!scanning && (
-            <p className="p-8 text-center text-sm text-muted-foreground">
-              {t("scanner.pointCamera")}
-            </p>
+        <section className="rounded-3xl border border-border bg-card p-6">
+          <h2 className="font-semibold">{t("scanner.lastScan")}</h2>
+          {!result ? (
+            <p className="mt-4 text-sm text-muted-foreground">{t("scanner.noScansYet")}</p>
+          ) : (
+            <ResultCard result={result} t={t} />
           )}
-        </div>
-      </section>
-
-      <section className="rounded-3xl border border-border bg-card p-6">
-        <h2 className="font-semibold">{t("scanner.lastScan")}</h2>
-        {!result ? (
-          <p className="mt-4 text-sm text-muted-foreground">{t("scanner.noScansYet")}</p>
-        ) : (
-          <ResultCard result={result} t={t} />
-        )}
-      </section>
+        </section>
+      </div>
     </div>
   );
 }

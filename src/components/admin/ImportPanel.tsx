@@ -137,13 +137,14 @@ function rowsToParsed(
     }
 
     const name = pick(r, ["اسم الطالب", "Name", "Full Name"]);
+    const phone = pick(r, ["رقم الطالب", "WhatsApp Number", "Phone"]);
     const rawRoute = pick(r, ["الخط", "Route"]);
     const planRaw = pick(r, ["برجاء", "Subscription Type"]);
     const plan = mapSubscriptionChoice(planRaw);
     const explicitTrips = Number(pick(r, ["Initial Trips Count", "Trips"]) || 0) || 0;
     parsed.push({
       full_name: name,
-      phone: pick(r, ["رقم الطالب", "WhatsApp Number", "Phone"]),
+      phone,
       route: normalizeRouteName(rawRoute),
       photo_url: normalizePhotoUrl(pick(r, ["4x6 صورة شخصية", "Photo URL", "photo_url"])),
       pickup_stop: pick(r, ["Pickup Stop"]),
@@ -157,7 +158,7 @@ function rowsToParsed(
         "Payment Method",
       ]),
       trips_total: explicitTrips || plan.trips_total || 0,
-      username: generateUsername(name, parsed.length),
+      username: generateUsername(name, parsed.length, phone),
       temp_password: generateTempPassword(),
     });
   });
@@ -384,7 +385,7 @@ export function ImportPanel() {
                             href={credentialsWhatsAppLink({
                               full_name: r.full_name,
                               phone: r.phone,
-                              email: `${r.username}@wt-shuttle.app`,
+                              email: outcome.email || `${r.username}@wt-shuttle.app`,
                               temp_password: r.temp_password,
                             })}
                             target="_blank"

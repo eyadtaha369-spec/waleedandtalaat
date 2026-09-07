@@ -12,11 +12,25 @@ export function slugifyName(name: string): string {
   );
 }
 
-/** Generates a unique-ish username by appending a short random suffix. */
-export function generateUsername(name: string, index: number): string {
+/**
+ * Generates a username. Arabic (or any non-Latin) name collapses
+ * slugifyName() to the literal string "student" — with only a row-
+ * index-derived numeric suffix distinguishing rows, meaning two
+ * *separate* import sessions that happen to have a row at the same
+ * position generate the exact same username, and therefore the same
+ * login email, causing a real collision at account-creation time.
+ * Falling back to the phone number (unique per real student, unlike
+ * row position) avoids that entirely.
+ */
+export function generateUsername(name: string, index: number, phone?: string): string {
   const base = slugifyName(name);
-  const suffix = String(100 + ((index * 37) % 900));
-  return `${base}${suffix}`;
+  if (base !== "student") {
+    const suffix = String(100 + ((index * 37) % 900));
+    return `${base}${suffix}`;
+  }
+  const digits = (phone ?? "").replace(/\D/g, "");
+  const phoneSuffix = digits.slice(-8);
+  return `student${phoneSuffix || String(100 + ((index * 37) % 900))}`;
 }
 
 const PASSWORD_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";

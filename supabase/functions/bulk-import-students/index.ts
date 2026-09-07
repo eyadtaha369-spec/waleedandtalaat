@@ -72,8 +72,10 @@ Deno.serve(async (req) => {
     // fresh account — handled by refreshing the map after each create).
     const { data: existingProfiles } = await admin.from("profiles").select("id, phone, username");
     const byPhone = new Map<string, { id: string; username: string | null }>();
+    const usedUsernames = new Set<string>();
     for (const p of existingProfiles ?? []) {
       if (p.phone) byPhone.set(normalizePhone(p.phone), { id: p.id, username: p.username });
+      if (p.username) usedUsernames.add(p.username);
     }
 
     const results: Array<{
@@ -122,7 +124,19 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      const email = `${row.username}@wt-shuttle.app`;
+      // Safety net: the client-proposed username can still collide
+      // with an already-existing account (or another row earlier in
+      // this same batch) — resolve that here rather than letting
+      // createUser() fail outright.
+      let finalUsername = row.username;
+      let attempt = 1;
+      while (usedUsernames.has(finalUsername)) {
+        finalUsername = `${row.username}${attempt}`;
+        attempt++;
+      }
+      usedUsernames.add(finalUsername);
+
+      const email = `${finalUsername}@wt-shuttle.app`;
       const { data: created, error: createError } = await admin.auth.admin.createUser({
         email,
         password: row.temp_password,
@@ -146,7 +160,7 @@ Deno.serve(async (req) => {
         results.push({
           full_name: row.full_name,
           phone: row.phone,
-          username: row.username,
+          username: finalUsername,
           email,
           temp_password: row.temp_password,
           status: "failed",
@@ -158,17 +172,17 @@ Deno.serve(async (req) => {
       // handle_new_user() trigger creates the profile + 'student' role row.
       // We still need to store the chosen username since signup metadata
       // doesn't include it.
-      await admin.from("profiles").update({ username: row.username }).eq("id", created.user.id);
+      await admin.from("profiles").update({ username: finalUsername }).eq("id", created.user.id);
 
       // Record this new account so a later row in the same batch with
       // the same phone (e.g. a duplicated line in the sheet) updates
       // it instead of creating yet another account.
-      if (normalized) byPhone.set(normalized, { id: created.user.id, username: row.username });
+      if (normalized) byPhone.set(normalized, { id: created.user.id, username: finalUsername });
 
       results.push({
         full_name: row.full_name,
         phone: row.phone,
-        username: row.username,
+        username: finalUsername,
         email,
         temp_password: row.temp_password,
         status: "created",

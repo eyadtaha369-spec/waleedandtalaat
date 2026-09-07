@@ -129,11 +129,32 @@ function SummerBookingsPage() {
             phone: result.phone,
             examDateLabel: examDateLabel(result.exam_date),
           });
-    window.open(link, "_blank", "noopener,noreferrer");
-    toast.success(
-      action === "confirmed" ? t("summer.whatsappConfirmed") : t("summer.whatsappRejected"),
-    );
+    // Never window.open() after an async call on its own — mobile
+    // Safari/Chrome treat that as an unsolicited popup and block it.
+    // Instead, surface an explicit button; clicking it is a fresh,
+    // synchronous user gesture that popup blockers always allow.
+    toast(action === "confirmed" ? t("summer.whatsappConfirmed") : t("summer.whatsappRejected"), {
+      action: {
+        label: t("summer.openWhatsapp"),
+        onClick: () => window.open(link, "_blank", "noopener,noreferrer"),
+      },
+      duration: 20000,
+    });
     void load();
+  };
+
+  const resendQr = (b: ExamBooking) => {
+    if (!b.pass_token) return;
+    const link = examConfirmationLink({
+      full_name: b.full_name,
+      phone: b.phone,
+      examDateLabel: examDateLabel(b.exam_date),
+      pickupStop: b.pickup_stop,
+      pickupTime: b.pickup_time,
+      passUrl: `${SITE_ORIGIN}/exam-pass/${b.pass_token}`,
+    });
+    // Direct click handler, no async work first — safe to open right away.
+    window.open(link, "_blank", "noopener,noreferrer");
   };
 
   const dateAndStopMatched = bookings.filter((b) => {
@@ -298,6 +319,15 @@ function SummerBookingsPage() {
                           <X className="size-4" /> {t("common.reject")}
                         </Button>
                       </div>
+                    )}
+                    {b.status === "confirmed" && (
+                      <Button
+                        size="sm"
+                        className="bg-success text-success-foreground hover:bg-success/90"
+                        onClick={() => resendQr(b)}
+                      >
+                        {t("summer.resendQr")}
+                      </Button>
                     )}
                   </TableCell>
                 </TableRow>

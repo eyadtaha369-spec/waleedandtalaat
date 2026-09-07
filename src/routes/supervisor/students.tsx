@@ -17,6 +17,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { subscriptionBadge } from "@/lib/subscription";
+import { SmartAvatar } from "@/components/SmartAvatar";
 import { openGroupInvite } from "@/lib/whatsappGroups";
 import { generateTempPassword, credentialsWhatsAppLink } from "@/lib/credentials";
 import { edgeFunctionErrorMessage } from "@/lib/functionsError";
@@ -40,6 +41,7 @@ type StudentRow = {
   trips_total: number;
   whatsapp_invited_at: string | null;
   username: string | null;
+  photo_url: string | null;
 };
 
 function SupervisorStudentsPage() {
@@ -214,6 +216,7 @@ function SupervisorStudentsPage() {
           <Table className="mt-4">
             <TableHeader>
               <TableRow>
+                <TableHead />
                 <TableHead>{t("common.name")}</TableHead>
                 <TableHead>{t("common.phone")}</TableHead>
                 <TableHead>{t("common.stop")}</TableHead>
@@ -230,6 +233,15 @@ function SupervisorStudentsPage() {
                 const badge = subscriptionBadge(s.subscription_type, "paid_full");
                 return (
                   <TableRow key={s.user_id}>
+                    <TableCell>
+                      <div className="size-8 overflow-hidden rounded-full">
+                        <SmartAvatar
+                          photoUrl={s.photo_url}
+                          name={s.full_name}
+                          className="size-full text-[10px]"
+                        />
+                      </div>
+                    </TableCell>
                     <TableCell className="font-medium">{s.full_name}</TableCell>
                     <TableCell className="whitespace-nowrap">{s.phone ?? "—"}</TableCell>
                     <TableCell>{s.pickup_stop ?? "—"}</TableCell>

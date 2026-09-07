@@ -45,6 +45,7 @@ type StudentRow = {
   trips_total: number;
   whatsapp_invited_at: string | null;
   username: string | null;
+  photo_url: string | null;
 };
 
 function normalizePhone(phone: string): string {
@@ -342,7 +343,7 @@ function AdminStudentsPage() {
                     <TableCell>
                       <div className="size-8 overflow-hidden rounded-full">
                         <SmartAvatar
-                          photoUrl={null}
+                          photoUrl={s.photo_url}
                           name={s.full_name}
                           className="size-full text-[10px]"
                         />

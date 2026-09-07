@@ -64,35 +64,95 @@ function pick(row: Record<string, unknown>, keys: string[]): string {
   return "";
 }
 
-function rowsToParsed(data: Record<string, unknown>[]): ParsedRow[] {
-  return data
-    .filter((r) => pick(r, ["اسم الطالب", "Name", "Full Name"]))
-    .map((r, i) => {
-      const name = pick(r, ["اسم الطالب", "Name", "Full Name"]);
-      const rawRoute = pick(r, ["الخط", "Route"]);
-      const planRaw = pick(r, ["برجاء", "Subscription Type"]);
-      const plan = mapSubscriptionChoice(planRaw);
-      const explicitTrips = Number(pick(r, ["Initial Trips Count", "Trips"]) || 0) || 0;
-      return {
-        full_name: name,
-        phone: pick(r, ["رقم الطالب", "WhatsApp Number", "Phone"]),
-        route: normalizeRouteName(rawRoute),
-        photo_url: normalizePhotoUrl(pick(r, ["4x6 صورة شخصية", "Photo URL", "photo_url"])),
-        pickup_stop: pick(r, ["Pickup Stop"]),
-        subscription_type: plan.subscription_type,
-        payment_status: plan.payment_status,
-        installment_status: plan.installment_status,
-        initial_amount_paid: Number(pick(r, ["المبلغ المدفوع", "Initial Amount Paid"]) || 0) || 0,
-        payment_method: pick(r, [
-          "برجاء اختيار طريقة التسديد التي سددت بها ",
-          "برجاء اختيار طريقة التسديد التي سددت بها",
-          "Payment Method",
-        ]),
-        trips_total: explicitTrips || plan.trips_total || 0,
-        username: generateUsername(name, i),
-        temp_password: generateTempPassword(),
-      };
+// Keywords anywhere in a row's cell values mean "don't import this
+// student" — works for CSV and Excel alike, since it only looks at
+// values, never styling.
+const REFUND_KEYWORDS = [
+  "مسترد",
+  "استرداد",
+  "ملغي",
+  "ملغى",
+  "مسترد فلوسه",
+  "refunded",
+  "cancelled",
+  "canceled",
+];
+
+function rowMatchesRefundKeyword(row: Record<string, unknown>): boolean {
+  return Object.values(row).some((v) => {
+    const s = String(v ?? "").toLowerCase();
+    return REFUND_KEYWORDS.some((k) => s.includes(k.toLowerCase()));
+  });
+}
+
+// Direct cell fill colors only — this can NOT see colors applied via
+// Excel's Conditional Formatting rules, which live in a completely
+// separate part of the file that a static read never touches. Only
+// rows colored by manually setting a cell's fill (Format Cells) are
+// caught here.
+const RED_FILL_HEXES = new Set(["FF0000", "FFC7CE", "EFE4E1"]);
+
+function isReddishHex(hex: string): boolean {
+  const clean = hex.toUpperCase().replace(/^0+(?=[0-9A-F]{6}$)/, "");
+  if (RED_FILL_HEXES.has(clean)) return true;
+  if (clean.length !== 6) return false;
+  const r = parseInt(clean.slice(0, 2), 16);
+  const g = parseInt(clean.slice(2, 4), 16);
+  const b = parseInt(clean.slice(4, 6), 16);
+  return r > 180 && g < 160 && b < 160;
+}
+
+function sheetRowHasRedFill(sheet: XLSX.WorkSheet, rowIndex: number, colCount: number): boolean {
+  for (let c = 0; c < colCount; c++) {
+    const cell = sheet[XLSX.utils.encode_cell({ r: rowIndex, c })];
+    const style = cell?.s as { fgColor?: { rgb?: string }; bgColor?: { rgb?: string } } | undefined;
+    const rgb = style?.fgColor?.rgb ?? style?.bgColor?.rgb;
+    if (rgb && isReddishHex(rgb)) return true;
+  }
+  return false;
+}
+
+function rowsToParsed(
+  data: Record<string, unknown>[],
+  isRowSkipped?: (originalIndex: number) => boolean,
+): { parsed: ParsedRow[]; skippedCount: number } {
+  let skippedCount = 0;
+  const parsed: ParsedRow[] = [];
+
+  data.forEach((r, originalIndex) => {
+    if (!pick(r, ["اسم الطالب", "Name", "Full Name"])) return;
+    if (rowMatchesRefundKeyword(r) || (isRowSkipped?.(originalIndex) ?? false)) {
+      skippedCount++;
+      return;
+    }
+
+    const name = pick(r, ["اسم الطالب", "Name", "Full Name"]);
+    const rawRoute = pick(r, ["الخط", "Route"]);
+    const planRaw = pick(r, ["برجاء", "Subscription Type"]);
+    const plan = mapSubscriptionChoice(planRaw);
+    const explicitTrips = Number(pick(r, ["Initial Trips Count", "Trips"]) || 0) || 0;
+    parsed.push({
+      full_name: name,
+      phone: pick(r, ["رقم الطالب", "WhatsApp Number", "Phone"]),
+      route: normalizeRouteName(rawRoute),
+      photo_url: normalizePhotoUrl(pick(r, ["4x6 صورة شخصية", "Photo URL", "photo_url"])),
+      pickup_stop: pick(r, ["Pickup Stop"]),
+      subscription_type: plan.subscription_type,
+      payment_status: plan.payment_status,
+      installment_status: plan.installment_status,
+      initial_amount_paid: Number(pick(r, ["المبلغ المدفوع", "Initial Amount Paid"]) || 0) || 0,
+      payment_method: pick(r, [
+        "برجاء اختيار طريقة التسديد التي سددت بها ",
+        "برجاء اختيار طريقة التسديد التي سددت بها",
+        "Payment Method",
+      ]),
+      trips_total: explicitTrips || plan.trips_total || 0,
+      username: generateUsername(name, parsed.length),
+      temp_password: generateTempPassword(),
     });
+  });
+
+  return { parsed, skippedCount };
 }
 
 export function ImportPanel() {
@@ -100,6 +160,7 @@ export function ImportPanel() {
   const [rows, setRows] = useState<ParsedRow[]>([]);
   const [results, setResults] = useState<ImportResult[]>([]);
   const [busy, setBusy] = useState(false);
+  const [skippedOnLoad, setSkippedOnLoad] = useState(0);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const onFile = async (file: File) => {
@@ -107,15 +168,25 @@ export function ImportPanel() {
 
     if (isExcel) {
       const buf = await file.arrayBuffer();
-      const workbook = XLSX.read(buf, { type: "array" });
+      const workbook = XLSX.read(buf, { type: "array", cellStyles: true });
       const sheetName = workbook.SheetNames[0];
       const sheet = sheetName ? workbook.Sheets[sheetName] : undefined;
       if (!sheet) {
         toast.error("Could not read a sheet from this file.");
         return;
       }
-      const data = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "" });
-      const parsed = rowsToParsed(data);
+      // blankrows:true keeps data[i] aligned 1:1 with the sheet's
+      // actual (i+1)-th data row (row 0 is the header) — needed so
+      // the red-fill lookup below checks the right row.
+      const data = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, {
+        defval: "",
+        blankrows: true,
+      });
+      const range = sheet["!ref"] ? XLSX.utils.decode_range(sheet["!ref"]) : null;
+      const colCount = range ? range.e.c + 1 : 0;
+      const { parsed, skippedCount } = rowsToParsed(data, (i) =>
+        sheetRowHasRedFill(sheet, i + 1, colCount),
+      );
       if (parsed.length === 0) {
         toast.error(
           "No valid rows found. Expected columns: اسم الطالب, رقم الطالب, 4x6 صورة شخصية, الخط.",
@@ -124,6 +195,10 @@ export function ImportPanel() {
       }
       setRows(parsed);
       setResults([]);
+      setSkippedOnLoad(skippedCount);
+      if (skippedCount > 0) {
+        toast.success(`${skippedCount} ${t("import.skippedRefunded")}`);
+      }
       return;
     }
 
@@ -131,7 +206,7 @@ export function ImportPanel() {
       header: true,
       skipEmptyLines: true,
       complete: (res) => {
-        const parsed = rowsToParsed(res.data);
+        const { parsed, skippedCount } = rowsToParsed(res.data);
         if (parsed.length === 0) {
           toast.error(
             "No valid rows found. Expected columns: اسم الطالب, رقم الطالب, 4x6 صورة شخصية, الخط.",
@@ -140,6 +215,10 @@ export function ImportPanel() {
         }
         setRows(parsed);
         setResults([]);
+        setSkippedOnLoad(skippedCount);
+        if (skippedCount > 0) {
+          toast.success(`${skippedCount} ${t("import.skippedRefunded")}`);
+        }
       },
       error: (err) => toast.error(err.message),
     });
@@ -169,6 +248,7 @@ export function ImportPanel() {
       createdCount > 0 ? `${createdCount} ${t("import.accountsCreated")}` : null,
       updatedCount > 0 ? `${updatedCount} ${t("import.updated")}` : null,
       failCount > 0 ? `${failCount} ${t("import.failed").toLowerCase()}` : null,
+      skippedOnLoad > 0 ? `${skippedOnLoad} ${t("import.skippedRefunded")}` : null,
     ].filter(Boolean);
     toast.success(parts.join(", "));
   };
@@ -203,7 +283,11 @@ export function ImportPanel() {
           (سداد كامل / قسط / عرض الدحيحة / 70 رحلة / اسبوعي). Payment amount, receipt and other
           columns are ignored automatically. A row whose phone number already matches an existing
           student updates that student's profile instead of creating a duplicate account — remaining
-          trip balance is never touched by an update.
+          trip balance is never touched by an update. Rows mentioning مسترد / استرداد / ملغي /
+          refunded / cancelled anywhere, or manually filled with a red cell color, are skipped
+          automatically. Note: colors applied via Excel's Conditional Formatting rules (rather than
+          a manually-set cell fill) can't be detected this way — add one of the keywords above too
+          for those rows to guarantee they're skipped.
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <input
@@ -232,6 +316,11 @@ export function ImportPanel() {
       {rows.length > 0 && (
         <section className="overflow-x-auto rounded-3xl border border-border bg-card p-6">
           <h3 className="mb-4 font-semibold">{t("import.previewTitle")}</h3>
+          {skippedOnLoad > 0 && (
+            <p className="mb-3 text-sm text-destructive">
+              🔴 {skippedOnLoad} {t("import.skippedRefunded")}
+            </p>
+          )}
           <Table>
             <TableHeader>
               <TableRow>

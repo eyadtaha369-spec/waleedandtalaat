@@ -19,7 +19,7 @@ import { edgeFunctionErrorMessage } from "@/lib/functionsError";
 import { RecoverCredentialsPanel } from "@/components/admin/RecoverCredentialsPanel";
 import { useLanguage } from "@/hooks/useLanguage";
 import { withUtf8Bom, excelTextCell } from "@/lib/csvExport";
-import { normalizeRouteName } from "@/lib/routeAliases";
+import { normalizeRouteName, stopColumnHeaderForRoute } from "@/lib/routeAliases";
 import { normalizePhotoUrl } from "@/lib/driveImage";
 import {
   mapSubscriptionChoice,
@@ -158,12 +158,21 @@ function rowsToParsed(
     const planRaw = pick(r, ["برجاء الاختيار من الآتي", "برجاء", "Subscription Type"]);
     const plan = mapSubscriptionChoice(planRaw);
     const explicitTrips = Number(pick(r, ["Initial Trips Count", "Trips"]) || 0) || 0;
+    const canonicalRoute = normalizeRouteName(rawRoute);
+    // The sheet has one column per route, headed with that route's own
+    // name — but only the column matching THIS student's own route
+    // actually holds their real stop; every other route's column for
+    // this row holds a meaningless leftover number. A purely numeric
+    // value means nothing was really filled in for that column.
+    const routeStopHeader = stopColumnHeaderForRoute(canonicalRoute);
+    const routeStopRaw = routeStopHeader ? pick(r, [routeStopHeader]) : "";
+    const routeStop = /^\d+(\.\d+)?$/.test(routeStopRaw) ? "" : routeStopRaw;
     parsed.push({
       full_name: name,
       phone,
-      route: normalizeRouteName(rawRoute),
+      route: canonicalRoute,
       photo_url: normalizePhotoUrl(pick(r, ["4x6 صورة شخصية", "Photo URL", "photo_url"])),
-      pickup_stop: pick(r, ["برجاء كتابة نقطة الركوب", "Pickup Stop"]),
+      pickup_stop: routeStop || pick(r, ["برجاء كتابة نقطة الركوب", "Pickup Stop"]),
       subscription_type: plan.subscription_type,
       payment_status: plan.payment_status,
       installment_status: plan.installment_status,

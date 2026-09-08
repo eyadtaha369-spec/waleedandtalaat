@@ -329,6 +329,7 @@ function AdminStudentsPage() {
                 <TableHead>{t("common.name")}</TableHead>
                 <TableHead>{t("common.phone")}</TableHead>
                 <TableHead>{t("common.route")}</TableHead>
+                <TableHead>{t("common.stop")}</TableHead>
                 <TableHead>{t("dashboard.subscription")}</TableHead>
                 <TableHead>{t("students.username")}</TableHead>
                 <TableHead>{t("students.source")}</TableHead>
@@ -352,6 +353,7 @@ function AdminStudentsPage() {
                     <TableCell className="font-medium">{s.full_name}</TableCell>
                     <TableCell className="whitespace-nowrap">{s.phone ?? "—"}</TableCell>
                     <TableCell>{s.route ?? "—"}</TableCell>
+                    <TableCell>{s.pickup_stop ?? "—"}</TableCell>
                     <TableCell>
                       <Badge className={badge.className}>
                         {badge.emoji} {badge.label}

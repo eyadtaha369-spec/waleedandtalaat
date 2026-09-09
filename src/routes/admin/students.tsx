@@ -184,12 +184,12 @@ function AdminStudentsPage() {
     });
   };
 
-  const deleteSelected = async () => {
-    if (selectedForDelete.size === 0) return;
+  const deleteStudentIds = async (ids: string[]) => {
+    if (ids.length === 0) return;
     if (!window.confirm(t("students.confirmDelete"))) return;
     setDeleting(true);
     const { data, error } = await supabase.functions.invoke("delete-students", {
-      body: { user_ids: [...selectedForDelete] },
+      body: { user_ids: ids },
     });
     setDeleting(false);
     if (error || data?.error) {
@@ -206,7 +206,28 @@ function AdminStudentsPage() {
     toast.success(`${deletedIds.size} ${t("students.deletedCount")}`);
     setStudents((prev) => prev.filter((s) => !deletedIds.has(s.user_id)));
     setAuditResult((prev) => prev?.filter((s) => !deletedIds.has(s.user_id)) ?? null);
-    setSelectedForDelete(new Set());
+    setSelectedForDelete((prev) => {
+      const next = new Set(prev);
+      deletedIds.forEach((id) => next.delete(id));
+      return next;
+    });
+  };
+
+  const toggleMainSelect = (id: string) => {
+    setSelectedForDelete((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleMainSelectAll = () => {
+    setSelectedForDelete((prev) => {
+      const allSelected = filtered.length > 0 && filtered.every((s) => prev.has(s.user_id));
+      if (allSelected) return new Set();
+      return new Set(filtered.map((s) => s.user_id));
+    });
   };
 
   return (
@@ -253,7 +274,11 @@ function AdminStudentsPage() {
             </Badge>
           )}
           {selectedForDelete.size > 0 && (
-            <Button variant="destructive" disabled={deleting} onClick={() => void deleteSelected()}>
+            <Button
+              variant="destructive"
+              disabled={deleting}
+              onClick={() => void deleteStudentIds([...selectedForDelete])}
+            >
               <Trash2 className="size-4" /> {t("students.deleteSelected")} ({selectedForDelete.size}
               )
             </Button>
@@ -315,6 +340,17 @@ function AdminStudentsPage() {
             className="max-w-xs"
           />
           <Badge className="btn-gold">{filtered.length}</Badge>
+          {selectedForDelete.size > 0 && (
+            <Button
+              variant="destructive"
+              disabled={deleting}
+              className="ms-auto"
+              onClick={() => void deleteStudentIds([...selectedForDelete])}
+            >
+              <Trash2 className="size-4" /> {t("students.deleteSelected")} ({selectedForDelete.size}
+              )
+            </Button>
+          )}
         </div>
 
         {loading ? (
@@ -325,6 +361,15 @@ function AdminStudentsPage() {
           <Table className="mt-4">
             <TableHeader>
               <TableRow>
+                <TableHead>
+                  <input
+                    type="checkbox"
+                    checked={
+                      filtered.length > 0 && filtered.every((s) => selectedForDelete.has(s.user_id))
+                    }
+                    onChange={toggleMainSelectAll}
+                  />
+                </TableHead>
                 <TableHead />
                 <TableHead>{t("common.name")}</TableHead>
                 <TableHead>{t("common.phone")}</TableHead>
@@ -341,6 +386,13 @@ function AdminStudentsPage() {
                 const badge = subscriptionBadge(s.subscription_type, s.payment_status);
                 return (
                   <TableRow key={s.user_id}>
+                    <TableCell>
+                      <input
+                        type="checkbox"
+                        checked={selectedForDelete.has(s.user_id)}
+                        onChange={() => toggleMainSelect(s.user_id)}
+                      />
+                    </TableCell>
                     <TableCell>
                       <div className="size-8 overflow-hidden rounded-full">
                         <SmartAvatar
@@ -364,16 +416,26 @@ function AdminStudentsPage() {
                       {s.username ? t("students.sourceBulkImport") : t("students.sourceSelfSignup")}
                     </TableCell>
                     <TableCell className="text-end">
-                      {s.username && s.phone && (
+                      <div className="flex justify-end gap-1">
+                        {s.username && s.phone && (
+                          <Button
+                            size="sm"
+                            className="bg-success text-success-foreground hover:bg-success/90"
+                            disabled={busyId === s.user_id}
+                            onClick={() => void sendCredentials(s)}
+                          >
+                            <MessageCircle className="size-4" /> {t("students.sendCredentials")}
+                          </Button>
+                        )}
                         <Button
                           size="sm"
-                          className="bg-success text-success-foreground hover:bg-success/90"
-                          disabled={busyId === s.user_id}
-                          onClick={() => void sendCredentials(s)}
+                          variant="destructive"
+                          disabled={deleting}
+                          onClick={() => void deleteStudentIds([s.user_id])}
                         >
-                          <MessageCircle className="size-4" /> {t("students.sendCredentials")}
+                          <Trash2 className="size-4" />
                         </Button>
-                      )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 );

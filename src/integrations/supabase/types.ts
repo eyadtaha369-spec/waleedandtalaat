@@ -483,6 +483,20 @@ export type Database = {
           trips_total: number;
         }[];
       };
+      get_route_stop_breakdown: {
+        Args: { p_route: string | null; p_service_date: string | null };
+        Returns: {
+          route: string | null;
+          pickup_stop: string | null;
+          student_id: string | null;
+          full_name: string;
+          phone: string | null;
+          photo_url: string | null;
+          subscription_type: string;
+          payment_status: string;
+          source: string;
+        }[];
+      };
       count_today_scanned_exam_passes: {
         Args: Record<string, never>;
         Returns: number;

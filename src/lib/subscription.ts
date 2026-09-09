@@ -68,9 +68,9 @@ export const SUBSCRIPTION_BADGES: Record<
   },
   "70_trips": {
     paid_full: {
-      emoji: "🔵",
+      emoji: "🟣",
       label: "باقة 70 رحلة",
-      className: "bg-accent text-accent-foreground",
+      className: "bg-purple-500 text-white",
     },
     installment_pending: {
       emoji: "🟡",
@@ -79,7 +79,7 @@ export const SUBSCRIPTION_BADGES: Record<
     },
   },
   weekly: {
-    paid_full: { emoji: "⚪", label: "اشتراك أسبوعي", className: "bg-muted text-muted-foreground" },
+    paid_full: { emoji: "🔵", label: "اشتراك أسبوعي", className: "bg-blue-500 text-white" },
     installment_pending: {
       emoji: "🟡",
       label: "اشتراك أسبوعي - نظام أقساط",

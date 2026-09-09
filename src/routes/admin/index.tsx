@@ -165,6 +165,12 @@ function AdminConsole() {
           description={t("admin.routeDashDesc")}
         />
         <ShortcutCard
+          to="/trips-balance"
+          icon={Ticket}
+          title={t("tripsBalance.title")}
+          description={t("admin.tripsBalanceDesc")}
+        />
+        <ShortcutCard
           to="/admin/installments"
           icon={Wallet}
           title={t("admin.installmentsTitle")}

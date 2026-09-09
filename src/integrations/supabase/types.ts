@@ -483,6 +483,23 @@ export type Database = {
           trips_total: number;
         }[];
       };
+      list_route_package_students: {
+        Args: { p_route: string | null };
+        Returns: {
+          user_id: string;
+          full_name: string;
+          phone: string | null;
+          route: string | null;
+          pickup_stop: string | null;
+          photo_url: string | null;
+          trips_remaining: number;
+          trips_total: number;
+        }[];
+      };
+      adjust_student_trips: {
+        Args: { p_student_id: string; p_delta: number; p_reason: string | null };
+        Returns: Json;
+      };
       get_route_stop_breakdown: {
         Args: { p_route: string | null; p_service_date: string | null };
         Returns: {

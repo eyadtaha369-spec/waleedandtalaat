@@ -7,8 +7,7 @@ import { useLanguage } from "@/hooks/useLanguage";
 /**
  * Wraps an admin-section page. Redirects: signed-out -> /auth,
  * students -> /dashboard, and (when requireAdmin) supervisors ->
- * /admin/scan, their only allowed page. Renders nothing until the
- * check passes, so pages never flash unauthorized content.
+ * /supervisor/students, their default landing page.
  */
 export function AdminGuard({
   requireAdmin = false,
@@ -34,7 +33,7 @@ export function AdminGuard({
     }
     if (requireAdmin && !isAdmin) {
       toast.error("Admin access required.");
-      void navigate({ to: "/admin/scan" });
+      void navigate({ to: "/supervisor/students" });
     }
   }, [loading, user, isStaff, isAdmin, requireAdmin, navigate]);
 

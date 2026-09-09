@@ -41,7 +41,7 @@ function AuthPage() {
   useEffect(() => {
     if (loading || !user) return;
     if (isAdmin) void navigate({ to: "/admin" });
-    else if (isSupervisor) void navigate({ to: "/admin/scan" });
+    else if (isSupervisor) void navigate({ to: "/supervisor/students" });
     else void navigate({ to: "/dashboard" });
   }, [loading, user, isAdmin, isSupervisor, navigate]);
 

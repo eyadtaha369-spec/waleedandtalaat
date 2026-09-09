@@ -13,7 +13,7 @@ import { useLanguage } from "@/hooks/useLanguage";
 
 const SCANNER_ELEMENT_ID = "wt-qr-scanner";
 
-type ScanStatus = "booked" | "not_booked" | "scanned_earlier";
+type ScanStatus = "booked" | "not_booked" | "scanned_earlier" | "no_trips_left";
 
 type ScanResult = {
   status: ScanStatus;
@@ -21,6 +21,7 @@ type ScanResult = {
   route: string | null;
   photoUrl: string | null;
   tripsRemaining: number | null;
+  tripsTotal: number | null;
   hasCompanion: boolean;
 };
 
@@ -112,8 +113,22 @@ export function ScannerPanel() {
         route: data.route,
         photoUrl: data.photo_url,
         tripsRemaining: data.trips_remaining ?? null,
+        tripsTotal: data.trips_total ?? null,
         hasCompanion: !!data.has_companion,
       });
+      if (
+        data.status === "booked" &&
+        data.trips_remaining !== null &&
+        data.trips_remaining !== undefined
+      ) {
+        toast.success(
+          `تم تسجيل الركوب بنجاح! المتبقي: ${data.trips_remaining}/${data.trips_total} رحلة 🟢`,
+        );
+      } else if (data.status === "no_trips_left") {
+        toast.error(`عفواً، استنفذ الطالب جميع الرحلات (0/${data.trips_total}) 🔴`, {
+          duration: 10000,
+        });
+      }
       if (payload.exam && data.status === "booked") {
         void loadScannedCount();
       }
@@ -221,6 +236,11 @@ function ResultCard({ result, t }: { result: ScanResult; t: (key: string) => str
       className: "bg-warning text-warning-foreground",
       icon: ScanLine,
     },
+    no_trips_left: {
+      label: t("scanner.noTripsLeft"),
+      className: "bg-destructive text-destructive-foreground",
+      icon: XCircle,
+    },
   };
   const c = config[result.status];
   const Icon = c.icon;
@@ -240,7 +260,7 @@ function ResultCard({ result, t }: { result: ScanResult; t: (key: string) => str
           <p className="text-sm text-muted-foreground">
             {result.route ?? "—"}
             {result.tripsRemaining !== null &&
-              ` · ${result.tripsRemaining} ${t("scanner.tripsLeft")}`}
+              ` · ${result.tripsRemaining}${result.tripsTotal !== null ? `/${result.tripsTotal}` : ""} ${t("scanner.tripsLeft")}`}
           </p>
         </div>
         <Badge className={c.className}>

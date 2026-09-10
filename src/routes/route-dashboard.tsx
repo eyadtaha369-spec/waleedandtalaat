@@ -38,6 +38,7 @@ type PassengerRow = {
   subscription_type: string;
   payment_status: string;
   source: string;
+  payment_method: string | null;
 };
 
 function toWhatsAppNumber(phone: string): string {
@@ -170,10 +171,13 @@ function RouteDashboardPage() {
                               p.source === "daily_pass"
                                 ? null
                                 : subscriptionBadge(p.subscription_type, p.payment_status);
+                            const isCash = p.source === "daily_pass" && p.payment_method === "cash";
                             return (
                               <li
                                 key={p.student_id ?? `${stopName}-${i}`}
-                                className="flex items-center gap-3 py-3"
+                                className={`flex flex-wrap items-center gap-3 py-3 ${
+                                  isCash ? "bg-warning/15 -mx-4 px-4" : ""
+                                }`}
                               >
                                 <div className="size-9 shrink-0 overflow-hidden rounded-full">
                                   <SmartAvatar
@@ -182,11 +186,18 @@ function RouteDashboardPage() {
                                     className="size-full text-xs"
                                   />
                                 </div>
-                                <div className="flex-1">
+                                <div className="min-w-0 flex-1">
                                   <p className="text-sm font-medium">{p.full_name}</p>
                                   <p className="text-xs text-muted-foreground">
                                     {p.phone ?? "—"} · {stopName}
                                   </p>
+                                  {p.source === "daily_pass" && (
+                                    <p className="mt-1 text-xs">
+                                      {p.payment_method === "instapay"
+                                        ? "InstaPay"
+                                        : t("routeDash.cashOnBoard")}
+                                    </p>
+                                  )}
                                 </div>
                                 {badge ? (
                                   <Badge className={badge.className}>
@@ -197,6 +208,16 @@ function RouteDashboardPage() {
                                     {t("routeDash.dailyPass")}
                                   </Badge>
                                 )}
+                                {p.source === "daily_pass" &&
+                                  (p.payment_method === "instapay" ? (
+                                    <Badge className="bg-success text-success-foreground">
+                                      {t("routeDash.paidConfirmed")}
+                                    </Badge>
+                                  ) : (
+                                    <Badge className="bg-warning text-warning-foreground">
+                                      {t("routeDash.cashDue")}
+                                    </Badge>
+                                  ))}
                                 {p.phone && (
                                   <a
                                     href={`https://wa.me/${toWhatsAppNumber(p.phone)}`}

@@ -518,6 +518,7 @@ export type Database = {
           subscription_type: string;
           payment_status: string;
           source: string;
+          payment_method: string | null;
         }[];
       };
       count_today_scanned_exam_passes: {

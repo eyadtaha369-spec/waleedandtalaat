@@ -184,7 +184,9 @@ function RouteDashboardPage() {
                                 </div>
                                 <div className="flex-1">
                                   <p className="text-sm font-medium">{p.full_name}</p>
-                                  <p className="text-xs text-muted-foreground">{p.phone ?? "—"}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {p.phone ?? "—"} · {stopName}
+                                  </p>
                                 </div>
                                 {badge ? (
                                   <Badge className={badge.className}>

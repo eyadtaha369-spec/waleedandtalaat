@@ -30,7 +30,7 @@ export const BEFORE_SIDI_GABER_STOPS = [
 // Asafra / Montazah / 45 — everything on that route not already
 // covered by the "before Sidi Gaber" stretch above.
 export const AFTER_SIDI_GABER_STOPS = [
-  "المنتدره",
+  "Sheraton المندرة",
   "الوردة البيضاء",
   "نفق 45",
   "نفق الاسكندر ابراهيم",

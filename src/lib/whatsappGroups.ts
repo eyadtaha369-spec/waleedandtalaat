@@ -26,10 +26,15 @@ export function groupInviteLink(
 
 /**
  * Opens the invite link and reports whether it actually opened.
- * window.open() returns null (or, in some browsers, a closed window
- * reference) when a popup blocker intercepts it — callers must check
- * this before recording the invite as sent, or a blocked popup gets
- * silently recorded as delivered.
+ * window.open() returns null when a popup blocker intercepts it —
+ * callers must check this before recording the invite as sent, or a
+ * blocked popup gets silently recorded as delivered.
+ *
+ * Only checks for a non-null return, not win.closed: checking
+ * .closed synchronously right after opening a cross-origin URL
+ * (wa.me) is timing-sensitive and can report a false negative even
+ * when the tab genuinely opened — that's exactly what was happening
+ * here (WhatsApp visibly opened, but this check still said it hadn't).
  */
 export function openGroupInvite(
   fullName: string,
@@ -43,5 +48,5 @@ export function openGroupInvite(
   // the usual reverse-tabnabbing risk noopener guards against
   // doesn't apply.
   const win = window.open(groupInviteLink(fullName, phone, routeName, groupLink), "_blank");
-  return !!win && !win.closed;
+  return !!win;
 }

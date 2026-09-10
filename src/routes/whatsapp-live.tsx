@@ -119,9 +119,15 @@ function WhatsAppLivePage() {
     routeLinks.find((r) => r.route === route)?.whatsapp_group_link ?? null;
 
   const markInvited = async (ids: string[]) => {
-    const { error } = await supabase.rpc("mark_whatsapp_invited", { p_student_ids: ids });
+    const { data, error } = await supabase.rpc("mark_whatsapp_invited", { p_student_ids: ids });
     if (error) {
       toast.error(error.message);
+      return;
+    }
+    const updatedCount = (data as number) ?? 0;
+    if (updatedCount < ids.length) {
+      toast.error(t("whatsapp.partialMarkFailed"));
+      void load(effectiveRoute || "all");
       return;
     }
     setStudents((prev) =>

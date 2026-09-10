@@ -395,6 +395,8 @@ export const translations: Record<Lang, Record<string, string>> = {
     "whatsapp.sendInviteNewStudents": "إرسال الدعوات للطلاب الجدد",
     "whatsapp.noLinkForRoute": "لا يوجد رابط جروب لخط هذا الطالب بعد",
     "whatsapp.noNewStudents": "لا يوجد طلاب جدد بحاجة لدعوة.",
+    "whatsapp.partialMarkFailed":
+      "لم يتم تحديث الحالة لبعض الطلاب — تحقق من صلاحياتك على هذا الخط.",
     "whatsapp.resetStatus": "إعادة تعيين",
     "whatsapp.resetRouteButton": "إعادة تعيين حالة الواتساب للخط",
     "whatsapp.statusReset": "تم إعادة تعيين الحالة",
@@ -837,6 +839,8 @@ export const translations: Record<Lang, Record<string, string>> = {
     "whatsapp.sendInviteNewStudents": "Send invites to new students",
     "whatsapp.noLinkForRoute": "This student's route has no group link yet",
     "whatsapp.noNewStudents": "No new students need an invite.",
+    "whatsapp.partialMarkFailed":
+      "Status not updated for some students — check your permission for this route.",
     "whatsapp.resetStatus": "Reset",
     "whatsapp.resetRouteButton": "Reset WhatsApp Status for Route",
     "whatsapp.statusReset": "Status reset",

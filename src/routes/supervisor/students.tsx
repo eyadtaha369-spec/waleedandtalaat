@@ -80,7 +80,19 @@ function SupervisorStudentsPage() {
 
   const markInvited = async (ids: string[]) => {
     if (ids.length === 0) return;
-    await supabase.rpc("mark_whatsapp_invited", { p_student_ids: ids });
+    const { data, error } = await supabase.rpc("mark_whatsapp_invited", { p_student_ids: ids });
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    const updatedCount = (data as number) ?? 0;
+    if (updatedCount < ids.length) {
+      toast.error(t("whatsapp.partialMarkFailed"));
+      // Still refresh from the DB so the UI reflects reality instead
+      // of guessing which ones actually succeeded.
+      void load();
+      return;
+    }
     setStudents((prev) =>
       (prev ?? []).map((s) =>
         ids.includes(s.user_id) ? { ...s, whatsapp_invited_at: new Date().toISOString() } : s,

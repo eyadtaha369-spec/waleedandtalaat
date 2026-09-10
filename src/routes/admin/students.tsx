@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/table";
 import { SmartAvatar } from "@/components/SmartAvatar";
 import { subscriptionBadge } from "@/lib/subscription";
+import { openGroupInvite } from "@/lib/whatsappGroups";
 import { generateTempPassword, credentialsWhatsAppLink } from "@/lib/credentials";
 import { edgeFunctionErrorMessage } from "@/lib/functionsError";
 
@@ -111,6 +112,18 @@ function AdminStudentsPage() {
   const [selectedForDelete, setSelectedForDelete] = useState<Set<string>>(new Set());
   const [deleting, setDeleting] = useState(false);
   const auditFileRef = useRef<HTMLInputElement>(null);
+  const [routeLinks, setRouteLinks] = useState<
+    { route: string; whatsapp_group_link: string | null }[]
+  >([]);
+
+  useEffect(() => {
+    void supabase
+      .rpc("list_routes_with_whatsapp_links")
+      .then(({ data }) => setRouteLinks(data ?? []));
+  }, []);
+
+  const linkForRoute = (route: string | null) =>
+    routeLinks.find((r) => r.route === route)?.whatsapp_group_link ?? null;
 
   const load = async (route: string) => {
     setLoading(true);
@@ -128,6 +141,36 @@ function AdminStudentsPage() {
   useEffect(() => {
     void load(routeFilter);
   }, [routeFilter]);
+
+  const markInvited = async (ids: string[]) => {
+    const { data, error } = await supabase.rpc("mark_whatsapp_invited", { p_student_ids: ids });
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    const updatedCount = (data as number) ?? 0;
+    if (updatedCount < ids.length) {
+      toast.error(t("whatsapp.partialMarkFailed"));
+      void load(routeFilter);
+      return;
+    }
+    setStudents((prev) =>
+      prev.map((s) =>
+        ids.includes(s.user_id) ? { ...s, whatsapp_invited_at: new Date().toISOString() } : s,
+      ),
+    );
+  };
+
+  const sendGroupInvite = (s: StudentRow) => {
+    const link = linkForRoute(s.route);
+    if (!link || !s.phone) {
+      toast.error(t("whatsapp.noLinkForRoute"));
+      return;
+    }
+    const opened = openGroupInvite(s.full_name, s.phone, s.route ?? "", link);
+    if (opened) void markInvited([s.user_id]);
+    else toast.error(t("whatsapp.popupNote"));
+  };
 
   const filtered = students.filter((s) => {
     const q = search.trim().toLowerCase();
@@ -378,6 +421,7 @@ function AdminStudentsPage() {
                 <TableHead>{t("dashboard.subscription")}</TableHead>
                 <TableHead>{t("students.username")}</TableHead>
                 <TableHead>{t("students.source")}</TableHead>
+                <TableHead>{t("whatsapp.status")}</TableHead>
                 <TableHead className="text-end">{t("common.actions")}</TableHead>
               </TableRow>
             </TableHeader>
@@ -415,8 +459,26 @@ function AdminStudentsPage() {
                     <TableCell className="text-xs">
                       {s.username ? t("students.sourceBulkImport") : t("students.sourceSelfSignup")}
                     </TableCell>
+                    <TableCell>
+                      {s.whatsapp_invited_at ? (
+                        <Badge className="bg-success text-success-foreground">
+                          🟢 {t("whatsapp.invited")}
+                        </Badge>
+                      ) : (
+                        <Badge className="bg-destructive text-destructive-foreground">
+                          🔴 {t("whatsapp.pending")}
+                        </Badge>
+                      )}
+                    </TableCell>
                     <TableCell className="text-end">
                       <div className="flex justify-end gap-1">
+                        <Button
+                          size="sm"
+                          className="bg-accent text-accent-foreground hover:bg-accent/90"
+                          onClick={() => sendGroupInvite(s)}
+                        >
+                          <MessageCircle className="size-4" /> {t("whatsapp.sendInvite")}
+                        </Button>
                         {s.username && s.phone && (
                           <Button
                             size="sm"

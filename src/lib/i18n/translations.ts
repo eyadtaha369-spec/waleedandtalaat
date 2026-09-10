@@ -398,6 +398,8 @@ export const translations: Record<Lang, Record<string, string>> = {
     "whatsapp.partialMarkFailed":
       "لم يتم تحديث الحالة لبعض الطلاب — تحقق من صلاحياتك على هذا الخط.",
     "whatsapp.resetStatus": "إعادة تعيين",
+    "whatsapp.markInvited": "✅ تحديد كمدعو",
+    "whatsapp.markSelectedInvited": "تحديد المحدد كمدعو",
     "whatsapp.resetRouteButton": "إعادة تعيين حالة الواتساب للخط",
     "whatsapp.statusReset": "تم إعادة تعيين الحالة",
     "whatsapp.confirmResetRoute":
@@ -842,6 +844,8 @@ export const translations: Record<Lang, Record<string, string>> = {
     "whatsapp.partialMarkFailed":
       "Status not updated for some students — check your permission for this route.",
     "whatsapp.resetStatus": "Reset",
+    "whatsapp.markInvited": "✅ Mark Invited",
+    "whatsapp.markSelectedInvited": "Mark selected as Invited",
     "whatsapp.resetRouteButton": "Reset WhatsApp Status for Route",
     "whatsapp.statusReset": "Status reset",
     "whatsapp.confirmResetRoute":

@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { ArrowLeft, MessageCircle, Radio, RotateCcw } from "lucide-react";
+import { ArrowLeft, CheckCheck, MessageCircle, Radio, RotateCcw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/hooks/useLanguage";
@@ -296,6 +296,13 @@ function WhatsAppLivePage() {
             <RotateCcw className="size-4" /> {t("whatsapp.resetRouteButton")}
           </Button>
           <Button
+            variant="outline"
+            disabled={selected.size === 0}
+            onClick={() => void markInvited([...selected])}
+          >
+            <CheckCheck className="size-4" /> {t("whatsapp.markSelectedInvited")}
+          </Button>
+          <Button
             className="btn-gold"
             disabled={broadcasting || selected.size === 0}
             onClick={() => void broadcast()}
@@ -349,6 +356,15 @@ function WhatsAppLivePage() {
                       <Button size="sm" variant="outline" onClick={() => sendInvite(s)}>
                         <MessageCircle className="size-4" /> {t("whatsapp.sendInvite")}
                       </Button>
+                      {!s.whatsapp_invited_at && (
+                        <Button
+                          size="sm"
+                          className="bg-success text-success-foreground hover:bg-success/90"
+                          onClick={() => void markInvited([s.user_id])}
+                        >
+                          <CheckCheck className="size-4" /> {t("whatsapp.markInvited")}
+                        </Button>
+                      )}
                       {s.whatsapp_invited_at && (
                         <Button
                           size="sm"

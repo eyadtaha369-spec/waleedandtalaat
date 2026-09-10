@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
-import { ArrowLeft, MessageCircle, Search, Trash2 } from "lucide-react";
+import { ArrowLeft, CheckCheck, MessageCircle, Search, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useRoutes } from "@/hooks/useRoutes";
@@ -479,6 +479,15 @@ function AdminStudentsPage() {
                         >
                           <MessageCircle className="size-4" /> {t("whatsapp.sendInvite")}
                         </Button>
+                        {!s.whatsapp_invited_at && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => void markInvited([s.user_id])}
+                          >
+                            <CheckCheck className="size-4" /> {t("whatsapp.markInvited")}
+                          </Button>
+                        )}
                         {s.username && s.phone && (
                           <Button
                             size="sm"

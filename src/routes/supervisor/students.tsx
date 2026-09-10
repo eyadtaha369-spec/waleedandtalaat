@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { ArrowLeft, MessageCircle, RotateCcw, Rocket, UsersRound } from "lucide-react";
+import { ArrowLeft, CheckCheck, MessageCircle, RotateCcw, Rocket, UsersRound } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/hooks/useLanguage";
@@ -303,6 +303,15 @@ function SupervisorStudentsPage() {
                         >
                           <MessageCircle className="size-4" /> {t("whatsapp.sendInvite")}
                         </Button>
+                        {!s.whatsapp_invited_at && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => void markInvited([s.user_id])}
+                          >
+                            <CheckCheck className="size-4" /> {t("whatsapp.markInvited")}
+                          </Button>
+                        )}
                         {s.whatsapp_invited_at && (
                           <Button
                             size="sm"

@@ -95,6 +95,12 @@ export type Database = {
         };
         Relationships: [];
       };
+      app_settings: {
+        Row: { id: boolean; booking_window_override: boolean };
+        Insert: { id?: boolean; booking_window_override?: boolean };
+        Update: { id?: boolean; booking_window_override?: boolean };
+        Relationships: [];
+      };
       routes: {
         Row: { id: string; name: string; display_order: number; whatsapp_group_link: string | null };
         Insert: { id?: string; name: string; display_order?: number; whatsapp_group_link?: string | null };

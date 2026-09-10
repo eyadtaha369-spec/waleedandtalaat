@@ -60,9 +60,21 @@ function Dashboard() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [optedOut, setOptedOut] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [windowOverride, setWindowOverride] = useState(false);
 
-  const mw = useMemo(() => morningWindow(), []);
-  const rw = useMemo(() => returnWindow(), []);
+  useEffect(() => {
+    void supabase
+      .from("app_settings")
+      .select("booking_window_override")
+      .eq("id", true)
+      .maybeSingle()
+      .then(({ data }) => setWindowOverride(!!data?.booking_window_override));
+  }, []);
+
+  const mwBase = useMemo(() => morningWindow(), []);
+  const rwBase = useMemo(() => returnWindow(), []);
+  const mw = windowOverride ? { ...mwBase, open: true } : mwBase;
+  const rw = windowOverride ? { ...rwBase, open: true } : rwBase;
   const ow = useMemo(() => optOutWindow(), []);
 
   const [stop, setStop] = useState<string>("");

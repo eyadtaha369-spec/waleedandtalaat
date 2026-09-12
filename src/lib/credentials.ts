@@ -61,6 +61,19 @@ export function toWhatsAppNumber(phone: string): string {
   return digits;
 }
 
+// Multiple greeting variants, picked at random per message. Sending
+// many WhatsApp messages with byte-for-byte identical openers back to
+// back is exactly the kind of pattern WhatsApp's spam detection flags
+// — small natural variation makes each message look individually
+// composed rather than templated.
+const CREDENTIALS_GREETINGS: ((name: string) => string)[] = [
+  (name) =>
+    `أهلاً بك يا ${name} 👋\nتم إنشاء حسابك بنجاح في منصة "وليد وطلعت" للخدمات اللوجستية لنقل الطلاب 🚌`,
+  (name) => `مرحباً ${name} 🚌\nبيانات دخولك لمنصة "وليد وطلعت" جاهزة الآن ✅`,
+  (name) => `صباح الخير ${name} ✨\nإليك بيانات حسابك على منصة "وليد وطلعت" 🚌`,
+  (name) => `أهلاً ${name}! 🎓\nحسابك على منصة "وليد وطلعت" أصبح جاهزاً للاستخدام 👇`,
+];
+
 /** Builds a wa.me link with login credentials pre-filled, ready for the admin to review and send. */
 export function credentialsWhatsAppLink(opts: {
   full_name: string;
@@ -68,9 +81,11 @@ export function credentialsWhatsAppLink(opts: {
   email: string;
   temp_password: string;
 }): string {
+  const greeting = CREDENTIALS_GREETINGS[Math.floor(Math.random() * CREDENTIALS_GREETINGS.length)]!(
+    opts.full_name,
+  );
   const message =
-    `أهلاً بك يا ${opts.full_name} 👋\n` +
-    `تم إنشاء حسابك بنجاح في منصة "وليد وطلعت" للخدمات اللوجستية لنقل الطلاب 🚌\n` +
+    `${greeting}\n` +
     `بيانات تسجيل الدخول الخاصة بك:\n` +
     `👤 اسم المستخدم (Username): ${opts.email}\n` +
     `🔑 كلمة السر (Password): ${opts.temp_password}\n` +

@@ -105,6 +105,18 @@ function AdminStudentsPage() {
   const [routeFilter, setRouteFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [cooldownUntil, setCooldownUntil] = useState<number>(0);
+  const [cooldownNow, setCooldownNow] = useState<number>(Date.now());
+
+  useEffect(() => {
+    if (cooldownUntil <= Date.now()) return;
+    const interval = setInterval(() => setCooldownNow(Date.now()), 200);
+    return () => clearInterval(interval);
+  }, [cooldownUntil]);
+
+  const COOLDOWN_MS = 18000;
+  const cooldownRemaining = Math.max(0, cooldownUntil - cooldownNow);
+  const cooldownActive = cooldownRemaining > 0;
 
   // Audit-against-file tool
   const [auditing, setAuditing] = useState(false);
@@ -180,6 +192,10 @@ function AdminStudentsPage() {
 
   const sendCredentials = async (s: StudentRow) => {
     if (!s.username || !s.phone) return;
+    if (cooldownActive) {
+      toast.error(t("students.cooldownActive"));
+      return;
+    }
     setBusyId(s.user_id);
     const newPassword = generateTempPassword();
     const { data, error } = await supabase.functions.invoke("manage-staff", {
@@ -192,6 +208,8 @@ function AdminStudentsPage() {
       );
       return;
     }
+    setCooldownUntil(Date.now() + COOLDOWN_MS);
+    setCooldownNow(Date.now());
     const link = credentialsWhatsAppLink({
       full_name: s.full_name,
       phone: s.phone,
@@ -284,6 +302,20 @@ function AdminStudentsPage() {
           <ArrowLeft className="me-1 inline size-4" /> {t("common.backToConsole")}
         </Link>
       </div>
+
+      {cooldownActive && (
+        <div className="mt-4 rounded-xl border border-warning/40 bg-warning/10 p-3">
+          <p className="text-xs text-warning-foreground">
+            {t("students.cooldownLabel")} · {Math.ceil(cooldownRemaining / 1000)}s
+          </p>
+          <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-warning/20">
+            <div
+              className="h-full rounded-full bg-warning transition-all"
+              style={{ width: `${(cooldownRemaining / COOLDOWN_MS) * 100}%` }}
+            />
+          </div>
+        </div>
+      )}
 
       <div className="mt-6 rounded-3xl border border-dashed border-accent/60 bg-accent/5 p-5">
         <p className="font-semibold">{t("students.auditTool")}</p>
@@ -492,7 +524,7 @@ function AdminStudentsPage() {
                           <Button
                             size="sm"
                             className="bg-success text-success-foreground hover:bg-success/90"
-                            disabled={busyId === s.user_id}
+                            disabled={busyId === s.user_id || cooldownActive}
                             onClick={() => void sendCredentials(s)}
                           >
                             <MessageCircle className="size-4" /> {t("students.sendCredentials")}

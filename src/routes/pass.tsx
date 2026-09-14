@@ -171,7 +171,7 @@ function PassQr({ title, detail, payload }: { title: string; detail: string; pay
         <p className="text-sm font-semibold">{detail}</p>
       </div>
       <div className="rounded-2xl bg-white p-4">
-        <QRCodeSVG value={payload} size={172} level="M" />
+        <QRCodeSVG value={payload} size={200} level="H" marginSize={4} />
       </div>
     </div>
   );

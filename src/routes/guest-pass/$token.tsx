@@ -86,7 +86,7 @@ function GuestPassPage() {
 
         <div className="flex justify-center border-y border-dashed border-border bg-secondary/60 p-6">
           <div className="rounded-2xl bg-white p-4">
-            <QRCodeSVG value={payload} size={196} level="M" />
+            <QRCodeSVG value={payload} size={220} level="H" marginSize={4} />
           </div>
         </div>
 

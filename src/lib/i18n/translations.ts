@@ -71,6 +71,16 @@ export const translations: Record<Lang, Record<string, string>> = {
       "سيتم إعادة تعيين كلمة سر هذا الطالب إلى الافتراضية وسيُطلب منه تغييرها عند الدخول. متابعة؟",
     "studentAccounts.resetDone": "تم إعادة التعيين",
     "studentAccounts.noStudents": "لا يوجد طلاب يطابقون هذا العرض.",
+    "studentAccounts.migrateAllTitle": "⚠️ نقل جميع الطلاب الحاليين لتسجيل الدخول برقم الهاتف",
+    "studentAccounts.migrateAllDesc":
+      "إجراء لمرة واحدة وغير قابل للتراجع: سيتم تغيير بيانات الدخول لجميع الطلاب الحاليين إلى رقم الهاتف وكلمة السر الافتراضية wt@2027، وستتوقف بيانات الدخول القديمة عن العمل فوراً. سيُطلب من كل طالب تغيير كلمة السر عند أول تسجيل دخول جديد. آمن للتشغيل أكثر من مرة إذا انقطع العملية في المنتصف.",
+    "studentAccounts.migrateAllButton": "بدء النقل الآن",
+    "studentAccounts.confirmMigrateAll":
+      "سيتم فوراً تعطيل بيانات الدخول القديمة لجميع الطلاب الحاليين واستبدالها برقم الهاتف وكلمة السر الافتراضية. هذا الإجراء لا يمكن التراجع عنه. هل أنت متأكد؟",
+    "studentAccounts.migrated": "تم النقل",
+    "studentAccounts.migSkipped": "تم التخطي",
+    "studentAccounts.migFailed": "فشل",
+    "studentAccounts.migrationDone": "اكتملت عملية النقل",
     "auth.password": "كلمة المرور",
     "auth.fullName": "الاسم بالكامل",
     "auth.phone": "رقم الهاتف",
@@ -551,6 +561,16 @@ export const translations: Record<Lang, Record<string, string>> = {
       "This resets the student's password back to the default and requires them to change it again on next login. Continue?",
     "studentAccounts.resetDone": "Reset complete",
     "studentAccounts.noStudents": "No students match this view.",
+    "studentAccounts.migrateAllTitle": "⚠️ Migrate ALL existing students to phone-number login",
+    "studentAccounts.migrateAllDesc":
+      "One-time, irreversible action: every existing student's login is changed to their phone number + the default password wt@2027, and their old login stops working immediately. Each student will be forced to change their password on their next login. Safe to run more than once if it's interrupted partway through.",
+    "studentAccounts.migrateAllButton": "Start migration now",
+    "studentAccounts.confirmMigrateAll":
+      "This immediately disables every existing student's current login and replaces it with their phone number and the default password. This cannot be undone. Are you sure?",
+    "studentAccounts.migrated": "migrated",
+    "studentAccounts.migSkipped": "skipped",
+    "studentAccounts.migFailed": "failed",
+    "studentAccounts.migrationDone": "Migration complete",
     "auth.password": "Password",
     "auth.fullName": "Full name",
     "auth.phone": "Phone",

@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { ArrowLeft, Copy, RotateCcw } from "lucide-react";
+import { ArrowLeft, AlertTriangle, Copy, RotateCcw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/hooks/useLanguage";
@@ -51,6 +51,8 @@ function StudentAccountsPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [migrating, setMigrating] = useState(false);
+  const [migrationSummary, setMigrationSummary] = useState<string | null>(null);
 
   const effectiveRoute = isAdmin ? routeFilter : (profile?.assigned_route ?? "");
 
@@ -110,6 +112,28 @@ function StudentAccountsPage() {
     toast.success(t("studentAccounts.resetDone"));
   };
 
+  const migrateAllExisting = async () => {
+    const confirmed = window.confirm(t("studentAccounts.confirmMigrateAll"));
+    if (!confirmed) return;
+    setMigrating(true);
+    setMigrationSummary(null);
+    const { data, error } = await supabase.functions.invoke("migrate-students-to-phone-login");
+    setMigrating(false);
+    if (error || data?.error) {
+      toast.error(data?.error ?? (await edgeFunctionErrorMessage(error, "Migration failed")));
+      return;
+    }
+    const results = (data.results as { status: string }[]) ?? [];
+    const migrated = results.filter((r) => r.status === "migrated").length;
+    const skipped = results.filter((r) => r.status === "skipped").length;
+    const failed = results.filter((r) => r.status === "failed").length;
+    setMigrationSummary(
+      `${migrated} ${t("studentAccounts.migrated")}, ${skipped} ${t("studentAccounts.migSkipped")}, ${failed} ${t("studentAccounts.migFailed")}`,
+    );
+    toast.success(t("studentAccounts.migrationDone"));
+    void load();
+  };
+
   return (
     <main className="mx-auto max-w-5xl px-4 py-8">
       <div className="surface-navy shadow-luxe flex flex-wrap items-center justify-between gap-4 rounded-3xl p-6">
@@ -125,6 +149,26 @@ function StudentAccountsPage() {
           </Link>
         )}
       </div>
+
+      {isAdmin && (
+        <div className="mt-6 rounded-3xl border-2 border-destructive/50 bg-destructive/5 p-5">
+          <p className="flex items-center gap-2 font-semibold text-destructive">
+            <AlertTriangle className="size-5" /> {t("studentAccounts.migrateAllTitle")}
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {t("studentAccounts.migrateAllDesc")}
+          </p>
+          <Button
+            variant="destructive"
+            className="mt-3"
+            disabled={migrating}
+            onClick={() => void migrateAllExisting()}
+          >
+            {migrating ? t("common.loading") : t("studentAccounts.migrateAllButton")}
+          </Button>
+          {migrationSummary && <p className="mt-3 text-sm font-medium">{migrationSummary}</p>}
+        </div>
+      )}
 
       <div className="mt-6 rounded-3xl border border-border bg-card p-6">
         <div className="flex flex-wrap items-center gap-3">

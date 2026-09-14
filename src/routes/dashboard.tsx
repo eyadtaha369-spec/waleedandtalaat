@@ -85,7 +85,13 @@ function Dashboard() {
   const [fourPmStop, setFourPmStop] = useState<string>("");
   const stopsForMyRoute = profile?.route ? (stopsByRoute[profile.route] ?? []) : [];
   const isFourPmReturn = returnSlot === "04:00 PM";
-  const RETURN_SLOT_CHOICES = [...RETURN_SLOTS, "04:00 PM"];
+  // خط برج العرب's return trip is restricted to 12:30 PM and 4:00 PM
+  // only — every other route keeps the full standard set. This only
+  // changes which time options appear; stop selection for whichever
+  // slot is chosen (sector stops for 12:30 PM, the student's own
+  // route stops for 4:00 PM) is completely unaffected.
+  const RETURN_SLOT_CHOICES =
+    profile?.route === "خط برج العرب" ? ["12:30 PM", "04:00 PM"] : [...RETURN_SLOTS, "04:00 PM"];
 
   useEffect(() => {
     if (!loading && !user) void navigate({ to: "/auth" });

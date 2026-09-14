@@ -102,9 +102,24 @@ export type Database = {
         Relationships: [];
       };
       routes: {
-        Row: { id: string; name: string; display_order: number; whatsapp_group_link: string | null };
-        Insert: { id?: string; name: string; display_order?: number; whatsapp_group_link?: string | null };
-        Update: { id?: string; name?: string; display_order?: number; whatsapp_group_link?: string | null };
+        Row: {
+          id: string;
+          name: string;
+          display_order: number;
+          whatsapp_group_link: string | null;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          display_order?: number;
+          whatsapp_group_link?: string | null;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          display_order?: number;
+          whatsapp_group_link?: string | null;
+        };
         Relationships: [];
       };
       stops: {
@@ -503,6 +518,15 @@ export type Database = {
           photo_url: string | null;
           trips_remaining: number;
           trips_total: number;
+        }[];
+      };
+      list_all_students_for_migration: {
+        Args: Record<string, never>;
+        Returns: {
+          user_id: string;
+          full_name: string;
+          phone: string | null;
+          username: string | null;
         }[];
       };
       mark_password_changed: {

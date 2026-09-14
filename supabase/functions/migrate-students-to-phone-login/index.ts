@@ -50,12 +50,14 @@ Deno.serve(async (req) => {
     const { data: isAdmin } = await admin.rpc("is_admin", { _user_id: user.id });
     if (!isAdmin) return json({ error: "Admin access required" }, 403);
 
-    // Every student, regardless of route/subscription — this is a
-    // one-time system-wide migration.
-    const { data: students, error: fetchError } = await admin
-      .from("profiles")
-      .select("id, full_name, phone, username, user_roles:user_roles!inner(role)")
-      .eq("user_roles.role", "student");
+    // Plain SQL join via RPC, not a PostgREST embedded-select or a
+    // two-step JS fetch: profiles and user_roles have no direct
+    // foreign-key relationship for PostgREST to resolve, and an
+    // .in(studentIds) filter with hundreds of UUIDs risks hitting
+    // URL-length limits.
+    const { data: students, error: fetchError } = await admin.rpc(
+      "list_all_students_for_migration",
+    );
 
     if (fetchError) return json({ error: fetchError.message }, 500);
 
@@ -82,7 +84,7 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      const { error: updateError } = await admin.auth.admin.updateUserById(s.id, {
+      const { error: updateError } = await admin.auth.admin.updateUserById(s.user_id, {
         email: `${normalized}@wt-shuttle.app`,
         password: DEFAULT_PASSWORD,
         email_confirm: true,
@@ -101,7 +103,7 @@ Deno.serve(async (req) => {
       await admin
         .from("profiles")
         .update({ username: normalized, must_change_password: true })
-        .eq("id", s.id);
+        .eq("id", s.user_id);
 
       results.push({ full_name: s.full_name, phone: s.phone, status: "migrated" });
     }

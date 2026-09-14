@@ -195,6 +195,12 @@ function AdminConsole() {
           description={t("admin.studentsDesc")}
         />
         <ShortcutCard
+          to="/admin/student-accounts"
+          icon={ShieldCheck}
+          title={t("studentAccounts.title")}
+          description={t("admin.studentAccountsDesc")}
+        />
+        <ShortcutCard
           to="/admin/daily-passes"
           icon={Ticket}
           title={t("dailyPasses.trackingTitle")}

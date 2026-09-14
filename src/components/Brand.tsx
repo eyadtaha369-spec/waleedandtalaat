@@ -45,12 +45,14 @@ function useNavLinks() {
     { to: "/admin/requests", label: t("nav.adminDailyPass") },
     { to: "/admin/summer-bookings", label: t("nav.summerBookings") },
     { to: "/admin/students", label: t("nav.students") },
+    { to: "/admin/student-accounts", label: t("studentAccounts.title") },
     { to: "/whatsapp-live", label: t("nav.whatsappLive") },
     { to: "/admin/users", label: t("nav.users") },
     { to: "/admin/scan", label: t("nav.scanQr") },
   ];
   const supervisorLinks = [
     { to: "/supervisor/students", label: t("nav.students") },
+    { to: "/admin/student-accounts", label: t("studentAccounts.title") },
     { to: "/route-dashboard", label: t("routeDash.title") },
     { to: "/trips-balance", label: t("tripsBalance.title") },
     { to: "/whatsapp-live", label: t("nav.whatsappLive") },

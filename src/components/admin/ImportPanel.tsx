@@ -14,7 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { generateTempPassword, generateUsername, credentialsWhatsAppLink } from "@/lib/credentials";
+import { credentialsWhatsAppLink } from "@/lib/credentials";
 import { edgeFunctionErrorMessage } from "@/lib/functionsError";
 import { RecoverCredentialsPanel } from "@/components/admin/RecoverCredentialsPanel";
 import { useLanguage } from "@/hooks/useLanguage";
@@ -183,8 +183,8 @@ function rowsToParsed(
         "Payment Method",
       ]),
       trips_total: explicitTrips || plan.trips_total || 0,
-      username: generateUsername(name, parsed.length, phone),
-      temp_password: generateTempPassword(),
+      username: phone.replace(/\D/g, ""),
+      temp_password: "wt@2027",
     });
   });
 

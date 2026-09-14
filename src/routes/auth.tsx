@@ -32,7 +32,7 @@ export const Route = createFileRoute("/auth")({
 // just no longer offers the option.
 function AuthPage() {
   const navigate = useNavigate();
-  const { user, isAdmin, isSupervisor, loading } = useAuth();
+  const { user, profile, isAdmin, isSupervisor, loading } = useAuth();
   const { t } = useLanguage();
   const [busy, setBusy] = useState(false);
   const [email, setEmail] = useState("");
@@ -40,14 +40,26 @@ function AuthPage() {
 
   useEffect(() => {
     if (loading || !user) return;
+    if (!isAdmin && !isSupervisor && profile?.must_change_password) {
+      void navigate({ to: "/change-password" });
+      return;
+    }
     if (isAdmin) void navigate({ to: "/admin" });
     else if (isSupervisor) void navigate({ to: "/supervisor/students" });
     else void navigate({ to: "/dashboard" });
-  }, [loading, user, isAdmin, isSupervisor, navigate]);
+  }, [loading, user, profile, isAdmin, isSupervisor, navigate]);
 
   const signIn = async () => {
     setBusy(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    // A student logs in with their phone number, which isn't a real
+    // email address — Supabase Auth requires one, so it's stored as
+    // {digits}@wt-shuttle.app under the hood. Staff accounts still
+    // use a real email and pass straight through unchanged.
+    const trimmed = email.trim();
+    const loginEmail = trimmed.includes("@")
+      ? trimmed
+      : `${trimmed.replace(/\D/g, "")}@wt-shuttle.app`;
+    const { error } = await supabase.auth.signInWithPassword({ email: loginEmail, password });
     setBusy(false);
     if (error) return toast.error(error.message);
     toast.success(t("auth.welcomeBack"));
@@ -64,7 +76,7 @@ function AuthPage() {
         </div>
 
         <div className="mt-6 space-y-4">
-          <Field label={t("auth.email")} value={email} onChange={setEmail} type="email" />
+          <Field label={t("auth.phoneOrEmail")} value={email} onChange={setEmail} type="text" />
           <Field
             label={t("auth.password")}
             value={password}

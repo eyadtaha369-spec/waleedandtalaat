@@ -15,6 +15,7 @@ export type Profile = {
   trips_remaining: number;
   photo_url: string | null;
   assigned_route: string | null;
+  must_change_password: boolean;
 };
 
 type AuthState = {

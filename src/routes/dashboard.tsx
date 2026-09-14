@@ -94,8 +94,15 @@ function Dashboard() {
     profile?.route === "خط برج العرب" ? ["12:30 PM", "04:00 PM"] : [...RETURN_SLOTS, "04:00 PM"];
 
   useEffect(() => {
-    if (!loading && !user) void navigate({ to: "/auth" });
-  }, [loading, user, navigate]);
+    if (loading) return;
+    if (!user) {
+      void navigate({ to: "/auth" });
+      return;
+    }
+    if (profile?.must_change_password) {
+      void navigate({ to: "/change-password" });
+    }
+  }, [loading, user, profile, navigate]);
 
   useEffect(() => {
     if (profile?.route) {

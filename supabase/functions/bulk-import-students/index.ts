@@ -3,6 +3,13 @@
 // service role key (server-side only) so it can call the Auth admin API,
 // which the browser client is never trusted with.
 //
+// Login is phone-number-based: every new student's email is derived
+// from their normalized phone digits, and every new account starts on
+// the same default password with must_change_password=true, forcing
+// them to set their own on first login. Deliberately does NOT store
+// any actual password value anywhere for admin viewing — see the
+// must_change_password flag design in the accompanying migration.
+//
 // Upsert by phone: a row whose phone number already matches an existing
 // student profile updates that profile in place instead of creating a
 // second account. trips_remaining is deliberately never touched on an
@@ -10,6 +17,8 @@
 //
 // Deploy with: supabase functions deploy bulk-import-students
 import { createClient } from "jsr:@supabase/supabase-js@2";
+
+const DEFAULT_PASSWORD = "wt@2027";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -124,14 +133,14 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      // Safety net: the client-proposed username can still collide
-      // with an already-existing account (or another row earlier in
-      // this same batch) — resolve that here rather than letting
-      // createUser() fail outright.
-      let finalUsername = row.username;
+      // Login is phone-based: the username portion of the email is
+      // the student's own normalized phone number, not a generated
+      // name-based one. Collision-safety-net kept for the rare case
+      // two rows normalize to the same digits (e.g. a duplicated line).
+      let finalUsername = normalized || row.username;
       let attempt = 1;
       while (usedUsernames.has(finalUsername)) {
-        finalUsername = `${row.username}${attempt}`;
+        finalUsername = `${normalized || row.username}${attempt}`;
         attempt++;
       }
       usedUsernames.add(finalUsername);
@@ -139,7 +148,7 @@ Deno.serve(async (req) => {
       const email = `${finalUsername}@wt-shuttle.app`;
       const { data: created, error: createError } = await admin.auth.admin.createUser({
         email,
-        password: row.temp_password,
+        password: DEFAULT_PASSWORD,
         email_confirm: true,
         user_metadata: {
           full_name: row.full_name,
@@ -162,17 +171,20 @@ Deno.serve(async (req) => {
           phone: row.phone,
           username: finalUsername,
           email,
-          temp_password: row.temp_password,
+          temp_password: DEFAULT_PASSWORD,
           status: "failed",
           error: createError?.message ?? "Unknown error",
         });
         continue;
       }
 
-      // handle_new_user() trigger creates the profile + 'student' role row.
-      // We still need to store the chosen username since signup metadata
-      // doesn't include it.
-      await admin.from("profiles").update({ username: finalUsername }).eq("id", created.user.id);
+      // handle_new_user() trigger creates the profile + 'student' role
+      // row. Still need to set the username and force a password
+      // change on first login — neither is part of that trigger.
+      await admin
+        .from("profiles")
+        .update({ username: finalUsername, must_change_password: true })
+        .eq("id", created.user.id);
 
       // Record this new account so a later row in the same batch with
       // the same phone (e.g. a duplicated line in the sheet) updates
@@ -184,7 +196,7 @@ Deno.serve(async (req) => {
         phone: row.phone,
         username: finalUsername,
         email,
-        temp_password: row.temp_password,
+        temp_password: DEFAULT_PASSWORD,
         status: "created",
       });
     }

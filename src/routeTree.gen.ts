@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as ChangePasswordRouteImport } from './routes/change-password'
 import { Route as DailyPassRouteImport } from './routes/daily-pass'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as PassRouteImport } from './routes/pass'
@@ -26,6 +27,7 @@ import { Route as AdminInstallmentsRouteImport } from './routes/admin/installmen
 import { Route as AdminManifestsRouteImport } from './routes/admin/manifests'
 import { Route as AdminRequestsRouteImport } from './routes/admin/requests'
 import { Route as AdminScanRouteImport } from './routes/admin/scan'
+import { Route as AdminStudentAccountsRouteImport } from './routes/admin/student-accounts'
 import { Route as AdminStudentsRouteImport } from './routes/admin/students'
 import { Route as AdminSummerBookingsRouteImport } from './routes/admin/summer-bookings'
 import { Route as AdminUsersRouteImport } from './routes/admin/users'
@@ -46,6 +48,11 @@ const AdminRoute = AdminRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChangePasswordRoute = ChangePasswordRouteImport.update({
+  id: '/change-password',
+  path: '/change-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DailyPassRoute = DailyPassRouteImport.update({
@@ -118,6 +125,11 @@ const AdminScanRoute = AdminScanRouteImport.update({
   path: '/scan',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminStudentAccountsRoute = AdminStudentAccountsRouteImport.update({
+  id: '/student-accounts',
+  path: '/student-accounts',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminStudentsRoute = AdminStudentsRouteImport.update({
   id: '/students',
   path: '/students',
@@ -153,6 +165,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRoute
+  '/change-password': typeof ChangePasswordRoute
   '/daily-pass': typeof DailyPassRoute
   '/dashboard': typeof DashboardRoute
   '/pass': typeof PassRoute
@@ -166,6 +179,7 @@ export interface FileRoutesByFullPath {
   '/admin/manifests': typeof AdminManifestsRoute
   '/admin/requests': typeof AdminRequestsRoute
   '/admin/scan': typeof AdminScanRoute
+  '/admin/student-accounts': typeof AdminStudentAccountsRoute
   '/admin/students': typeof AdminStudentsRoute
   '/admin/summer-bookings': typeof AdminSummerBookingsRoute
   '/admin/users': typeof AdminUsersRoute
@@ -177,6 +191,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/change-password': typeof ChangePasswordRoute
   '/daily-pass': typeof DailyPassRoute
   '/dashboard': typeof DashboardRoute
   '/pass': typeof PassRoute
@@ -190,6 +205,7 @@ export interface FileRoutesByTo {
   '/admin/manifests': typeof AdminManifestsRoute
   '/admin/requests': typeof AdminRequestsRoute
   '/admin/scan': typeof AdminScanRoute
+  '/admin/student-accounts': typeof AdminStudentAccountsRoute
   '/admin/students': typeof AdminStudentsRoute
   '/admin/summer-bookings': typeof AdminSummerBookingsRoute
   '/admin/users': typeof AdminUsersRoute
@@ -203,6 +219,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRoute
+  '/change-password': typeof ChangePasswordRoute
   '/daily-pass': typeof DailyPassRoute
   '/dashboard': typeof DashboardRoute
   '/pass': typeof PassRoute
@@ -216,6 +233,7 @@ export interface FileRoutesById {
   '/admin/manifests': typeof AdminManifestsRoute
   '/admin/requests': typeof AdminRequestsRoute
   '/admin/scan': typeof AdminScanRoute
+  '/admin/student-accounts': typeof AdminStudentAccountsRoute
   '/admin/students': typeof AdminStudentsRoute
   '/admin/summer-bookings': typeof AdminSummerBookingsRoute
   '/admin/users': typeof AdminUsersRoute
@@ -230,6 +248,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/auth'
+    | '/change-password'
     | '/daily-pass'
     | '/dashboard'
     | '/pass'
@@ -243,6 +262,7 @@ export interface FileRouteTypes {
     | '/admin/manifests'
     | '/admin/requests'
     | '/admin/scan'
+    | '/admin/student-accounts'
     | '/admin/students'
     | '/admin/summer-bookings'
     | '/admin/users'
@@ -254,6 +274,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/change-password'
     | '/daily-pass'
     | '/dashboard'
     | '/pass'
@@ -267,6 +288,7 @@ export interface FileRouteTypes {
     | '/admin/manifests'
     | '/admin/requests'
     | '/admin/scan'
+    | '/admin/student-accounts'
     | '/admin/students'
     | '/admin/summer-bookings'
     | '/admin/users'
@@ -279,6 +301,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/auth'
+    | '/change-password'
     | '/daily-pass'
     | '/dashboard'
     | '/pass'
@@ -292,6 +315,7 @@ export interface FileRouteTypes {
     | '/admin/manifests'
     | '/admin/requests'
     | '/admin/scan'
+    | '/admin/student-accounts'
     | '/admin/students'
     | '/admin/summer-bookings'
     | '/admin/users'
@@ -305,6 +329,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRouteWithChildren
   AuthRoute: typeof AuthRoute
+  ChangePasswordRoute: typeof ChangePasswordRoute
   DailyPassRoute: typeof DailyPassRoute
   DashboardRoute: typeof DashboardRoute
   PassRoute: typeof PassRoute
@@ -338,6 +363,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/change-password': {
+      id: '/change-password'
+      path: '/change-password'
+      fullPath: '/change-password'
+      preLoaderRoute: typeof ChangePasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/daily-pass': {
@@ -438,6 +470,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminScanRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/student-accounts': {
+      id: '/admin/student-accounts'
+      path: '/student-accounts'
+      fullPath: '/admin/student-accounts'
+      preLoaderRoute: typeof AdminStudentAccountsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/students': {
       id: '/admin/students'
       path: '/students'
@@ -490,6 +529,7 @@ interface AdminRouteChildren {
   AdminManifestsRoute: typeof AdminManifestsRoute
   AdminRequestsRoute: typeof AdminRequestsRoute
   AdminScanRoute: typeof AdminScanRoute
+  AdminStudentAccountsRoute: typeof AdminStudentAccountsRoute
   AdminStudentsRoute: typeof AdminStudentsRoute
   AdminSummerBookingsRoute: typeof AdminSummerBookingsRoute
   AdminUsersRoute: typeof AdminUsersRoute
@@ -503,6 +543,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminManifestsRoute: AdminManifestsRoute,
   AdminRequestsRoute: AdminRequestsRoute,
   AdminScanRoute: AdminScanRoute,
+  AdminStudentAccountsRoute: AdminStudentAccountsRoute,
   AdminStudentsRoute: AdminStudentsRoute,
   AdminSummerBookingsRoute: AdminSummerBookingsRoute,
   AdminUsersRoute: AdminUsersRoute,
@@ -515,6 +556,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
   AuthRoute: AuthRoute,
+  ChangePasswordRoute: ChangePasswordRoute,
   DailyPassRoute: DailyPassRoute,
   DashboardRoute: DashboardRoute,
   PassRoute: PassRoute,

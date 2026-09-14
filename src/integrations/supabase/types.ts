@@ -151,6 +151,7 @@ export type Database = {
           installment_status: string;
           assigned_route: string | null;
           whatsapp_invited_at: string | null;
+          must_change_password: boolean;
           trips_remaining: number;
           trips_total: number;
           username: string | null;
@@ -171,6 +172,7 @@ export type Database = {
           installment_status?: string;
           assigned_route?: string | null;
           whatsapp_invited_at?: string | null;
+          must_change_password?: boolean;
           trips_remaining?: number;
           trips_total?: number;
           username?: string | null;
@@ -191,6 +193,7 @@ export type Database = {
           installment_status?: string;
           assigned_route?: string | null;
           whatsapp_invited_at?: string | null;
+          must_change_password?: boolean;
           trips_remaining?: number;
           trips_total?: number;
           username?: string | null;
@@ -501,6 +504,25 @@ export type Database = {
           trips_remaining: number;
           trips_total: number;
         }[];
+      };
+      mark_password_changed: {
+        Args: Record<string, never>;
+        Returns: undefined;
+      };
+      list_route_student_accounts: {
+        Args: { p_route: string | null };
+        Returns: {
+          user_id: string;
+          full_name: string;
+          phone: string | null;
+          route: string | null;
+          photo_url: string | null;
+          must_change_password: boolean;
+        }[];
+      };
+      flag_password_reset: {
+        Args: { p_student_id: string };
+        Returns: undefined;
       };
       adjust_student_trips: {
         Args: { p_student_id: string; p_delta: number; p_reason: string | null };

@@ -10,7 +10,11 @@ const ROUTE_ALIASES: Record<string, string> = {
   ابوقير: "خط شارع أبو قير",
   أبوقير: "خط شارع أبو قير",
   "أبو قير": "خط شارع أبو قير",
-  العجمي: "خط العجمي",
+  // العجمي و الساحل merged into one unified route/supervisor line.
+  العجمي: "خط العجمي والساحل",
+  الساحل: "خط العجمي والساحل",
+  "خط العجمي": "خط العجمي والساحل",
+  "خط الساحل": "خط العجمي والساحل",
   السيوف: "خط السيوف",
   كورنيش: "خط البحر",
   البحر: "خط البحر",
@@ -48,7 +52,11 @@ const ROUTE_TO_STOP_COLUMN_HEADER: Record<string, string> = {
   "خط جمال عبدالناصر": "خط جمال عبد الناصر",
   "خط شارع أبو قير": "خط شارع أبوقير",
   "خط سموحة": "خط سموحة",
-  "خط العجمي": "خط العجمي",
+  // The sheet's own column is still headed "خط العجمي" (الساحل never
+  // had its own column — it was a stray manually-typed value, not a
+  // real form option), so the stop-column lookup stays pointed there
+  // even though our canonical route name is now the merged one.
+  "خط العجمي والساحل": "خط العجمي",
   "خط السيوف": "خط السيوف",
   "خط المعمورة ومحمودية": "خط المحمودية",
   "خط كفر الدوار": "خط كفر الدوار",

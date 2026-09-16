@@ -101,6 +101,22 @@ export type Database = {
         Update: { id?: boolean; booking_window_override?: boolean };
         Relationships: [];
       };
+      boarding_tokens: {
+        Row: { token: string; student_id: string; expires_at: string; used_at: string | null };
+        Insert: {
+          token?: string;
+          student_id: string;
+          expires_at: string;
+          used_at?: string | null;
+        };
+        Update: {
+          token?: string;
+          student_id?: string;
+          expires_at?: string;
+          used_at?: string | null;
+        };
+        Relationships: [];
+      };
       routes: {
         Row: {
           id: string;
@@ -433,8 +449,12 @@ export type Database = {
       };
       is_staff: { Args: { _user_id: string }; Returns: boolean };
       is_admin: { Args: { _user_id: string }; Returns: boolean };
+      generate_boarding_token: {
+        Args: Record<string, never>;
+        Returns: Json;
+      };
       scan_pass: {
-        Args: { p_student_id: string; p_slot: string; p_service_date: string | null };
+        Args: { p_token: string; p_slot: string; p_service_date: string | null };
         Returns: Json;
       };
       scan_guest_pass: { Args: { p_token: string }; Returns: Json };

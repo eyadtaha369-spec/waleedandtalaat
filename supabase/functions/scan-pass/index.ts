@@ -1,8 +1,13 @@
 // Supabase Edge Function: scan-pass
-// POST { student_id, slot } for a subscriber, or { guest_token } for a
+// POST { boarding_token, slot } for a subscriber, or { guest_token } for a
 // daily-pass guest -> { status: "booked" | "not_booked" | "scanned_earlier", ... }
 // Thin, auth-forwarding wrapper around the scan_pass() / scan_guest_pass()
 // Postgres RPCs, which do the real work atomically in one transaction.
+//
+// boarding_token (not a raw student_id) is a short-lived, single-use
+// token the student's own pass page generates and rotates every ~45s
+// (see generate_boarding_token()) — scan_pass() looks up the student
+// from it and rejects an expired/already-used one server-side.
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -19,8 +24,8 @@ Deno.serve(async (req) => {
     const url = Deno.env.get("SUPABASE_URL")!;
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
 
-    const { student_id, slot, guest_token, exam_token, service_date } = (await req.json()) as {
-      student_id?: string;
+    const { boarding_token, slot, guest_token, exam_token, service_date } = (await req.json()) as {
+      boarding_token?: string;
       slot?: string;
       guest_token?: string;
       exam_token?: string;
@@ -43,12 +48,15 @@ Deno.serve(async (req) => {
       return json(data);
     }
 
-    if (!student_id || !slot) {
-      return json({ error: "student_id and slot (or guest_token/exam_token) are required" }, 400);
+    if (!boarding_token || !slot) {
+      return json(
+        { error: "boarding_token and slot (or guest_token/exam_token) are required" },
+        400,
+      );
     }
 
     const { data, error } = await client.rpc("scan_pass", {
-      p_student_id: student_id,
+      p_token: boarding_token,
       p_slot: slot,
       p_service_date: service_date ?? null,
     });

@@ -86,8 +86,15 @@ export function ScannerPanel() {
     lockRef.current = true;
 
     try {
-      const payload = JSON.parse(decodedText) as { id?: string; guest?: boolean; exam?: boolean };
-      if (!payload.id) throw new Error("bad payload");
+      const payload = JSON.parse(decodedText) as {
+        token?: string;
+        id?: string;
+        guest?: boolean;
+        exam?: boolean;
+      };
+      // v2 student passes carry a rotating boarding_token; guest/exam
+      // passes still use their own static per-booking token under `id`.
+      if (!payload.token && !payload.id) throw new Error("bad payload");
 
       // Server does everything atomically: staff check, booking lookup,
       // scan log, and trip deduction for package students. The client
@@ -97,7 +104,11 @@ export function ScannerPanel() {
           ? { guest_token: payload.id }
           : payload.exam
             ? { exam_token: payload.id }
-            : { student_id: payload.id, slot, service_date: dateOverride || undefined },
+            : {
+                boarding_token: payload.token,
+                slot,
+                service_date: dateOverride || undefined,
+              },
       });
 
       if (error || data?.error) {

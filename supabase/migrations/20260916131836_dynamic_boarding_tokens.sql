@@ -24,6 +24,7 @@ grant select, insert on public.boarding_tokens to authenticated;
 -- No update/delete grant to authenticated — only scan_pass() (security
 -- definer) marks a token used, and only expiry cleanup (also security
 -- definer, below) deletes old rows.
+drop policy if exists "students manage their own tokens" on public.boarding_tokens;
 create policy "students manage their own tokens" on public.boarding_tokens
   for all to authenticated using (student_id = auth.uid()) with check (student_id = auth.uid());
 
@@ -62,6 +63,11 @@ grant execute on function public.generate_boarding_token() to authenticated;
 -- token can't be replayed even within its own validity window —
 -- 'scanned_earlier' does NOT consume it, since that's just a student
 -- being re-scanned with a fresh token for a boarding already recorded.
+--
+-- Must drop first: CREATE OR REPLACE can't rename an input parameter
+-- (p_student_id -> p_token), even though the type signature otherwise
+-- matches.
+drop function if exists public.scan_pass(uuid, text, date);
 create or replace function public.scan_pass(p_token uuid, p_slot text, p_service_date date default null)
 returns jsonb
 language plpgsql

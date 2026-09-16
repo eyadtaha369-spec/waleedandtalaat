@@ -90,6 +90,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "theme-color", content: "#101c3a" },
+      // This app uses its own fixed navy/gold branding, not the OS
+      // theme — Android Chrome's "Force Dark" feature can otherwise
+      // auto-recolor page content (SVGs especially) when a device is
+      // in system dark mode, regardless of a component's own inline
+      // colors. This is the actual signal that suppresses it; the
+      // per-element bgColor/fgColor on the QR alone wasn't enough.
+      { name: "color-scheme", content: "light" },
+      { name: "supported-color-schemes", content: "light" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },

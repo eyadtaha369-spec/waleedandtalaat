@@ -52,6 +52,11 @@
 }
 
 :root {
+  /* Backs up the color-scheme meta tag in __root.tsx — this app uses
+     its own fixed navy/gold branding, not the OS theme, and this is
+     part of what suppresses Android Chrome's "Force Dark" recoloring
+     of page content (SVGs especially, like the QR passes). */
+  color-scheme: light;
   --radius: 0.875rem;
 
   --navy-deep: oklch(0.19 0.075 265);

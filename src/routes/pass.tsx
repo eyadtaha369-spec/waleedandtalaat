@@ -276,8 +276,10 @@ function PassQr({
         <p className="text-sm font-semibold">{detail}</p>
       </div>
       <div
-        className="relative select-none rounded-2xl bg-white p-4"
+        className="relative select-none rounded-2xl p-4"
         style={{
+          backgroundColor: "#ffffff",
+          colorScheme: "light",
           userSelect: "none",
           WebkitUserSelect: "none",
           WebkitTouchCallout: "none",
@@ -295,7 +297,14 @@ function PassQr({
         ) : (
           <>
             <div className="pointer-events-none">
-              <QRCodeSVG value={payload} size={200} level="H" marginSize={4} />
+              <QRCodeSVG
+                value={payload}
+                size={200}
+                level="H"
+                marginSize={4}
+                bgColor="#FFFFFF"
+                fgColor="#000000"
+              />
             </div>
             {/* Semi-transparent watermark: makes a shared screen
                 recording traceable back to this specific student,

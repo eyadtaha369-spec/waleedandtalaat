@@ -562,6 +562,7 @@ export type Database = {
           route: string | null;
           photo_url: string | null;
           must_change_password: boolean;
+          subscription_type: string;
         }[];
       };
       flag_password_reset: {

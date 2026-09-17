@@ -80,6 +80,10 @@ export const translations: Record<Lang, Record<string, string>> = {
     "studentAccounts.updated": "تم تحديث بيانات الطالب",
     "studentAccounts.deleted": "تم حذف الطالب",
     "studentAccounts.confirmDelete": "سيتم حذف حساب هذا الطالب نهائياً. متابعة؟",
+    "schedules.title": "جدول المواعيد",
+    "schedules.confirmDelete": "سيتم حذف هذا الموعد نهائياً. متابعة؟",
+    "schedules.enterTime": "برجاء إدخال الموعد",
+    "admin.schedulesDesc": "تفعيل أو إيقاف مواعيد الرحلات لكل خط، وإضافة أو حذف مواعيد.",
     "studentAccounts.migrateAllTitle": "⚠️ نقل جميع الطلاب الحاليين لتسجيل الدخول برقم الهاتف",
     "studentAccounts.migrateAllDesc":
       "إجراء لمرة واحدة وغير قابل للتراجع: سيتم تغيير بيانات الدخول لجميع الطلاب الحاليين إلى رقم الهاتف وكلمة السر الافتراضية wt@2027، وستتوقف بيانات الدخول القديمة عن العمل فوراً. سيُطلب من كل طالب تغيير كلمة السر عند أول تسجيل دخول جديد. آمن للتشغيل أكثر من مرة إذا انقطع العملية في المنتصف.",
@@ -581,6 +585,10 @@ export const translations: Record<Lang, Record<string, string>> = {
     "studentAccounts.updated": "Student updated",
     "studentAccounts.deleted": "Student deleted",
     "studentAccounts.confirmDelete": "This permanently deletes this student's account. Continue?",
+    "schedules.title": "Bus Schedules",
+    "schedules.confirmDelete": "This permanently deletes this time slot. Continue?",
+    "schedules.enterTime": "Please enter a time",
+    "admin.schedulesDesc": "Turn trip times on/off per route, and add or remove time slots.",
     "studentAccounts.migrateAllTitle": "⚠️ Migrate ALL existing students to phone-number login",
     "studentAccounts.migrateAllDesc":
       "One-time, irreversible action: every existing student's login is changed to their phone number + the default password wt@2027, and their old login stops working immediately. Each student will be forced to change their password on their next login. Safe to run more than once if it's interrupted partway through.",

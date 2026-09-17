@@ -41,6 +41,7 @@ function useNavLinks() {
     { to: "/admin/manifests", label: t("nav.manifests") },
     { to: "/route-dashboard", label: t("routeDash.title") },
     { to: "/trips-balance", label: t("tripsBalance.title") },
+    { to: "/admin/schedules", label: t("schedules.title") },
     { to: "/admin/installments", label: t("nav.installments") },
     { to: "/admin/requests", label: t("nav.adminDailyPass") },
     { to: "/admin/summer-bookings", label: t("nav.summerBookings") },
@@ -55,6 +56,7 @@ function useNavLinks() {
     { to: "/admin/student-accounts", label: t("studentAccounts.title") },
     { to: "/route-dashboard", label: t("routeDash.title") },
     { to: "/trips-balance", label: t("tripsBalance.title") },
+    { to: "/admin/schedules", label: t("schedules.title") },
     { to: "/whatsapp-live", label: t("nav.whatsappLive") },
     { to: "/admin/scan", label: t("nav.scanQr") },
   ];

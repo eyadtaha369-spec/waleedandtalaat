@@ -78,6 +78,8 @@ function Dashboard() {
   const ow = useMemo(() => optOutWindow(), []);
 
   const [stop, setStop] = useState<string>("");
+  const [activeMorningSlots, setActiveMorningSlots] = useState<string[]>([...MORNING_SLOTS]);
+  const [activeReturnSlots, setActiveReturnSlots] = useState<string[]>([...RETURN_SLOTS]);
   const [morningSlot, setMorningSlot] = useState<string>(MORNING_SLOTS[0]);
   const [returnSlot, setReturnSlot] = useState<string>(RETURN_SLOTS[0]);
   const [returnSector, setReturnSector] = useState<EarlyReturnSector | "">("");
@@ -85,13 +87,31 @@ function Dashboard() {
   const [fourPmStop, setFourPmStop] = useState<string>("");
   const stopsForMyRoute = profile?.route ? (stopsByRoute[profile.route] ?? []) : [];
   const isFourPmReturn = returnSlot === "04:00 PM";
-  // خط برج العرب's return trip is restricted to 12:30 PM and 4:00 PM
-  // only — every other route keeps the full standard set. This only
-  // changes which time options appear; stop selection for whichever
-  // slot is chosen (sector stops for 12:30 PM, the student's own
-  // route stops for 4:00 PM) is completely unaffected.
-  const RETURN_SLOT_CHOICES =
-    profile?.route === "خط برج العرب" ? ["12:30 PM", "04:00 PM"] : [...RETURN_SLOTS, "04:00 PM"];
+  // Which times are actually offered is admin/supervisor-configurable
+  // per route (see /admin/schedules) — this replaces what used to be
+  // a hardcoded خط برج العرب-specific override with the general
+  // mechanism. Falls back to the full standard set while loading, so
+  // the page isn't empty on first render.
+  const RETURN_SLOT_CHOICES = [...activeReturnSlots, "04:00 PM"];
+
+  useEffect(() => {
+    if (!profile?.route) return;
+    void supabase
+      .rpc("list_active_slots_for_route", { p_route: profile.route })
+      .then(({ data }) => {
+        const rows = (data as { time_slot: string; kind: string }[] | null) ?? [];
+        const morning = rows.filter((r) => r.kind === "morning").map((r) => r.time_slot);
+        const ret = rows.filter((r) => r.kind === "return").map((r) => r.time_slot);
+        if (morning.length > 0) {
+          setActiveMorningSlots(morning);
+          setMorningSlot((prev) => (morning.includes(prev) ? prev : morning[0]!));
+        }
+        if (ret.length > 0) {
+          setActiveReturnSlots(ret);
+          setReturnSlot((prev) => (ret.includes(prev) || prev === "04:00 PM" ? prev : ret[0]!));
+        }
+      });
+  }, [profile?.route]);
 
   useEffect(() => {
     if (loading) return;
@@ -284,7 +304,7 @@ function Dashboard() {
               />
               <SlotPicker
                 label={t("dashboard.timeSlot")}
-                options={[...MORNING_SLOTS]}
+                options={activeMorningSlots}
                 value={morningSlot}
                 onChange={setMorningSlot}
                 lang={lang}

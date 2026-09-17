@@ -27,6 +27,7 @@ import { Route as AdminInstallmentsRouteImport } from './routes/admin/installmen
 import { Route as AdminManifestsRouteImport } from './routes/admin/manifests'
 import { Route as AdminRequestsRouteImport } from './routes/admin/requests'
 import { Route as AdminScanRouteImport } from './routes/admin/scan'
+import { Route as AdminSchedulesRouteImport } from './routes/admin/schedules'
 import { Route as AdminStudentAccountsRouteImport } from './routes/admin/student-accounts'
 import { Route as AdminStudentsRouteImport } from './routes/admin/students'
 import { Route as AdminSummerBookingsRouteImport } from './routes/admin/summer-bookings'
@@ -125,6 +126,11 @@ const AdminScanRoute = AdminScanRouteImport.update({
   path: '/scan',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminSchedulesRoute = AdminSchedulesRouteImport.update({
+  id: '/schedules',
+  path: '/schedules',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminStudentAccountsRoute = AdminStudentAccountsRouteImport.update({
   id: '/student-accounts',
   path: '/student-accounts',
@@ -179,6 +185,7 @@ export interface FileRoutesByFullPath {
   '/admin/manifests': typeof AdminManifestsRoute
   '/admin/requests': typeof AdminRequestsRoute
   '/admin/scan': typeof AdminScanRoute
+  '/admin/schedules': typeof AdminSchedulesRoute
   '/admin/student-accounts': typeof AdminStudentAccountsRoute
   '/admin/students': typeof AdminStudentsRoute
   '/admin/summer-bookings': typeof AdminSummerBookingsRoute
@@ -205,6 +212,7 @@ export interface FileRoutesByTo {
   '/admin/manifests': typeof AdminManifestsRoute
   '/admin/requests': typeof AdminRequestsRoute
   '/admin/scan': typeof AdminScanRoute
+  '/admin/schedules': typeof AdminSchedulesRoute
   '/admin/student-accounts': typeof AdminStudentAccountsRoute
   '/admin/students': typeof AdminStudentsRoute
   '/admin/summer-bookings': typeof AdminSummerBookingsRoute
@@ -233,6 +241,7 @@ export interface FileRoutesById {
   '/admin/manifests': typeof AdminManifestsRoute
   '/admin/requests': typeof AdminRequestsRoute
   '/admin/scan': typeof AdminScanRoute
+  '/admin/schedules': typeof AdminSchedulesRoute
   '/admin/student-accounts': typeof AdminStudentAccountsRoute
   '/admin/students': typeof AdminStudentsRoute
   '/admin/summer-bookings': typeof AdminSummerBookingsRoute
@@ -262,6 +271,7 @@ export interface FileRouteTypes {
     | '/admin/manifests'
     | '/admin/requests'
     | '/admin/scan'
+    | '/admin/schedules'
     | '/admin/student-accounts'
     | '/admin/students'
     | '/admin/summer-bookings'
@@ -288,6 +298,7 @@ export interface FileRouteTypes {
     | '/admin/manifests'
     | '/admin/requests'
     | '/admin/scan'
+    | '/admin/schedules'
     | '/admin/student-accounts'
     | '/admin/students'
     | '/admin/summer-bookings'
@@ -315,6 +326,7 @@ export interface FileRouteTypes {
     | '/admin/manifests'
     | '/admin/requests'
     | '/admin/scan'
+    | '/admin/schedules'
     | '/admin/student-accounts'
     | '/admin/students'
     | '/admin/summer-bookings'
@@ -470,6 +482,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminScanRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/schedules': {
+      id: '/admin/schedules'
+      path: '/schedules'
+      fullPath: '/admin/schedules'
+      preLoaderRoute: typeof AdminSchedulesRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/student-accounts': {
       id: '/admin/student-accounts'
       path: '/student-accounts'
@@ -529,6 +548,7 @@ interface AdminRouteChildren {
   AdminManifestsRoute: typeof AdminManifestsRoute
   AdminRequestsRoute: typeof AdminRequestsRoute
   AdminScanRoute: typeof AdminScanRoute
+  AdminSchedulesRoute: typeof AdminSchedulesRoute
   AdminStudentAccountsRoute: typeof AdminStudentAccountsRoute
   AdminStudentsRoute: typeof AdminStudentsRoute
   AdminSummerBookingsRoute: typeof AdminSummerBookingsRoute
@@ -543,6 +563,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminManifestsRoute: AdminManifestsRoute,
   AdminRequestsRoute: AdminRequestsRoute,
   AdminScanRoute: AdminScanRoute,
+  AdminSchedulesRoute: AdminSchedulesRoute,
   AdminStudentAccountsRoute: AdminStudentAccountsRoute,
   AdminStudentsRoute: AdminStudentsRoute,
   AdminSummerBookingsRoute: AdminSummerBookingsRoute,

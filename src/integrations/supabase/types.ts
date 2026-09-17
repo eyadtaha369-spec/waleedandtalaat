@@ -540,6 +540,33 @@ export type Database = {
           trips_total: number;
         }[];
       };
+      list_bus_schedules: {
+        Args: { p_route: string | null };
+        Returns: {
+          id: string;
+          route_name: string;
+          time_slot: string;
+          kind: string;
+          is_active: boolean;
+          display_order: number;
+        }[];
+      };
+      list_active_slots_for_route: {
+        Args: { p_route: string };
+        Returns: { time_slot: string; kind: string }[];
+      };
+      toggle_bus_schedule: {
+        Args: { p_id: string; p_is_active: boolean };
+        Returns: undefined;
+      };
+      upsert_bus_schedule: {
+        Args: { p_route: string; p_time_slot: string; p_kind: string; p_id: string | null };
+        Returns: string;
+      };
+      delete_bus_schedule: {
+        Args: { p_id: string };
+        Returns: undefined;
+      };
       list_all_students_for_migration: {
         Args: Record<string, never>;
         Returns: {

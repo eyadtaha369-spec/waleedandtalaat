@@ -84,6 +84,18 @@ export const translations: Record<Lang, Record<string, string>> = {
     "schedules.confirmDelete": "سيتم حذف هذا الموعد نهائياً. متابعة؟",
     "schedules.enterTime": "برجاء إدخال الموعد",
     "admin.schedulesDesc": "تفعيل أو إيقاف مواعيد الرحلات لكل خط، وإضافة أو حذف مواعيد.",
+    "schedules.masterToggleTitle": "🚌 شباك الحجز",
+    "schedules.masterOpenDesc": "الحجز متاح للطلاب حسب المواعيد المفعلة وساعات الحجز المعتادة.",
+    "schedules.masterClosedDesc":
+      "تم إغلاق الحجز بالكامل لجميع الطلاب على كل الخطوط، بغض النظر عن الوقت أو المواعيد المفعلة.",
+    "schedules.open": "مفتوح",
+    "schedules.closed": "مغلق",
+    "schedules.confirmCloseWindow": "سيتم إغلاق الحجز فوراً لجميع الطلاب على كل الخطوط. متابعة؟",
+    "schedules.windowClosedToast": "تم إغلاق شباك الحجز",
+    "schedules.windowOpenedToast": "تم فتح شباك الحجز",
+    "dashboard.windowClosedTitle": "شباك الحجز مغلق حالياً",
+    "dashboard.windowClosedBody":
+      "لا يمكن الحجز في الوقت الحالي. برجاء المحاولة لاحقاً أو التواصل مع المشرف.",
     "studentAccounts.migrateAllTitle": "⚠️ نقل جميع الطلاب الحاليين لتسجيل الدخول برقم الهاتف",
     "studentAccounts.migrateAllDesc":
       "إجراء لمرة واحدة وغير قابل للتراجع: سيتم تغيير بيانات الدخول لجميع الطلاب الحاليين إلى رقم الهاتف وكلمة السر الافتراضية wt@2027، وستتوقف بيانات الدخول القديمة عن العمل فوراً. سيُطلب من كل طالب تغيير كلمة السر عند أول تسجيل دخول جديد. آمن للتشغيل أكثر من مرة إذا انقطع العملية في المنتصف.",
@@ -589,6 +601,20 @@ export const translations: Record<Lang, Record<string, string>> = {
     "schedules.confirmDelete": "This permanently deletes this time slot. Continue?",
     "schedules.enterTime": "Please enter a time",
     "admin.schedulesDesc": "Turn trip times on/off per route, and add or remove time slots.",
+    "schedules.masterToggleTitle": "🚌 Booking Window",
+    "schedules.masterOpenDesc":
+      "Booking is available to students per the active time slots and usual booking hours.",
+    "schedules.masterClosedDesc":
+      "Booking is fully closed for every student on every route, regardless of time or active slots.",
+    "schedules.open": "Open",
+    "schedules.closed": "Closed",
+    "schedules.confirmCloseWindow":
+      "This immediately closes booking for every student on every route. Continue?",
+    "schedules.windowClosedToast": "Booking window closed",
+    "schedules.windowOpenedToast": "Booking window opened",
+    "dashboard.windowClosedTitle": "Booking Window is Currently Closed",
+    "dashboard.windowClosedBody":
+      "Booking isn't available right now. Please try again later or contact your supervisor.",
     "studentAccounts.migrateAllTitle": "⚠️ Migrate ALL existing students to phone-number login",
     "studentAccounts.migrateAllDesc":
       "One-time, irreversible action: every existing student's login is changed to their phone number + the default password wt@2027, and their old login stops working immediately. Each student will be forced to change their password on their next login. Safe to run more than once if it's interrupted partway through.",

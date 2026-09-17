@@ -41,6 +41,31 @@ function SchedulesPage() {
   const [loading, setLoading] = useState(true);
   const [newTime, setNewTime] = useState<Record<string, string>>({});
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [windowClosed, setWindowClosed] = useState(false);
+  const [windowBusy, setWindowBusy] = useState(false);
+
+  useEffect(() => {
+    void supabase
+      .from("app_settings")
+      .select("booking_window_closed")
+      .eq("id", true)
+      .maybeSingle()
+      .then(({ data }) => setWindowClosed(!!data?.booking_window_closed));
+  }, []);
+
+  const toggleMasterWindow = async () => {
+    const next = !windowClosed;
+    if (next && !window.confirm(t("schedules.confirmCloseWindow"))) return;
+    setWindowBusy(true);
+    const { error } = await supabase.rpc("set_booking_window_closed", { p_closed: next });
+    setWindowBusy(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    setWindowClosed(next);
+    toast.success(next ? t("schedules.windowClosedToast") : t("schedules.windowOpenedToast"));
+  };
 
   const effectiveRoute = isAdmin ? routeFilter : (profile?.assigned_route ?? "");
 
@@ -136,6 +161,37 @@ function SchedulesPage() {
             <ArrowLeft className="me-1 inline size-4" /> {t("common.backToConsole")}
           </Link>
         )}
+      </div>
+
+      <div
+        className={`mt-6 flex flex-wrap items-center justify-between gap-4 rounded-3xl border-2 p-6 ${
+          windowClosed
+            ? "border-destructive/60 bg-destructive/10"
+            : "border-success/60 bg-success/10"
+        }`}
+      >
+        <div>
+          <p className="font-semibold">{t("schedules.masterToggleTitle")}</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {windowClosed ? t("schedules.masterClosedDesc") : t("schedules.masterOpenDesc")}
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <Badge
+            className={
+              windowClosed
+                ? "bg-destructive text-destructive-foreground"
+                : "bg-success text-success-foreground"
+            }
+          >
+            {windowClosed ? t("schedules.closed") : t("schedules.open")}
+          </Badge>
+          <Switch
+            checked={!windowClosed}
+            disabled={windowBusy}
+            onCheckedChange={() => void toggleMasterWindow()}
+          />
+        </div>
       </div>
 
       <div className="mt-6 rounded-3xl border border-border bg-card p-6">

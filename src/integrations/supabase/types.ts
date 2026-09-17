@@ -96,9 +96,17 @@ export type Database = {
         Relationships: [];
       };
       app_settings: {
-        Row: { id: boolean; booking_window_override: boolean };
-        Insert: { id?: boolean; booking_window_override?: boolean };
-        Update: { id?: boolean; booking_window_override?: boolean };
+        Row: { id: boolean; booking_window_override: boolean; booking_window_closed: boolean };
+        Insert: {
+          id?: boolean;
+          booking_window_override?: boolean;
+          booking_window_closed?: boolean;
+        };
+        Update: {
+          id?: boolean;
+          booking_window_override?: boolean;
+          booking_window_closed?: boolean;
+        };
         Relationships: [];
       };
       boarding_tokens: {
@@ -539,6 +547,10 @@ export type Database = {
           trips_remaining: number;
           trips_total: number;
         }[];
+      };
+      set_booking_window_closed: {
+        Args: { p_closed: boolean };
+        Returns: undefined;
       };
       list_bus_schedules: {
         Args: { p_route: string | null };

@@ -61,14 +61,18 @@ function Dashboard() {
   const [optedOut, setOptedOut] = useState(false);
   const [busy, setBusy] = useState(false);
   const [windowOverride, setWindowOverride] = useState(false);
+  const [windowClosed, setWindowClosed] = useState(false);
 
   useEffect(() => {
     void supabase
       .from("app_settings")
-      .select("booking_window_override")
+      .select("booking_window_override, booking_window_closed")
       .eq("id", true)
       .maybeSingle()
-      .then(({ data }) => setWindowOverride(!!data?.booking_window_override));
+      .then(({ data }) => {
+        setWindowOverride(!!data?.booking_window_override);
+        setWindowClosed(!!data?.booking_window_closed);
+      });
   }, []);
 
   const mwBase = useMemo(() => morningWindow(), []);
@@ -221,6 +225,27 @@ function Dashboard() {
     return (
       <main className="mx-auto max-w-5xl px-4 py-16 text-muted-foreground">
         {t("common.loading")}
+      </main>
+    );
+  }
+
+  if (windowClosed) {
+    return (
+      <main className="mx-auto max-w-5xl px-4 py-8">
+        <div className="surface-navy shadow-luxe flex flex-wrap items-center gap-4 rounded-3xl p-6">
+          <ProfileAvatar />
+          <div>
+            <p className="text-xs tracking-[0.25em] uppercase opacity-70">
+              {t("dashboard.welcomeBack")}
+            </p>
+            <h1 className="text-2xl font-bold">{profile.full_name || t("dashboard.student")}</h1>
+          </div>
+        </div>
+        <div className="mt-6 flex flex-col items-center gap-3 rounded-3xl border-2 border-destructive/60 bg-destructive/10 p-10 text-center">
+          <Lock className="text-destructive size-8" />
+          <p className="text-lg font-semibold">{t("dashboard.windowClosedTitle")}</p>
+          <p className="text-sm text-muted-foreground">{t("dashboard.windowClosedBody")}</p>
+        </div>
       </main>
     );
   }

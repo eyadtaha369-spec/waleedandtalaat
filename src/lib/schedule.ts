@@ -97,7 +97,7 @@ export function nextSunday(now = cairoNow()): Date {
 
 /**
  * Special Sunday Trip window: open from whenever the admin turns the
- * toggle on until 10:00 PM the Saturday immediately before the target
+ * toggle on until 6:00 PM the Saturday immediately before the target
  * Sunday. serviceDate is always that Sunday, regardless of which day
  * (Friday, Saturday, or Sunday itself) the student actually books on
  * — this is what makes the QR pass show the right trip date even
@@ -106,12 +106,12 @@ export function nextSunday(now = cairoNow()): Date {
 export function specialSundayWindow(now = cairoNow()): WindowState {
   const target = nextSunday(now);
   const cutoff = addDays(target, -1);
-  cutoff.setHours(22, 0, 0, 0);
+  cutoff.setHours(18, 0, 0, 0);
   return {
     open: now.getTime() <= cutoff.getTime(),
-    label: "Special Sunday Trip — until Saturday 10:00 PM",
+    label: "Special Sunday Trip — until Saturday 6:00 PM",
     serviceDate: toDateKey(target),
-    closesAt: "Saturday 10:00 PM",
+    closesAt: "Saturday 6:00 PM",
   };
 }
 

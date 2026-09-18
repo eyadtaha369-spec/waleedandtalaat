@@ -106,7 +106,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     "schedules.specialSundayTitle": "☀️ رحلة الأحد الخاصة",
     "schedules.specialSundayActiveDesc": "الحجز متاح الآن لرحلة الأحد القادم بتاريخ:",
     "schedules.specialSundayInactiveDesc":
-      "عند التفعيل، يمكن للطلاب حجز رحلة الأحد القادم من الآن وحتى السبت الساعة 10 مساءً، بغض النظر عن مواعيد الحجز المعتادة.",
+      "عند التفعيل، يمكن للطلاب حجز رحلة الأحد القادم من الآن وحتى السبت الساعة 6 مساءً، بغض النظر عن مواعيد الحجز المعتادة.",
     "schedules.on": "مفعّل",
     "schedules.off": "غير مفعّل",
     "schedules.confirmSpecialSunday":
@@ -114,6 +114,8 @@ export const translations: Record<Lang, Record<string, string>> = {
     "dashboard.windowClosedTitle": "شباك الحجز مغلق حالياً",
     "dashboard.windowClosedBody":
       "لا يمكن الحجز في الوقت الحالي. برجاء المحاولة لاحقاً أو التواصل مع المشرف.",
+    "dashboard.specialSundayBanner":
+      "☀️ الحجز متاح لرحلة يوم الأحد - يغلق الحجز السبت الساعة 6:00 مساءً",
     "studentAccounts.migrateAllTitle": "⚠️ نقل جميع الطلاب الحاليين لتسجيل الدخول برقم الهاتف",
     "studentAccounts.migrateAllDesc":
       "إجراء لمرة واحدة وغير قابل للتراجع: سيتم تغيير بيانات الدخول لجميع الطلاب الحاليين إلى رقم الهاتف وكلمة السر الافتراضية wt@2027، وستتوقف بيانات الدخول القديمة عن العمل فوراً. سيُطلب من كل طالب تغيير كلمة السر عند أول تسجيل دخول جديد. آمن للتشغيل أكثر من مرة إذا انقطع العملية في المنتصف.",
@@ -650,7 +652,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     "schedules.specialSundayTitle": "☀️ Special Sunday Trip",
     "schedules.specialSundayActiveDesc": "Booking is open now for the upcoming Sunday, dated:",
     "schedules.specialSundayInactiveDesc":
-      "When on, students can book the upcoming Sunday trip immediately, from now until Saturday 10:00 PM, regardless of the standard booking hours.",
+      "When on, students can book the upcoming Sunday trip immediately, from now until Saturday 6:00 PM, regardless of the standard booking hours.",
     "schedules.on": "On",
     "schedules.off": "Off",
     "schedules.confirmSpecialSunday":
@@ -658,6 +660,8 @@ export const translations: Record<Lang, Record<string, string>> = {
     "dashboard.windowClosedTitle": "Booking Window is Currently Closed",
     "dashboard.windowClosedBody":
       "Booking isn't available right now. Please try again later or contact your supervisor.",
+    "dashboard.specialSundayBanner":
+      "☀️ Booking is open for Sunday's trip - closes Saturday at 6:00 PM",
     "studentAccounts.migrateAllTitle": "⚠️ Migrate ALL existing students to phone-number login",
     "studentAccounts.migrateAllDesc":
       "One-time, irreversible action: every existing student's login is changed to their phone number + the default password wt@2027, and their old login stops working immediately. Each student will be forced to change their password on their next login. Safe to run more than once if it's interrupted partway through.",

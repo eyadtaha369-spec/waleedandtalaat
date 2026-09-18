@@ -299,6 +299,12 @@ function Dashboard() {
         </Link>
       </div>
 
+      {specialSundayActive && (
+        <div className="mt-6 rounded-2xl border-2 border-accent/60 bg-accent/10 p-4 text-center">
+          <p className="font-semibold">{t("dashboard.specialSundayBanner")}</p>
+        </div>
+      )}
+
       <div className="mt-6 grid gap-5 md:grid-cols-2">
         <Panel
           icon={Sun}

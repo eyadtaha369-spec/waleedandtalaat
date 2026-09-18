@@ -22,6 +22,7 @@ import {
   MORNING_SLOTS,
   RETURN_SLOTS,
   morningWindow,
+  specialSundayWindow,
   optOutWindow,
   returnWindow,
 } from "@/lib/schedule";
@@ -64,11 +65,12 @@ function Dashboard() {
     "AUTO",
   );
   const [returnStatus, setReturnStatus] = useState<"AUTO" | "FORCE_OPEN" | "FORCE_CLOSED">("AUTO");
+  const [specialSundayActive, setSpecialSundayActive] = useState(false);
 
   useEffect(() => {
     void supabase
       .from("app_settings")
-      .select("morning_departure_status, early_return_status")
+      .select("morning_departure_status, early_return_status, special_sunday_active")
       .eq("id", true)
       .maybeSingle()
       .then(({ data }) => {
@@ -78,13 +80,18 @@ function Dashboard() {
         if (data?.early_return_status) {
           setReturnStatus(data.early_return_status as typeof returnStatus);
         }
+        setSpecialSundayActive(!!data?.special_sunday_active);
       });
   }, []);
 
-  const mwBase = useMemo(() => morningWindow(), []);
+  const mwBase = useMemo(
+    () => (specialSundayActive ? specialSundayWindow() : morningWindow()),
+    [specialSundayActive],
+  );
   const rwBase = useMemo(() => returnWindow(), []);
-  const mw =
-    morningStatus === "FORCE_OPEN"
+  const mw = specialSundayActive
+    ? mwBase
+    : morningStatus === "FORCE_OPEN"
       ? { ...mwBase, open: true }
       : morningStatus === "FORCE_CLOSED"
         ? { ...mwBase, open: false }
@@ -176,7 +183,7 @@ function Dashboard() {
   useEffect(() => {
     void reload();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, [user, mw.serviceDate]);
 
   const morningBooking = bookings.find(
     (b) => b.kind === "morning" && b.service_date === mw.serviceDate,

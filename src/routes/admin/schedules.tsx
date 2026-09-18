@@ -11,7 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { formatSlotLabel } from "@/lib/i18n/dateFormat";
+import { formatSlotLabel, formatLocalizedDate } from "@/lib/i18n/dateFormat";
+import { specialSundayWindow } from "@/lib/schedule";
 
 export const Route = createFileRoute("/admin/schedules")({
   head: () => ({ meta: [{ title: "Bus Schedules — Waleed & Talaat" }] }),
@@ -46,6 +47,31 @@ function SchedulesPage() {
   const [morningStatus, setMorningStatus] = useState<OverrideStatus>("AUTO");
   const [returnStatus, setReturnStatus] = useState<OverrideStatus>("AUTO");
   const [overrideBusy, setOverrideBusy] = useState<"morning" | "return" | null>(null);
+  const [specialSundayActive, setSpecialSundayActive] = useState(false);
+  const [specialSundayBusy, setSpecialSundayBusy] = useState(false);
+
+  useEffect(() => {
+    void supabase
+      .from("app_settings")
+      .select("special_sunday_active")
+      .eq("id", true)
+      .maybeSingle()
+      .then(({ data }) => setSpecialSundayActive(!!data?.special_sunday_active));
+  }, []);
+
+  const toggleSpecialSunday = async () => {
+    const next = !specialSundayActive;
+    if (next && !window.confirm(t("schedules.confirmSpecialSunday"))) return;
+    setSpecialSundayBusy(true);
+    const { error } = await supabase.rpc("set_special_sunday_active", { p_active: next });
+    setSpecialSundayBusy(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    setSpecialSundayActive(next);
+    toast.success(t("schedules.overrideUpdated"));
+  };
 
   useEffect(() => {
     void supabase
@@ -191,6 +217,37 @@ function SchedulesPage() {
           onChange={(s) => void setOverride("return", s)}
           t={t}
         />
+      </div>
+
+      <div
+        className={`mt-6 flex flex-wrap items-center justify-between gap-4 rounded-3xl border-2 p-6 ${
+          specialSundayActive ? "border-accent/60 bg-accent/10" : "border-border bg-card"
+        }`}
+      >
+        <div>
+          <p className="font-semibold">{t("schedules.specialSundayTitle")}</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {specialSundayActive
+              ? `${t("schedules.specialSundayActiveDesc")} ${formatLocalizedDate(specialSundayWindow().serviceDate, lang)}`
+              : t("schedules.specialSundayInactiveDesc")}
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <Badge
+            className={
+              specialSundayActive
+                ? "bg-accent text-accent-foreground"
+                : "bg-muted text-muted-foreground"
+            }
+          >
+            {specialSundayActive ? t("schedules.on") : t("schedules.off")}
+          </Badge>
+          <Switch
+            checked={specialSundayActive}
+            disabled={specialSundayBusy}
+            onCheckedChange={() => void toggleSpecialSunday()}
+          />
+        </div>
       </div>
 
       <div className="mt-6 rounded-3xl border border-border bg-card p-6">

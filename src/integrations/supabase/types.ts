@@ -96,16 +96,23 @@ export type Database = {
         Relationships: [];
       };
       app_settings: {
-        Row: { id: boolean; morning_departure_status: string; early_return_status: string };
+        Row: {
+          id: boolean;
+          morning_departure_status: string;
+          early_return_status: string;
+          special_sunday_active: boolean;
+        };
         Insert: {
           id?: boolean;
           morning_departure_status?: string;
           early_return_status?: string;
+          special_sunday_active?: boolean;
         };
         Update: {
           id?: boolean;
           morning_departure_status?: string;
           early_return_status?: string;
+          special_sunday_active?: boolean;
         };
         Relationships: [];
       };
@@ -547,6 +554,10 @@ export type Database = {
           trips_remaining: number;
           trips_total: number;
         }[];
+      };
+      set_special_sunday_active: {
+        Args: { p_active: boolean };
+        Returns: undefined;
       };
       set_trip_type_override: {
         Args: { p_kind: string; p_status: string };

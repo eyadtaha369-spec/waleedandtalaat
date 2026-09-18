@@ -9,7 +9,13 @@ import { Logo } from "@/components/Brand";
 import { SmartAvatar } from "@/components/SmartAvatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { cairoNow, morningWindow, returnWindow, toDateKey } from "@/lib/schedule";
+import {
+  cairoNow,
+  morningWindow,
+  returnWindow,
+  specialSundayWindow,
+  toDateKey,
+} from "@/lib/schedule";
 import { subscriptionBadge } from "@/lib/subscription";
 import { formatLocalizedDate, formatSlotLabel } from "@/lib/i18n/dateFormat";
 
@@ -51,7 +57,24 @@ function PassPage() {
   const { t, lang } = useLanguage();
   const navigate = useNavigate();
   const [today] = useState(() => toDateKey(cairoNow()));
-  const mw = useMemo(() => morningWindow(), []);
+  const [specialSundayActive, setSpecialSundayActive] = useState(false);
+
+  useEffect(() => {
+    void supabase
+      .from("app_settings")
+      .select("special_sunday_active")
+      .eq("id", true)
+      .maybeSingle()
+      .then(({ data }) => setSpecialSundayActive(!!data?.special_sunday_active));
+  }, []);
+
+  // Must match dashboard.tsx's own computation exactly, or a student
+  // who booked the special Sunday trip would see the wrong date (or
+  // no booking at all) here on their own pass.
+  const mw = useMemo(
+    () => (specialSundayActive ? specialSundayWindow() : morningWindow()),
+    [specialSundayActive],
+  );
   const rw = useMemo(() => returnWindow(), []);
   const [bookings, setBookings] = useState<Booking[]>([]);
 

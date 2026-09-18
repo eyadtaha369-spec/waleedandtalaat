@@ -84,6 +84,37 @@ export function optOutWindow(now = cairoNow()): WindowState {
   };
 }
 
+/**
+ * The upcoming Sunday's date — today itself if today is already
+ * Sunday, otherwise the next one. Computed dynamically rather than a
+ * fixed date so this works for whichever Sunday the admin activates
+ * the special-trip toggle for, not just one specific occurrence.
+ */
+export function nextSunday(now = cairoNow()): Date {
+  const day = now.getDay(); // 0 = Sunday, matches Postgres extract(dow from ...)
+  return addDays(now, day === 0 ? 0 : 7 - day);
+}
+
+/**
+ * Special Sunday Trip window: open from whenever the admin turns the
+ * toggle on until 10:00 PM the Saturday immediately before the target
+ * Sunday. serviceDate is always that Sunday, regardless of which day
+ * (Friday, Saturday, or Sunday itself) the student actually books on
+ * — this is what makes the QR pass show the right trip date even
+ * though the booking action happened earlier in the week.
+ */
+export function specialSundayWindow(now = cairoNow()): WindowState {
+  const target = nextSunday(now);
+  const cutoff = addDays(target, -1);
+  cutoff.setHours(22, 0, 0, 0);
+  return {
+    open: now.getTime() <= cutoff.getTime(),
+    label: "Special Sunday Trip — until Saturday 10:00 PM",
+    serviceDate: toDateKey(target),
+    closesAt: "Saturday 10:00 PM",
+  };
+}
+
 export function prettyDate(key: string): string {
   const [y, m, d] = key.split("-").map(Number);
   return new Date(y!, (m ?? 1) - 1, d ?? 1).toLocaleDateString("en-GB", {

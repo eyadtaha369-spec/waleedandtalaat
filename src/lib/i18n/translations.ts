@@ -103,6 +103,14 @@ export const translations: Record<Lang, Record<string, string>> = {
     "schedules.forceClosedDesc": "الحجز مغلق تماماً بغض النظر عن الوقت.",
     "schedules.confirmForceClose": "سيتم إغلاق هذا النوع من الحجز فوراً لجميع الطلاب. متابعة؟",
     "schedules.overrideUpdated": "تم تحديث حالة الحجز",
+    "schedules.specialSundayTitle": "☀️ رحلة الأحد الخاصة",
+    "schedules.specialSundayActiveDesc": "الحجز متاح الآن لرحلة الأحد القادم بتاريخ:",
+    "schedules.specialSundayInactiveDesc":
+      "عند التفعيل، يمكن للطلاب حجز رحلة الأحد القادم من الآن وحتى السبت الساعة 10 مساءً، بغض النظر عن مواعيد الحجز المعتادة.",
+    "schedules.on": "مفعّل",
+    "schedules.off": "غير مفعّل",
+    "schedules.confirmSpecialSunday":
+      "سيتمكن الطلاب من حجز رحلة الأحد القادم فوراً، بغض النظر عن مواعيد الحجز المعتادة. متابعة؟",
     "dashboard.windowClosedTitle": "شباك الحجز مغلق حالياً",
     "dashboard.windowClosedBody":
       "لا يمكن الحجز في الوقت الحالي. برجاء المحاولة لاحقاً أو التواصل مع المشرف.",
@@ -639,6 +647,14 @@ export const translations: Record<Lang, Record<string, string>> = {
     "schedules.confirmForceClose":
       "This immediately closes this trip type for every student. Continue?",
     "schedules.overrideUpdated": "Booking status updated",
+    "schedules.specialSundayTitle": "☀️ Special Sunday Trip",
+    "schedules.specialSundayActiveDesc": "Booking is open now for the upcoming Sunday, dated:",
+    "schedules.specialSundayInactiveDesc":
+      "When on, students can book the upcoming Sunday trip immediately, from now until Saturday 10:00 PM, regardless of the standard booking hours.",
+    "schedules.on": "On",
+    "schedules.off": "Off",
+    "schedules.confirmSpecialSunday":
+      "Students will be able to book the upcoming Sunday trip immediately, regardless of the standard booking hours. Continue?",
     "dashboard.windowClosedTitle": "Booking Window is Currently Closed",
     "dashboard.windowClosedBody":
       "Booking isn't available right now. Please try again later or contact your supervisor.",

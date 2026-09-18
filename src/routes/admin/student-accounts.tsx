@@ -194,6 +194,28 @@ function StudentAccountsPage() {
     void load();
   };
 
+  const [repairing, setRepairing] = useState(false);
+  const [repairSummary, setRepairSummary] = useState<string | null>(null);
+
+  const repairLogins = async () => {
+    setRepairing(true);
+    setRepairSummary(null);
+    const { data, error } = await supabase.functions.invoke("repair-student-logins");
+    setRepairing(false);
+    if (error || data?.error) {
+      toast.error(data?.error ?? (await edgeFunctionErrorMessage(error, "Repair failed")));
+      return;
+    }
+    const results = (data.results as { status: string }[]) ?? [];
+    const repaired = results.filter((r) => r.status === "repaired").length;
+    const skipped = results.filter((r) => r.status === "skipped").length;
+    const failed = results.filter((r) => r.status === "failed").length;
+    setRepairSummary(
+      `${repaired} ${t("studentAccounts.repaired")}, ${skipped} ${t("studentAccounts.migSkipped")}, ${failed} ${t("studentAccounts.migFailed")}`,
+    );
+    toast.success(t("studentAccounts.repairDone"));
+  };
+
   const openCreate = () => {
     setForm({
       full_name: "",
@@ -371,6 +393,24 @@ function StudentAccountsPage() {
             {migrating ? t("common.loading") : t("studentAccounts.migrateAllButton")}
           </Button>
           {migrationSummary && <p className="mt-3 text-sm font-medium">{migrationSummary}</p>}
+        </div>
+      )}
+
+      {isAdmin && (
+        <div className="mt-6 rounded-3xl border-2 border-warning/50 bg-warning/5 p-5">
+          <p className="flex items-center gap-2 font-semibold text-warning-foreground">
+            <AlertTriangle className="size-5" /> {t("studentAccounts.repairTitle")}
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground">{t("studentAccounts.repairDesc")}</p>
+          <Button
+            variant="outline"
+            className="mt-3"
+            disabled={repairing}
+            onClick={() => void repairLogins()}
+          >
+            {repairing ? t("common.loading") : t("studentAccounts.repairButton")}
+          </Button>
+          {repairSummary && <p className="mt-3 text-sm font-medium">{repairSummary}</p>}
         </div>
       )}
 

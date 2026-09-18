@@ -11,6 +11,10 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+function normalizePhone(phone: string): string {
+  return phone.replace(/\D/g, "");
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
@@ -77,6 +81,39 @@ Deno.serve(async (req) => {
     }
     if (Object.keys(update).length === 0) {
       return json({ error: "No fields to update" }, 400);
+    }
+
+    // A student's login email is derived from their phone number
+    // ({digits}@wt-shuttle.app) — editing phone here without also
+    // updating the Auth email leaves them unable to log in with
+    // their corrected number, even though their profile is right.
+    // This is the actual root cause of "Invalid login credentials"
+    // for a student whose phone was ever edited through this form.
+    if (fields.phone) {
+      const normalized = normalizePhone(fields.phone);
+      if (!normalized) return json({ error: "Invalid phone number" }, 400);
+
+      let finalUsername = normalized;
+      let attempt = 1;
+      while (true) {
+        const { data: taken } = await admin
+          .from("profiles")
+          .select("id")
+          .eq("username", finalUsername)
+          .neq("id", student_id)
+          .maybeSingle();
+        if (!taken) break;
+        finalUsername = `${normalized}${attempt}`;
+        attempt++;
+      }
+
+      const { error: emailError } = await admin.auth.admin.updateUserById(student_id, {
+        email: `${finalUsername}@wt-shuttle.app`,
+        email_confirm: true,
+      });
+      if (emailError) return json({ error: emailError.message }, 400);
+
+      update.username = finalUsername;
     }
 
     const { error: updateError } = await admin.from("profiles").update(update).eq("id", student_id);

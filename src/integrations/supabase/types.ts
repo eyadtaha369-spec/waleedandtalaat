@@ -563,6 +563,10 @@ export type Database = {
         Args: { p_kind: string; p_status: string };
         Returns: undefined;
       };
+      get_slot_totals: {
+        Args: { p_date: string };
+        Returns: { kind: string; slot: string; total: number }[];
+      };
       list_bus_schedules: {
         Args: { p_route: string | null };
         Returns: {

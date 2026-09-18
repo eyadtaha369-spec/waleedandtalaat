@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ALL_SLOTS, cairoNow, MORNING_SLOTS, RETURN_SLOTS, toDateKey } from "@/lib/schedule";
 import { SECTOR_LABELS, type EarlyReturnSector } from "@/lib/earlyReturnSectors";
 import { useLanguage } from "@/hooks/useLanguage";
+import { useRoutes } from "@/hooks/useRoutes";
 
 type Row = {
   student_id: string;
@@ -28,18 +29,48 @@ type PaymentFilter = "all" | "paid_full" | "installment_pending";
 
 export function ManifestsPanel() {
   const { t } = useLanguage();
+  const { routes } = useRoutes();
   const todayKey = useMemo(() => toDateKey(cairoNow()), []);
   const [date, setDate] = useState<string>(todayKey);
   const [slot, setSlot] = useState<string>(ALL_SLOTS[0]);
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>("all");
+  const [routeFilter, setRouteFilter] = useState<string>("all");
+  const [slotTotals, setSlotTotals] = useState<{ kind: string; slot: string; total: number }[]>([]);
 
   const isEarlyReturn = (RETURN_SLOTS as readonly string[]).includes(slot);
 
   useEffect(() => {
     void load(slot, date);
   }, [slot, date]);
+
+  const loadSlotTotals = async (currentDate: string) => {
+    const { data } = await supabase.rpc("get_slot_totals", { p_date: currentDate });
+    setSlotTotals(data ?? []);
+  };
+
+  useEffect(() => {
+    void loadSlotTotals(date);
+    // Recalculate live as bookings/opt-outs change for this date,
+    // not just when the admin changes a filter themselves.
+    const channel = supabase
+      .channel(`manifest-totals-${date}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "bookings", filter: `service_date=eq.${date}` },
+        () => void loadSlotTotals(date),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "opt_outs", filter: `service_date=eq.${date}` },
+        () => void loadSlotTotals(date),
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [date]);
 
   const load = async (currentSlot: string, currentDate: string) => {
     setLoading(true);
@@ -111,7 +142,9 @@ export function ManifestsPanel() {
   };
 
   const filteredRows = rows.filter(
-    (r) => paymentFilter === "all" || r.payment_status === paymentFilter,
+    (r) =>
+      (paymentFilter === "all" || r.payment_status === paymentFilter) &&
+      (routeFilter === "all" || r.route === routeFilter),
   );
   const installmentCount = rows.filter((r) => r.payment_status === "installment_pending").length;
 
@@ -183,7 +216,19 @@ export function ManifestsPanel() {
               </span>
             )}
             <select
-              className="ms-auto h-8 rounded-md border border-input bg-background px-2 text-xs"
+              className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+              value={routeFilter}
+              onChange={(e) => setRouteFilter(e.target.value)}
+            >
+              <option value="all">{t("students.allRoutes")}</option>
+              {routes.map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+            </select>
+            <select
+              className="h-8 rounded-md border border-input bg-background px-2 text-xs"
               value={paymentFilter}
               onChange={(e) => setPaymentFilter(e.target.value as PaymentFilter)}
             >
@@ -192,6 +237,40 @@ export function ManifestsPanel() {
               <option value="installment_pending">{t("manifests.installmentPending")}</option>
             </select>
           </div>
+
+          {slotTotals.length > 0 && (
+            <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-border p-3">
+              <span className="text-xs font-medium text-muted-foreground">
+                {t("manifests.perDepartureTime")}:
+              </span>
+              {slotTotals
+                .slice()
+                .sort(
+                  (a, b) => ALL_SLOTS.indexOf(a.slot as never) - ALL_SLOTS.indexOf(b.slot as never),
+                )
+                .map((s) => (
+                  <Badge
+                    key={`${s.kind}-${s.slot}`}
+                    className="bg-secondary text-secondary-foreground"
+                  >
+                    {s.slot} — {s.total}
+                  </Badge>
+                ))}
+            </div>
+          )}
+
+          {byRoute.length > 1 && (
+            <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-border p-3">
+              <span className="text-xs font-medium text-muted-foreground">
+                {t("manifests.perRoute")}:
+              </span>
+              {byRoute.map(([routeName, group]) => (
+                <Badge key={routeName} className="bg-accent/20 text-accent-foreground">
+                  {routeName} — {group.length}
+                </Badge>
+              ))}
+            </div>
+          )}
 
           {loading ? (
             <p className="text-sm text-muted-foreground">{t("manifests.loadingManifest")}</p>

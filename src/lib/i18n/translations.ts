@@ -316,6 +316,8 @@ export const translations: Record<Lang, Record<string, string>> = {
     // Manifests
     "manifests.totalPassengers": "إجمالي الركاب",
     "manifests.allPaymentStatuses": "كل حالات السداد",
+    "manifests.perDepartureTime": "إجمالي كل ميعاد",
+    "manifests.perRoute": "إجمالي كل خط",
     "manifests.paidInFull": "مسدد بالكامل",
     "manifests.installmentPending": "في انتظار القسط (قسط)",
     "manifests.noPassengers": "لا يوجد ركاب يطابقون هذا العرض",
@@ -856,6 +858,8 @@ export const translations: Record<Lang, Record<string, string>> = {
 
     "manifests.totalPassengers": "total passengers",
     "manifests.allPaymentStatuses": "All payment statuses",
+    "manifests.perDepartureTime": "Totals per departure time",
+    "manifests.perRoute": "Totals per route",
     "manifests.paidInFull": "Paid in full",
     "manifests.installmentPending": "Installment pending (قسط)",
     "manifests.noPassengers": "No passengers match this view.",

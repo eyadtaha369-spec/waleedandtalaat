@@ -96,16 +96,16 @@ export type Database = {
         Relationships: [];
       };
       app_settings: {
-        Row: { id: boolean; booking_window_override: boolean; booking_window_closed: boolean };
+        Row: { id: boolean; morning_departure_status: string; early_return_status: string };
         Insert: {
           id?: boolean;
-          booking_window_override?: boolean;
-          booking_window_closed?: boolean;
+          morning_departure_status?: string;
+          early_return_status?: string;
         };
         Update: {
           id?: boolean;
-          booking_window_override?: boolean;
-          booking_window_closed?: boolean;
+          morning_departure_status?: string;
+          early_return_status?: string;
         };
         Relationships: [];
       };
@@ -548,8 +548,8 @@ export type Database = {
           trips_total: number;
         }[];
       };
-      set_booking_window_closed: {
-        Args: { p_closed: boolean };
+      set_trip_type_override: {
+        Args: { p_kind: string; p_status: string };
         Returns: undefined;
       };
       list_bus_schedules: {

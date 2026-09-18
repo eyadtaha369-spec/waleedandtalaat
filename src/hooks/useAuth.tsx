@@ -37,12 +37,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [roles, setRoles] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
+  // sessionResolved: has the very first getSession() call finished.
+  // profileLoading: is a profile/roles fetch currently in flight — set
+  // on EVERY auth state change, not just the initial one. Consumers
+  // need loading to stay true until BOTH are settled, or a redirect
+  // decision gets made on stale pre-sign-in profile/roles data (null/
+  // empty) and then corrects itself a moment later once the real
+  // profile arrives — which is exactly what was happening here: /auth
+  // and /dashboard's guards would fire on that stale null profile
+  // (isAdmin/isSupervisor wrongly false, must_change_password wrongly
+  // undefined), navigate somewhere, then re-fire once the real
+  // profile loaded and navigate again — a visible bounce.
+  const [sessionResolved, setSessionResolved] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(true);
 
   const load = async (uid: string | undefined) => {
+    setProfileLoading(true);
     if (!uid) {
       setProfile(null);
       setRoles([]);
+      setProfileLoading(false);
       return;
     }
     const [{ data: p }, { data: r }] = await Promise.all([
@@ -51,6 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     ]);
     setProfile((p as Profile) ?? null);
     setRoles((r ?? []).map((x: { role: string }) => x.role));
+    setProfileLoading(false);
   };
 
   useEffect(() => {
@@ -61,7 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void supabase.auth.getSession().then(async ({ data }) => {
       setSession(data.session);
       await load(data.session?.user?.id);
-      setLoading(false);
+      setSessionResolved(true);
     });
     return () => sub.subscription.unsubscribe();
   }, []);
@@ -74,7 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isStaff: roles.includes("admin") || roles.includes("supervisor"),
     isAdmin: roles.includes("admin"),
     isSupervisor: roles.includes("supervisor"),
-    loading,
+    loading: !sessionResolved || profileLoading,
     refresh: async () => load(session?.user?.id),
     signOut: async () => {
       await supabase.auth.signOut();

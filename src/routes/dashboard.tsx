@@ -60,25 +60,41 @@ function Dashboard() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [optedOut, setOptedOut] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [windowOverride, setWindowOverride] = useState(false);
-  const [windowClosed, setWindowClosed] = useState(false);
+  const [morningStatus, setMorningStatus] = useState<"AUTO" | "FORCE_OPEN" | "FORCE_CLOSED">(
+    "AUTO",
+  );
+  const [returnStatus, setReturnStatus] = useState<"AUTO" | "FORCE_OPEN" | "FORCE_CLOSED">("AUTO");
 
   useEffect(() => {
     void supabase
       .from("app_settings")
-      .select("booking_window_override, booking_window_closed")
+      .select("morning_departure_status, early_return_status")
       .eq("id", true)
       .maybeSingle()
       .then(({ data }) => {
-        setWindowOverride(!!data?.booking_window_override);
-        setWindowClosed(!!data?.booking_window_closed);
+        if (data?.morning_departure_status) {
+          setMorningStatus(data.morning_departure_status as typeof morningStatus);
+        }
+        if (data?.early_return_status) {
+          setReturnStatus(data.early_return_status as typeof returnStatus);
+        }
       });
   }, []);
 
   const mwBase = useMemo(() => morningWindow(), []);
   const rwBase = useMemo(() => returnWindow(), []);
-  const mw = windowOverride ? { ...mwBase, open: true } : mwBase;
-  const rw = windowOverride ? { ...rwBase, open: true } : rwBase;
+  const mw =
+    morningStatus === "FORCE_OPEN"
+      ? { ...mwBase, open: true }
+      : morningStatus === "FORCE_CLOSED"
+        ? { ...mwBase, open: false }
+        : mwBase;
+  const rw =
+    returnStatus === "FORCE_OPEN"
+      ? { ...rwBase, open: true }
+      : returnStatus === "FORCE_CLOSED"
+        ? { ...rwBase, open: false }
+        : rwBase;
   const ow = useMemo(() => optOutWindow(), []);
 
   const [stop, setStop] = useState<string>("");
@@ -225,27 +241,6 @@ function Dashboard() {
     return (
       <main className="mx-auto max-w-5xl px-4 py-16 text-muted-foreground">
         {t("common.loading")}
-      </main>
-    );
-  }
-
-  if (windowClosed) {
-    return (
-      <main className="mx-auto max-w-5xl px-4 py-8">
-        <div className="surface-navy shadow-luxe flex flex-wrap items-center gap-4 rounded-3xl p-6">
-          <ProfileAvatar />
-          <div>
-            <p className="text-xs tracking-[0.25em] uppercase opacity-70">
-              {t("dashboard.welcomeBack")}
-            </p>
-            <h1 className="text-2xl font-bold">{profile.full_name || t("dashboard.student")}</h1>
-          </div>
-        </div>
-        <div className="mt-6 flex flex-col items-center gap-3 rounded-3xl border-2 border-destructive/60 bg-destructive/10 p-10 text-center">
-          <Lock className="text-destructive size-8" />
-          <p className="text-lg font-semibold">{t("dashboard.windowClosedTitle")}</p>
-          <p className="text-sm text-muted-foreground">{t("dashboard.windowClosedBody")}</p>
-        </div>
       </main>
     );
   }

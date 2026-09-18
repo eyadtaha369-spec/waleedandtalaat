@@ -22,6 +22,8 @@ export const Route = createFileRoute("/admin/schedules")({
   ),
 });
 
+type OverrideStatus = "AUTO" | "FORCE_OPEN" | "FORCE_CLOSED";
+
 type ScheduleSlot = {
   id: string;
   route_name: string;
@@ -41,30 +43,41 @@ function SchedulesPage() {
   const [loading, setLoading] = useState(true);
   const [newTime, setNewTime] = useState<Record<string, string>>({});
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [windowClosed, setWindowClosed] = useState(false);
-  const [windowBusy, setWindowBusy] = useState(false);
+  const [morningStatus, setMorningStatus] = useState<OverrideStatus>("AUTO");
+  const [returnStatus, setReturnStatus] = useState<OverrideStatus>("AUTO");
+  const [overrideBusy, setOverrideBusy] = useState<"morning" | "return" | null>(null);
 
   useEffect(() => {
     void supabase
       .from("app_settings")
-      .select("booking_window_closed")
+      .select("morning_departure_status, early_return_status")
       .eq("id", true)
       .maybeSingle()
-      .then(({ data }) => setWindowClosed(!!data?.booking_window_closed));
+      .then(({ data }) => {
+        if (data?.morning_departure_status) {
+          setMorningStatus(data.morning_departure_status as OverrideStatus);
+        }
+        if (data?.early_return_status) {
+          setReturnStatus(data.early_return_status as OverrideStatus);
+        }
+      });
   }, []);
 
-  const toggleMasterWindow = async () => {
-    const next = !windowClosed;
-    if (next && !window.confirm(t("schedules.confirmCloseWindow"))) return;
-    setWindowBusy(true);
-    const { error } = await supabase.rpc("set_booking_window_closed", { p_closed: next });
-    setWindowBusy(false);
+  const setOverride = async (kind: "morning" | "return", status: OverrideStatus) => {
+    if (status === "FORCE_CLOSED" && !window.confirm(t("schedules.confirmForceClose"))) return;
+    setOverrideBusy(kind);
+    const { error } = await supabase.rpc("set_trip_type_override", {
+      p_kind: kind,
+      p_status: status,
+    });
+    setOverrideBusy(null);
     if (error) {
       toast.error(error.message);
       return;
     }
-    setWindowClosed(next);
-    toast.success(next ? t("schedules.windowClosedToast") : t("schedules.windowOpenedToast"));
+    if (kind === "morning") setMorningStatus(status);
+    else setReturnStatus(status);
+    toast.success(t("schedules.overrideUpdated"));
   };
 
   const effectiveRoute = isAdmin ? routeFilter : (profile?.assigned_route ?? "");
@@ -163,35 +176,21 @@ function SchedulesPage() {
         )}
       </div>
 
-      <div
-        className={`mt-6 flex flex-wrap items-center justify-between gap-4 rounded-3xl border-2 p-6 ${
-          windowClosed
-            ? "border-destructive/60 bg-destructive/10"
-            : "border-success/60 bg-success/10"
-        }`}
-      >
-        <div>
-          <p className="font-semibold">{t("schedules.masterToggleTitle")}</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {windowClosed ? t("schedules.masterClosedDesc") : t("schedules.masterOpenDesc")}
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Badge
-            className={
-              windowClosed
-                ? "bg-destructive text-destructive-foreground"
-                : "bg-success text-success-foreground"
-            }
-          >
-            {windowClosed ? t("schedules.closed") : t("schedules.open")}
-          </Badge>
-          <Switch
-            checked={!windowClosed}
-            disabled={windowBusy}
-            onCheckedChange={() => void toggleMasterWindow()}
-          />
-        </div>
+      <div className="mt-6 grid gap-4 md:grid-cols-2">
+        <OverrideControl
+          title={t("schedules.morningOverrideTitle")}
+          status={morningStatus}
+          busy={overrideBusy === "morning"}
+          onChange={(s) => void setOverride("morning", s)}
+          t={t}
+        />
+        <OverrideControl
+          title={t("schedules.returnOverrideTitle")}
+          status={returnStatus}
+          busy={overrideBusy === "return"}
+          onChange={(s) => void setOverride("return", s)}
+          t={t}
+        />
       </div>
 
       <div className="mt-6 rounded-3xl border border-border bg-card p-6">
@@ -286,5 +285,55 @@ function SchedulesPage() {
         )}
       </div>
     </main>
+  );
+}
+
+function OverrideControl({
+  title,
+  status,
+  busy,
+  onChange,
+  t,
+}: {
+  title: string;
+  status: OverrideStatus;
+  busy: boolean;
+  onChange: (s: OverrideStatus) => void;
+  t: (key: string) => string;
+}) {
+  const colors: Record<OverrideStatus, string> = {
+    AUTO: "border-border bg-card",
+    FORCE_OPEN: "border-success/60 bg-success/10",
+    FORCE_CLOSED: "border-destructive/60 bg-destructive/10",
+  };
+  return (
+    <div className={`rounded-3xl border-2 p-5 ${colors[status]}`}>
+      <p className="font-semibold">{title}</p>
+      <p className="mt-1 text-xs text-muted-foreground">
+        {status === "AUTO"
+          ? t("schedules.autoDesc")
+          : status === "FORCE_OPEN"
+            ? t("schedules.forceOpenDesc")
+            : t("schedules.forceClosedDesc")}
+      </p>
+      <div className="mt-3 flex gap-2">
+        {(["AUTO", "FORCE_OPEN", "FORCE_CLOSED"] as const).map((s) => (
+          <Button
+            key={s}
+            size="sm"
+            variant={status === s ? "default" : "outline"}
+            className={status === s ? "btn-gold" : ""}
+            disabled={busy}
+            onClick={() => onChange(s)}
+          >
+            {s === "AUTO"
+              ? t("schedules.auto")
+              : s === "FORCE_OPEN"
+                ? t("schedules.forceOpen")
+                : t("schedules.forceClosed")}
+          </Button>
+        ))}
+      </div>
+    </div>
   );
 }

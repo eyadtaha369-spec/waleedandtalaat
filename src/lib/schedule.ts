@@ -62,6 +62,30 @@ export function morningWindow(now = cairoNow()): WindowState {
   };
 }
 
+/**
+ * Default service date for the Route Dashboard's manifest — the date
+ * of the morning trip a supervisor most likely wants to see right
+ * now, NOT simply "tomorrow relative to this instant."
+ *
+ * Without a cutoff, defaulting to addDays(now, 1) breaks right after
+ * midnight: at 1:00 AM the calendar has already rolled over to the
+ * new day, so "tomorrow" jumps to the day AFTER the trip that's
+ * actually departing in a few hours (the one booked yesterday
+ * evening, whose service date is today's calendar date). Supervisors
+ * checking the dashboard between midnight and the early morning would
+ * see an empty manifest for a trip that hasn't happened yet, while
+ * the real upcoming trip's passengers were hidden a day back.
+ *
+ * Fix: treat any time before `cutoffHour` (default 4:00 AM) as still
+ * "yesterday" for this calculation only — the operating day doesn't
+ * roll over until the early-morning cutoff, not at midnight.
+ */
+export function routeDashboardDefaultDate(now = cairoNow(), cutoffHour = 4): string {
+  const mins = minutesOfDay(now);
+  const operatingNow = mins < cutoffHour * 60 ? addDays(now, -1) : now;
+  return toDateKey(addDays(operatingNow, 1));
+}
+
 /** Return window: 6:30 AM -> 10:30 AM, books the SAME day's early return. */
 export function returnWindow(now = cairoNow()): WindowState {
   const mins = minutesOfDay(now);

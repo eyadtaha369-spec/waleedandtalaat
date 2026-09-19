@@ -53,6 +53,7 @@ type ImportResult = {
   temp_password: string;
   status: "created" | "updated" | "failed";
   error?: string;
+  warning?: string;
 };
 
 /**
@@ -280,13 +281,14 @@ export function ImportPanel() {
     const failCount = created.filter((r) => r.status === "failed").length;
     const updatedCount = created.filter((r) => r.status === "updated").length;
     const createdCount = created.length - failCount - updatedCount;
-    const parts = [
-      createdCount > 0 ? `${createdCount} ${t("import.accountsCreated")}` : null,
-      updatedCount > 0 ? `${updatedCount} ${t("import.updated")}` : null,
-      failCount > 0 ? `${failCount} ${t("import.failed").toLowerCase()}` : null,
-      skippedOnLoad > 0 ? `${skippedOnLoad} ${t("import.skippedRefunded")}` : null,
+    const lines = [
+      `${t("import.totalProcessed")}: ${created.length}`,
+      `${t("import.newlyCreated")}: ${createdCount}`,
+      `${t("import.updatedExisted")}: ${updatedCount}`,
+      failCount > 0 ? `${t("import.failed")}: ${failCount}` : null,
+      skippedOnLoad > 0 ? `${t("import.skippedRefunded")}: ${skippedOnLoad}` : null,
     ].filter(Boolean);
-    toast.success(parts.join(", "));
+    toast.success(t("import.summaryTitle"), { description: lines.join("\n") });
   };
 
   const downloadCredentials = () => {
@@ -409,19 +411,29 @@ export function ImportPanel() {
                     {results.length > 0 && (
                       <TableCell>
                         {outcome?.status === "created" ? (
-                          <a
-                            href={credentialsWhatsAppLink({
-                              full_name: r.full_name,
-                              phone: r.phone,
-                              email: outcome.email || `${r.username}@wt-shuttle.app`,
-                              temp_password: r.temp_password,
-                            })}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-success underline underline-offset-2"
-                          >
-                            {t("import.sendWhatsapp")}
-                          </a>
+                          <span className="inline-flex items-center gap-1">
+                            <a
+                              href={credentialsWhatsAppLink({
+                                full_name: r.full_name,
+                                phone: r.phone,
+                                email: outcome.email || `${r.username}@wt-shuttle.app`,
+                                temp_password: r.temp_password,
+                              })}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-success underline underline-offset-2"
+                            >
+                              {t("import.sendWhatsapp")}
+                            </a>
+                            {outcome.warning && (
+                              <span
+                                className="text-warning cursor-help"
+                                title={outcome.warning}
+                              >
+                                ⚠️
+                              </span>
+                            )}
+                          </span>
                         ) : outcome?.status === "updated" ? (
                           <span className="text-accent">{t("import.updated")}</span>
                         ) : outcome ? (

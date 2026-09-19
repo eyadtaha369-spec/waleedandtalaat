@@ -17,7 +17,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { subscriptionBadge } from "@/lib/subscription";
-import { morningWindow } from "@/lib/schedule";
+import { addDays, cairoNow, routeDashboardDefaultDate, toDateKey } from "@/lib/schedule";
 
 export const Route = createFileRoute("/route-dashboard")({
   head: () => ({ meta: [{ title: "Route Dashboard — Waleed & Talaat" }] }),
@@ -52,7 +52,14 @@ function RouteDashboardPage() {
   const { isAdmin, profile } = useAuth();
   const { t } = useLanguage();
   const { routes } = useRoutes();
-  const mw = useMemo(() => morningWindow(), []);
+
+  // Defaults to the trip that's actually upcoming, with a 4:00 AM
+  // operating-day cutoff so the view doesn't jump to the wrong date
+  // right after midnight — see routeDashboardDefaultDate(). Cairo
+  // local time throughout (cairoNow()), never UTC/server time.
+  const todayKey = useMemo(() => toDateKey(cairoNow()), []);
+  const defaultDate = useMemo(() => routeDashboardDefaultDate(), []);
+  const [serviceDate, setServiceDate] = useState<string>(defaultDate);
 
   const [routeFilter, setRouteFilter] = useState<string>("all");
   const [rows, setRows] = useState<PassengerRow[]>([]);
@@ -66,7 +73,7 @@ function RouteDashboardPage() {
       setLoading(true);
       const { data, error } = await supabase.rpc("get_route_stop_breakdown", {
         p_route: !effectiveRoute || effectiveRoute === "all" ? null : effectiveRoute,
-        p_service_date: mw.serviceDate,
+        p_service_date: serviceDate,
       });
       setLoading(false);
       if (error) {
@@ -75,7 +82,7 @@ function RouteDashboardPage() {
       }
       setRows((data as PassengerRow[]) ?? []);
     })();
-  }, [effectiveRoute, mw.serviceDate]);
+  }, [effectiveRoute, serviceDate]);
 
   const filteredRows = rows.filter((r) => {
     const q = search.trim().toLowerCase();
@@ -102,7 +109,7 @@ function RouteDashboardPage() {
       <div className="surface-navy shadow-luxe flex flex-wrap items-center justify-between gap-4 rounded-3xl p-6">
         <div>
           <p className="text-xs tracking-[0.25em] uppercase opacity-70">
-            {t("routeDash.upcomingTrip")} · {mw.serviceDate}
+            {t("routeDash.upcomingTrip")} · {serviceDate}
           </p>
           <h1 className="text-2xl font-bold">{t("routeDash.title")}</h1>
         </div>
@@ -114,6 +121,53 @@ function RouteDashboardPage() {
       </div>
 
       <div className="mt-6 rounded-3xl border border-border bg-card p-6">
+        <div className="mb-4 flex flex-wrap items-center gap-3">
+          <label className="text-sm font-medium text-muted-foreground" htmlFor="route-dashboard-date">
+            {t("routeDash.tripDate")}
+          </label>
+          <input
+            id="route-dashboard-date"
+            type="date"
+            className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+            value={serviceDate}
+            onChange={(e) => setServiceDate(e.target.value)}
+          />
+          <div className="flex gap-1.5">
+            <button
+              type="button"
+              className={`rounded-md border px-2.5 py-1 text-xs ${
+                serviceDate === toDateKey(addDays(cairoNow(), -1))
+                  ? "btn-gold border-transparent"
+                  : "border-input text-muted-foreground"
+              }`}
+              onClick={() => setServiceDate(toDateKey(addDays(cairoNow(), -1)))}
+            >
+              {t("routeDash.yesterday")}
+            </button>
+            <button
+              type="button"
+              className={`rounded-md border px-2.5 py-1 text-xs ${
+                serviceDate === todayKey
+                  ? "btn-gold border-transparent"
+                  : "border-input text-muted-foreground"
+              }`}
+              onClick={() => setServiceDate(todayKey)}
+            >
+              {t("routeDash.today")}
+            </button>
+            <button
+              type="button"
+              className={`rounded-md border px-2.5 py-1 text-xs ${
+                serviceDate === toDateKey(addDays(cairoNow(), 1))
+                  ? "btn-gold border-transparent"
+                  : "border-input text-muted-foreground"
+              }`}
+              onClick={() => setServiceDate(toDateKey(addDays(cairoNow(), 1)))}
+            >
+              {t("routeDash.tomorrow")}
+            </button>
+          </div>
+        </div>
         <div className="flex flex-wrap items-center gap-3">
           {isAdmin ? (
             <select
@@ -219,7 +273,7 @@ function RouteDashboardPage() {
                                     </Badge>
                                   ))}
                                 {p.phone && (
-                                  <a
+                                  
                                     href={`https://wa.me/${toWhatsAppNumber(p.phone)}`}
                                     target="_blank"
                                     rel="noopener noreferrer"

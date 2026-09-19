@@ -25,6 +25,15 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Egyptian mobile numbers are 11 digits (01xxxxxxxxx). Anything shorter
+// almost certainly means the sheet's phone cell was blank, garbled, or
+// a placeholder. Rows like that still get an account created below —
+// they just can't use phone-number login until staff fixes the real
+// phone via Edit (which re-syncs the login email automatically).
+function isUsablePhone(normalized: string): boolean {
+  return normalized.length >= 10;
+}
+
 type ImportRow = {
   full_name: string;
   phone: string;
@@ -79,12 +88,31 @@ Deno.serve(async (req) => {
     // every row in the batch is checked against the same snapshot
     // (and against each other's phone numbers if a row is itself a
     // fresh account — handled by refreshing the map after each create).
-    const { data: existingProfiles } = await admin.from("profiles").select("id, phone, username");
+    //
+    // IMPORTANT: paginated in pages of 1000. A plain .select() caps out
+    // at Supabase's default row limit (1000) — with more students than
+    // that, later pages of the roster silently fell out of this
+    // snapshot, so every rerun of the import treated them as brand new
+    // and created a second (then third...) duplicate account for them.
+    // This was the actual root cause of the duplicate-account bug.
     const byPhone = new Map<string, { id: string; username: string | null }>();
     const usedUsernames = new Set<string>();
-    for (const p of existingProfiles ?? []) {
-      if (p.phone) byPhone.set(normalizePhone(p.phone), { id: p.id, username: p.username });
-      if (p.username) usedUsernames.add(p.username);
+    {
+      const pageSize = 1000;
+      let from = 0;
+      for (;;) {
+        const { data: page, error: pageError } = await admin
+          .from("profiles")
+          .select("id, phone, username")
+          .range(from, from + pageSize - 1);
+        if (pageError) break;
+        for (const p of page ?? []) {
+          if (p.phone) byPhone.set(normalizePhone(p.phone), { id: p.id, username: p.username });
+          if (p.username) usedUsernames.add(p.username);
+        }
+        if (!page || page.length < pageSize) break;
+        from += pageSize;
+      }
     }
 
     const results: Array<{
@@ -95,6 +123,7 @@ Deno.serve(async (req) => {
       temp_password: string;
       status: "created" | "updated" | "failed";
       error?: string;
+      warning?: string;
     }> = [];
 
     for (const row of students) {
@@ -134,38 +163,99 @@ Deno.serve(async (req) => {
       }
 
       // Login is phone-based: the username portion of the email is
-      // the student's own normalized phone number, not a generated
-      // name-based one. Collision-safety-net kept for the rare case
-      // two rows normalize to the same digits (e.g. a duplicated line).
-      let finalUsername = normalized || row.username;
+      // normally the student's own normalized phone number. When the
+      // phone doesn't look usable (blank, too short, garbled), fall
+      // back to a random placeholder so the account still gets
+      // created — the row is flagged with a warning so staff can fix
+      // the real phone via Edit afterward (which re-syncs the login
+      // email once the correct number is entered).
+      const hasUsablePhone = isUsablePhone(normalized);
+      const baseUsername = hasUsablePhone
+        ? normalized
+        : `needsphone-${crypto.randomUUID().slice(0, 8)}`;
+      const phoneWarning = hasUsablePhone
+        ? undefined
+        : row.phone
+          ? `Phone "${row.phone}" doesn't look valid — account created without phone login. Fix the phone via Edit to enable it.`
+          : `No phone number given — account created without phone login. Add the phone via Edit to enable it.`;
+
+      let finalUsername = baseUsername;
       let attempt = 1;
       while (usedUsernames.has(finalUsername)) {
-        finalUsername = `${normalized || row.username}${attempt}`;
+        finalUsername = `${baseUsername}${attempt}`;
         attempt++;
       }
       usedUsernames.add(finalUsername);
 
+      const userMetadata = {
+        full_name: row.full_name,
+        phone: row.phone,
+        route: row.route,
+        pickup_stop: row.pickup_stop ?? null,
+        photo_url: row.photo_url ?? null,
+        subscription_type: row.subscription_type,
+        payment_status: row.payment_status,
+        installment_status: row.installment_status ?? "none",
+        initial_amount_paid: row.initial_amount_paid ?? null,
+        payment_method: row.payment_method ?? null,
+        trips_total: row.trips_total,
+      };
+
       const email = `${finalUsername}@wt-shuttle.app`;
-      const { data: created, error: createError } = await admin.auth.admin.createUser({
+      const { data: createdData, error: createError } = await admin.auth.admin.createUser({
         email,
         password: DEFAULT_PASSWORD,
         email_confirm: true,
-        user_metadata: {
-          full_name: row.full_name,
-          phone: row.phone,
-          route: row.route,
-          pickup_stop: row.pickup_stop ?? null,
-          photo_url: row.photo_url ?? null,
-          subscription_type: row.subscription_type,
-          payment_status: row.payment_status,
-          installment_status: row.installment_status ?? "none",
-          initial_amount_paid: row.initial_amount_paid ?? null,
-          payment_method: row.payment_method ?? null,
-          trips_total: row.trips_total,
-        },
+        user_metadata: userMetadata,
       });
 
-      if (createError || !created.user) {
+      if (createError || !createdData.user) {
+        // Auth rejected this email as already registered. Never paper
+        // over this with a freshly suffixed email — that's exactly how
+        // duplicate accounts got created before: a stale in-memory
+        // snapshot missed an existing student, Auth caught the real
+        // collision, and a "retry with a new email" produced a second
+        // account for the same person instead of respecting it. Look
+        // up who actually owns that login and update their profile in
+        // place instead — the only case that still ends in "failed" is
+        // one where no matching account can be found at all.
+        const { data: clash } = await admin
+          .from("profiles")
+          .select("id, username")
+          .eq("username", finalUsername)
+          .maybeSingle();
+
+        if (clash) {
+          const { error: updateError } = await admin
+            .from("profiles")
+            .update({
+              full_name: row.full_name,
+              route: row.route,
+              pickup_stop: row.pickup_stop ?? null,
+              photo_url: row.photo_url ?? null,
+              subscription_type: row.subscription_type,
+              payment_status: row.payment_status,
+              installment_status: row.installment_status ?? "none",
+              initial_amount_paid: row.initial_amount_paid ?? null,
+              payment_method: row.payment_method ?? null,
+              trips_total: row.trips_total,
+            })
+            .eq("id", clash.id);
+
+          if (hasUsablePhone) byPhone.set(normalized, { id: clash.id, username: clash.username });
+
+          results.push({
+            full_name: row.full_name,
+            phone: row.phone,
+            username: clash.username ?? finalUsername,
+            email,
+            temp_password: "",
+            status: updateError ? "failed" : "updated",
+            error: updateError?.message,
+          });
+          continue;
+        }
+
         results.push({
           full_name: row.full_name,
           phone: row.phone,
@@ -177,6 +267,7 @@ Deno.serve(async (req) => {
         });
         continue;
       }
+      const created = createdData;
 
       // handle_new_user() trigger creates the profile + 'student' role
       // row. Still need to set the username and force a password
@@ -189,7 +280,7 @@ Deno.serve(async (req) => {
       // Record this new account so a later row in the same batch with
       // the same phone (e.g. a duplicated line in the sheet) updates
       // it instead of creating yet another account.
-      if (normalized) byPhone.set(normalized, { id: created.user.id, username: finalUsername });
+      if (hasUsablePhone) byPhone.set(normalized, { id: created.user.id, username: finalUsername });
 
       results.push({
         full_name: row.full_name,
@@ -198,6 +289,7 @@ Deno.serve(async (req) => {
         email,
         temp_password: DEFAULT_PASSWORD,
         status: "created",
+        warning: phoneWarning,
       });
     }
 

@@ -273,7 +273,7 @@ function RouteDashboardPage() {
                                     </Badge>
                                   ))}
                                 {p.phone && (
-                                  
+                                  <a
                                     href={`https://wa.me/${toWhatsAppNumber(p.phone)}`}
                                     target="_blank"
                                     rel="noopener noreferrer"

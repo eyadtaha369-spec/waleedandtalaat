@@ -161,6 +161,23 @@ export function ManifestsPanel() {
     return [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0]));
   }, [filteredRows]);
 
+  // Not every early-return booking uses the Sea Route sector system —
+  // خط برج العرب runs its own return route with a direct stop pick
+  // instead, so those rows have sector = null and would otherwise
+  // vanish from the sector-grouped early-return tab entirely. Group
+  // them by route instead, same as the 04:00 PM tab does.
+  const noSectorByRoute = useMemo(() => {
+    const groups = new Map<string, Row[]>();
+    for (const r of filteredRows) {
+      if (r.sector) continue;
+      const key = r.route ?? t("manifests.noRouteAssigned");
+      const list = groups.get(key) ?? [];
+      list.push(r);
+      groups.set(key, list);
+    }
+    return [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  }, [filteredRows]);
+
   return (
     <section className="rounded-3xl border border-border bg-card p-6">
       <Tabs value={slot} onValueChange={setSlot}>
@@ -304,6 +321,16 @@ export function ManifestsPanel() {
                   </div>
                 );
               })}
+              {noSectorByRoute.map(([routeName, group]) => (
+                <div key={routeName}>
+                  <div className="mb-2">
+                    <Badge className="bg-accent text-accent-foreground">
+                      {routeName} — {group.length}
+                    </Badge>
+                  </div>
+                  <ManifestTable rows={group} />
+                </div>
+              ))}
             </div>
           ) : slot === "04:00 PM" ? (
             <div className="space-y-6">

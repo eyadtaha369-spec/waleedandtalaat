@@ -44,6 +44,8 @@ export const Route = createFileRoute("/dashboard")({
   component: Dashboard,
 });
 
+const BORG_EL_ARAB_ROUTE = "خط برج العرب";
+
 type Booking = {
   id: string;
   kind: string;
@@ -121,7 +123,18 @@ function Dashboard() {
   const [returnStop, setReturnStop] = useState<string>("");
   const [fourPmStop, setFourPmStop] = useState<string>("");
   const stopsForMyRoute = profile?.route ? (stopsByRoute[profile.route] ?? []) : [];
+  // Return trips drop students off in the reverse order the morning
+  // pickup runs the route, so the return dropoff dropdown uses the
+  // route's stop list reversed — distinct from stopsForMyRoute, which
+  // stays in forward (pickup) order for the morning panel.
+  const returnDropoffStops = profile?.route
+    ? [...(stopsByRoute[profile.route] ?? [])].reverse()
+    : [];
   const isFourPmReturn = returnSlot === "04:00 PM";
+  // خط برج العرب's early-return buses run its own route/stops, not the
+  // shared Sea Route sector system every other route's 12:30/1:30/2:30
+  // PM return uses.
+  const isBorgElArabReturn = !isFourPmReturn && profile?.route === BORG_EL_ARAB_ROUTE;
   // Which times are actually offered is admin/supervisor-configurable
   // per route (see /admin/schedules) — this replaces what used to be
   // a hardcoded خط برج العرب-specific override with the general
@@ -207,7 +220,11 @@ function Dashboard() {
         toast.error(t("dashboard.chooseStopFirst"));
         return;
       }
-      if (!isFourPmReturn && (!returnSector || !returnStop)) {
+      if (!isFourPmReturn && isBorgElArabReturn && !returnStop) {
+        toast.error(t("dashboard.chooseStopFirst"));
+        return;
+      }
+      if (!isFourPmReturn && !isBorgElArabReturn && (!returnSector || !returnStop)) {
         toast.error(t("dashboard.chooseSectorStopFirst"));
         return;
       }
@@ -219,9 +236,11 @@ function Dashboard() {
       slot: kind === "morning" ? morningSlot : returnSlot,
       service_date: kind === "morning" ? morningServiceDate : rw.serviceDate,
       route:
-        kind === "morning" || isFourPmReturn ? (profile?.route ?? null) : EARLY_RETURN_ROUTE_NAME,
+        kind === "morning" || isFourPmReturn || isBorgElArabReturn
+          ? (profile?.route ?? null)
+          : EARLY_RETURN_ROUTE_NAME,
       pickup_stop: kind === "morning" ? stop : isFourPmReturn ? fourPmStop : returnStop,
-      sector: kind === "return" && !isFourPmReturn ? returnSector : null,
+      sector: kind === "return" && !isFourPmReturn && !isBorgElArabReturn ? returnSector : null,
     };
     const { error } = await supabase
       .from("bookings")
@@ -399,8 +418,25 @@ function Dashboard() {
                   <SelectField
                     label={t("dashboard.dropoffStop")}
                     value={fourPmStop}
-                    options={stopsForMyRoute}
+                    options={returnDropoffStops}
                     onChange={setFourPmStop}
+                  />
+                </>
+              ) : isBorgElArabReturn ? (
+                <>
+                  <div className="rounded-xl border border-border bg-secondary/50 px-3 py-2">
+                    <p className="text-[11px] tracking-widest text-muted-foreground uppercase">
+                      {t("dashboard.yourRoute")}
+                    </p>
+                    <p className="text-sm font-semibold">
+                      {profile.route ?? t("dashboard.noRouteContactAdmin")}
+                    </p>
+                  </div>
+                  <SelectField
+                    label={t("dashboard.dropoffStop")}
+                    value={returnStop}
+                    options={returnDropoffStops}
+                    onChange={setReturnStop}
                   />
                 </>
               ) : (
@@ -442,7 +478,11 @@ function Dashboard() {
                 className="btn-gold w-full"
                 disabled={
                   busy ||
-                  (isFourPmReturn ? !fourPmStop || !profile.route : !returnSector || !returnStop)
+                  (isFourPmReturn
+                    ? !fourPmStop || !profile.route
+                    : isBorgElArabReturn
+                      ? !returnStop
+                      : !returnSector || !returnStop)
                 }
                 onClick={() => void book("return")}
               >

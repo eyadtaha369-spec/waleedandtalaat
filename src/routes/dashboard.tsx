@@ -22,6 +22,7 @@ import {
   MORNING_SLOTS,
   RETURN_SLOTS,
   morningWindow,
+  routeDashboardDefaultDate,
   specialSundayWindow,
   optOutWindow,
   returnWindow,
@@ -103,6 +104,13 @@ function Dashboard() {
         ? { ...rwBase, open: false }
         : rwBase;
   const ow = useMemo(() => optOutWindow(), []);
+  // mw.serviceDate is morningWindow()'s uncapped addDays(now, 1), which
+  // rolls to the wrong day between midnight and the early-morning
+  // cutoff (see routeDashboardDefaultDate's own comment). Use the
+  // cutoff-aware date for the morning booking's actual service_date
+  // everywhere below — but not when a special Sunday trip has already
+  // pinned mw.serviceDate to a fixed target date.
+  const morningServiceDate = specialSundayActive ? mw.serviceDate : routeDashboardDefaultDate();
 
   const [stop, setStop] = useState<string>("");
   const [activeMorningSlots, setActiveMorningSlots] = useState<string[]>([...MORNING_SLOTS]);
@@ -173,7 +181,7 @@ function Dashboard() {
       supabase
         .from("bookings")
         .select("id,kind,slot,service_date,pickup_stop,route,sector")
-        .in("service_date", [mw.serviceDate, rw.serviceDate]),
+        .in("service_date", [morningServiceDate, rw.serviceDate]),
       supabase.from("opt_outs").select("id").eq("service_date", ow.serviceDate),
     ]);
     setBookings((b as Booking[]) ?? []);
@@ -183,10 +191,10 @@ function Dashboard() {
   useEffect(() => {
     void reload();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, mw.serviceDate]);
+  }, [user, morningServiceDate]);
 
   const morningBooking = bookings.find(
-    (b) => b.kind === "morning" && b.service_date === mw.serviceDate,
+    (b) => b.kind === "morning" && b.service_date === morningServiceDate,
   );
   const returnBooking = bookings.find(
     (b) => b.kind === "return" && b.service_date === rw.serviceDate,
@@ -209,7 +217,7 @@ function Dashboard() {
       student_id: user.id,
       kind,
       slot: kind === "morning" ? morningSlot : returnSlot,
-      service_date: kind === "morning" ? mw.serviceDate : rw.serviceDate,
+      service_date: kind === "morning" ? morningServiceDate : rw.serviceDate,
       route:
         kind === "morning" || isFourPmReturn ? (profile?.route ?? null) : EARLY_RETURN_ROUTE_NAME,
       pickup_stop: kind === "morning" ? stop : isFourPmReturn ? fourPmStop : returnStop,
@@ -309,7 +317,7 @@ function Dashboard() {
         <Panel
           icon={Sun}
           title={t("dashboard.morningDeparture")}
-          subtitle={`${t("dashboard.for")} ${formatLocalizedDate(mw.serviceDate, lang)}`}
+          subtitle={`${t("dashboard.for")} ${formatLocalizedDate(morningServiceDate, lang)}`}
           window={mw.label}
           open={mw.open}
         >

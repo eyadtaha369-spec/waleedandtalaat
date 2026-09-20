@@ -13,6 +13,7 @@ import {
   cairoNow,
   morningWindow,
   returnWindow,
+  routeDashboardDefaultDate,
   specialSundayWindow,
   toDateKey,
 } from "@/lib/schedule";
@@ -76,6 +77,10 @@ function PassPage() {
     [specialSundayActive],
   );
   const rw = useMemo(() => returnWindow(), []);
+  // Same cutoff-aware substitution as dashboard.tsx — see its comment.
+  // Must stay in lockstep with dashboard.tsx's computation, per the
+  // note above.
+  const morningServiceDate = specialSundayActive ? mw.serviceDate : routeDashboardDefaultDate();
   const [bookings, setBookings] = useState<Booking[]>([]);
 
   const [token, setToken] = useState<string | null>(null);
@@ -93,9 +98,9 @@ function PassPage() {
     void supabase
       .from("bookings")
       .select("kind,slot,service_date,pickup_stop")
-      .in("service_date", [mw.serviceDate, rw.serviceDate])
+      .in("service_date", [morningServiceDate, rw.serviceDate])
       .then(({ data }) => setBookings((data as Booking[]) ?? []));
-  }, [user, mw.serviceDate, rw.serviceDate]);
+  }, [user, morningServiceDate, rw.serviceDate]);
 
   // Rotating boarding token: generate one immediately, then again every
   // ~45s. This is the real security layer — see the note above.
@@ -151,7 +156,7 @@ function PassPage() {
   }
 
   const morningBooking = bookings.find(
-    (b) => b.kind === "morning" && b.service_date === mw.serviceDate,
+    (b) => b.kind === "morning" && b.service_date === morningServiceDate,
   );
   const returnBooking = bookings.find(
     (b) => b.kind === "return" && b.service_date === rw.serviceDate,

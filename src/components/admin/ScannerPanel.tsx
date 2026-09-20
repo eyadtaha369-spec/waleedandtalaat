@@ -23,6 +23,7 @@ type ScanResult = {
   tripsRemaining: number | null;
   tripsTotal: number | null;
   hasCompanion: boolean;
+  override?: boolean;
 };
 
 export function ScannerPanel() {
@@ -33,8 +34,10 @@ export function ScannerPanel() {
   const [scanning, setScanning] = useState(false);
   const [result, setResult] = useState<ScanResult | null>(null);
   const [scannedToday, setScannedToday] = useState<number | null>(null);
+  const [overriding, setOverriding] = useState(false);
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const lockRef = useRef(false);
+  const lastScanRef = useRef<{ token: string; slot: string } | null>(null);
   const todayKey = toDateKey(cairoNow());
 
   const loadScannedCount = async () => {
@@ -96,6 +99,10 @@ export function ScannerPanel() {
       // passes still use their own static per-booking token under `id`.
       if (!payload.token && !payload.id) throw new Error("bad payload");
 
+      if (payload.token) {
+        lastScanRef.current = { token: payload.token, slot };
+      }
+
       // Server does everything atomically: staff check, booking lookup,
       // scan log, and trip deduction for package students. The client
       // never decides "is this booked" itself.
@@ -149,6 +156,50 @@ export function ScannerPanel() {
       setTimeout(() => {
         lockRef.current = false;
       }, 1500);
+    }
+  };
+
+  const handleOverride = async () => {
+    if (!lastScanRef.current) return;
+    setOverriding(true);
+    try {
+      const { data, error } = await supabase.rpc("scan_pass_override", {
+        p_token: lastScanRef.current.token,
+        p_slot: lastScanRef.current.slot,
+      });
+
+      if (error || (data as { error?: string })?.error) {
+        toast.error(
+          (data as { error?: string })?.error ?? error?.message ?? t("scanner.scanFailed"),
+        );
+        return;
+      }
+
+      const result = data as {
+        status: ScanStatus;
+        full_name: string;
+        route: string | null;
+        photo_url: string | null;
+        trips_remaining: number | null;
+        trips_total: number | null;
+        override?: boolean;
+      };
+
+      setResult((prev) => ({
+        status: result.status,
+        fullName: result.full_name,
+        route: result.route,
+        photoUrl: result.photo_url,
+        tripsRemaining: result.trips_remaining ?? null,
+        tripsTotal: result.trips_total ?? null,
+        hasCompanion: prev?.hasCompanion ?? false,
+        override: !!result.override,
+      }));
+      toast.success(
+        `تم تسجيل الركوب بنجاح! المتبقي: ${result.trips_remaining}/${result.trips_total} رحلة 🟢`,
+      );
+    } finally {
+      setOverriding(false);
     }
   };
 
@@ -219,7 +270,12 @@ export function ScannerPanel() {
           {!result ? (
             <p className="mt-4 text-sm text-muted-foreground">{t("scanner.noScansYet")}</p>
           ) : (
-            <ResultCard result={result} t={t} />
+            <ResultCard
+              result={result}
+              t={t}
+              onOverride={() => void handleOverride()}
+              overriding={overriding}
+            />
           )}
         </section>
       </div>
@@ -227,7 +283,17 @@ export function ScannerPanel() {
   );
 }
 
-function ResultCard({ result, t }: { result: ScanResult; t: (key: string) => string }) {
+function ResultCard({
+  result,
+  t,
+  onOverride,
+  overriding,
+}: {
+  result: ScanResult;
+  t: (key: string) => string;
+  onOverride: () => void;
+  overriding: boolean;
+}) {
   const config: Record<
     ScanStatus,
     { label: string; className: string; icon: typeof CheckCircle2 }
@@ -282,6 +348,16 @@ function ResultCard({ result, t }: { result: ScanResult; t: (key: string) => str
         <Badge className="bg-success text-success-foreground w-full justify-center py-2 text-sm">
           <Users className="me-1 size-4" /> {t("scanner.companionAllowed")}
         </Badge>
+      )}
+      {result.override && (
+        <Badge className="w-full justify-center bg-amber-500 py-2 text-sm text-white">
+          {t("scanner.manualOverride")}
+        </Badge>
+      )}
+      {result.status === "not_booked" && (
+        <Button className="w-full" variant="outline" disabled={overriding} onClick={onOverride}>
+          {overriding ? "…" : t("scanner.checkinAnyway")}
+        </Button>
       )}
     </div>
   );

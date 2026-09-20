@@ -359,6 +359,7 @@ export type Database = {
           id: string;
           scanned_at: string;
           scanned_by: string | null;
+          scanned_via_override: boolean;
           service_date: string;
           slot: string | null;
           student_id: string;
@@ -367,6 +368,7 @@ export type Database = {
           id?: string;
           scanned_at?: string;
           scanned_by?: string | null;
+          scanned_via_override?: boolean;
           service_date?: string;
           slot?: string | null;
           student_id: string;
@@ -375,6 +377,7 @@ export type Database = {
           id?: string;
           scanned_at?: string;
           scanned_by?: string | null;
+          scanned_via_override?: boolean;
           service_date?: string;
           slot?: string | null;
           student_id?: string;
@@ -470,6 +473,10 @@ export type Database = {
       };
       scan_pass: {
         Args: { p_token: string; p_slot: string; p_service_date: string | null };
+        Returns: Json;
+      };
+      scan_pass_override: {
+        Args: { p_token: string; p_slot: string };
         Returns: Json;
       };
       scan_guest_pass: { Args: { p_token: string }; Returns: Json };

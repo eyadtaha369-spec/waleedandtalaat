@@ -312,6 +312,8 @@ export const translations: Record<Lang, Record<string, string>> = {
     "scanner.cameraError": "تعذر الوصول إلى الكاميرا. تحقق من الأذونات وحاول مرة أخرى.",
     "scanner.unrecognizedQr": "رمز استجابة سريعة غير معروف.",
     "scanner.scanFailed": "فشل المسح",
+    "scanner.checkinAnyway": "قبول التذكرة",
+    "scanner.manualOverride": "تسجيل يدوي",
 
     // Manifests
     "manifests.totalPassengers": "إجمالي الركاب",
@@ -863,6 +865,8 @@ export const translations: Record<Lang, Record<string, string>> = {
     "scanner.cameraError": "Could not access the camera. Check permissions and try again.",
     "scanner.unrecognizedQr": "Unrecognized QR code.",
     "scanner.scanFailed": "Scan failed",
+    "scanner.checkinAnyway": "Check-in Anyway",
+    "scanner.manualOverride": "Manual Override",
 
     "manifests.totalPassengers": "total passengers",
     "manifests.allPaymentStatuses": "All payment statuses",

@@ -90,10 +90,17 @@ Deno.serve(async (req) => {
 
     const { data: existing } = await admin
       .from("profiles")
-      .select("id")
-      .eq("phone", phone)
+      .select("id, full_name, route")
+      .or(`phone.eq.${phone},phone.eq.${normalized}`)
       .maybeSingle();
-    if (existing) return json({ error: "A student with this phone number already exists" }, 400);
+    if (existing) {
+      return json(
+        {
+          error: `A student with this phone number already exists: ${existing.full_name} (${existing.route ?? "no route"}). Use Edit on that student instead of Add.`,
+        },
+        400,
+      );
+    }
 
     let finalUsername = normalized;
     let attempt = 1;

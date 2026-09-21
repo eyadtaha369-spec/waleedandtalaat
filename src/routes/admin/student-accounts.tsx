@@ -118,15 +118,27 @@ function StudentAccountsPage() {
 
   const load = async () => {
     setLoading(true);
-    const { data, error } = await supabase.rpc("list_route_student_accounts", {
-      p_route: !effectiveRoute || effectiveRoute === "all" ? null : effectiveRoute,
-    });
-    setLoading(false);
-    if (error) {
-      toast.error(error.message);
-      return;
+    const pageSize = 1000;
+    const all: StudentAccount[] = [];
+    let from = 0;
+    for (;;) {
+      const { data, error } = await supabase
+        .rpc("list_route_student_accounts", {
+          p_route: !effectiveRoute || effectiveRoute === "all" ? null : effectiveRoute,
+        })
+        .range(from, from + pageSize - 1);
+      if (error) {
+        setLoading(false);
+        toast.error(error.message);
+        return;
+      }
+      const page = (data as StudentAccount[]) ?? [];
+      all.push(...page);
+      if (page.length < pageSize) break;
+      from += pageSize;
     }
-    setStudents((data as StudentAccount[]) ?? []);
+    setLoading(false);
+    setStudents(all);
   };
 
   useEffect(() => {

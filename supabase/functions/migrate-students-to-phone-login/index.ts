@@ -55,11 +55,25 @@ Deno.serve(async (req) => {
     // foreign-key relationship for PostgREST to resolve, and an
     // .in(studentIds) filter with hundreds of UUIDs risks hitting
     // URL-length limits.
-    const { data: students, error: fetchError } = await admin.rpc(
-      "list_all_students_for_migration",
-    );
-
-    if (fetchError) return json({ error: fetchError.message }, 500);
+    const students: {
+      user_id: string;
+      full_name: string;
+      phone: string | null;
+      username: string | null;
+    }[] = [];
+    {
+      const pageSize = 1000;
+      let from = 0;
+      for (;;) {
+        const { data: page, error: fetchError } = await admin
+          .rpc("list_all_students_for_migration")
+          .range(from, from + pageSize - 1);
+        if (fetchError) return json({ error: fetchError.message }, 500);
+        students.push(...(page ?? []));
+        if (!page || page.length < pageSize) break;
+        from += pageSize;
+      }
+    }
 
     const results: Array<{
       full_name: string;
@@ -68,7 +82,7 @@ Deno.serve(async (req) => {
       error?: string;
     }> = [];
 
-    for (const s of students ?? []) {
+    for (const s of students) {
       const normalized = s.phone ? normalizePhone(s.phone) : "";
       if (!normalized) {
         results.push({

@@ -453,6 +453,39 @@ export type Database = {
         };
         Relationships: [];
       };
+      walk_in_passengers: {
+        Row: {
+          id: string;
+          route: string;
+          slot: string;
+          kind: string;
+          service_date: string;
+          scanned_by: string;
+          scanned_at: string;
+          note: string | null;
+        };
+        Insert: {
+          id?: string;
+          route: string;
+          slot: string;
+          kind: string;
+          service_date: string;
+          scanned_by: string;
+          scanned_at?: string;
+          note?: string | null;
+        };
+        Update: {
+          id?: string;
+          route?: string;
+          slot?: string;
+          kind?: string;
+          service_date?: string;
+          scanned_by?: string;
+          scanned_at?: string;
+          note?: string | null;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       [_ in never]: never;
@@ -480,6 +513,16 @@ export type Database = {
         Returns: Json;
       };
       scan_guest_pass: { Args: { p_token: string }; Returns: Json };
+      log_walk_in_passenger: {
+        Args: {
+          p_route: string;
+          p_slot: string;
+          p_kind: string;
+          p_service_date: string | null;
+          p_note: string | null;
+        };
+        Returns: Json;
+      };
       fleet_manifest_report: {
         Args: { p_date: string | null };
         Returns: {

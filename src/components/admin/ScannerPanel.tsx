@@ -1,15 +1,30 @@
 import { useEffect, useRef, useState } from "react";
 import { Html5Qrcode } from "html5-qrcode";
 import { toast } from "sonner";
-import { CheckCircle2, ScanLine, Users, XCircle } from "lucide-react";
+import { CheckCircle2, ScanLine, UserPlus, Users, XCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { SmartAvatar } from "@/components/SmartAvatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ALL_SLOTS, cairoNow, toDateKey } from "@/lib/schedule";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  ALL_SLOTS,
+  MORNING_SLOTS,
+  cairoNow,
+  routeDashboardDefaultDate,
+  toDateKey,
+} from "@/lib/schedule";
 import { edgeFunctionErrorMessage } from "@/lib/functionsError";
 import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/hooks/useLanguage";
+import { useRoutes } from "@/hooks/useRoutes";
 
 const SCANNER_ELEMENT_ID = "wt-qr-scanner";
 
@@ -27,18 +42,29 @@ type ScanResult = {
 };
 
 export function ScannerPanel() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, profile } = useAuth();
   const { t } = useLanguage();
+  const { routes } = useRoutes();
   const [slot, setSlot] = useState<string>(ALL_SLOTS[0]);
   const [dateOverride, setDateOverride] = useState<string>("");
   const [scanning, setScanning] = useState(false);
   const [result, setResult] = useState<ScanResult | null>(null);
   const [scannedToday, setScannedToday] = useState<number | null>(null);
   const [overriding, setOverriding] = useState(false);
+  const [walkInDialogOpen, setWalkInDialogOpen] = useState(false);
+  const [walkInRoute, setWalkInRoute] = useState("");
+  const [walkInNote, setWalkInNote] = useState("");
+  const [walkInBusy, setWalkInBusy] = useState(false);
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const lockRef = useRef(false);
   const lastScanRef = useRef<{ token: string; slot: string } | null>(null);
   const todayKey = toDateKey(cairoNow());
+  const isMorningSlot = (MORNING_SLOTS as readonly string[]).includes(slot);
+  // A supervisor's own route is unambiguous for a departure walk-in.
+  // An admin using the scanner has no such context in this page, so
+  // they (like everyone for a return walk-in, where the bus isn't
+  // route-specific to begin with) pick a route via the dialog instead.
+  const canUseOwnRouteForMorning = !isAdmin && !!profile?.assigned_route;
 
   const loadScannedCount = async () => {
     const { data } = await supabase.rpc("count_today_scanned_exam_passes");
@@ -223,6 +249,47 @@ export function ScannerPanel() {
     }
   };
 
+  const logWalkIn = async (route: string, kind: "morning" | "return") => {
+    setWalkInBusy(true);
+    try {
+      // Mirrors dashboard.tsx/pass.tsx exactly, not duplicated in SQL:
+      // morning uses the same cutoff-aware "trip actually departing
+      // next" date, return (any of 12:30/1:30/2:30/4:00 PM) is always
+      // the same day.
+      const serviceDate = kind === "morning" ? routeDashboardDefaultDate() : toDateKey(cairoNow());
+      const { data, error } = await supabase.rpc("log_walk_in_passenger", {
+        p_route: route,
+        p_slot: slot,
+        p_kind: kind,
+        p_service_date: serviceDate,
+        p_note: walkInNote.trim() || null,
+      });
+
+      if (error || (data as { error?: string })?.error) {
+        toast.error(
+          (data as { error?: string })?.error ?? error?.message ?? t("scanner.walkInFailed"),
+        );
+        return;
+      }
+
+      toast.success(`+1 راكب يدوي — ${route}`);
+      setWalkInDialogOpen(false);
+      setWalkInRoute("");
+      setWalkInNote("");
+    } finally {
+      setWalkInBusy(false);
+    }
+  };
+
+  const handleWalkInClick = () => {
+    if (isMorningSlot && canUseOwnRouteForMorning) {
+      void logWalkIn(profile!.assigned_route!, "morning");
+      return;
+    }
+    setWalkInRoute(routes[0] ?? "");
+    setWalkInDialogOpen(true);
+  };
+
   return (
     <div>
       <div className="mb-5 rounded-2xl border border-gilded p-4 text-center">
@@ -256,6 +323,15 @@ export function ScannerPanel() {
               {scanning ? t("scanner.stopScanner") : t("scanner.startScanner")}
             </Button>
           </div>
+
+          <Button
+            variant="outline"
+            className="mt-3 w-full border-dashed"
+            disabled={walkInBusy}
+            onClick={handleWalkInClick}
+          >
+            <UserPlus className="size-4" /> {t("scanner.addWalkIn")}
+          </Button>
 
           {isAdmin && (
             <div className="mt-3 flex flex-wrap items-center gap-3">
@@ -299,6 +375,41 @@ export function ScannerPanel() {
           )}
         </section>
       </div>
+
+      <Dialog open={walkInDialogOpen} onOpenChange={setWalkInDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("scanner.walkInDialogTitle")}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <select
+              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+              value={walkInRoute}
+              onChange={(e) => setWalkInRoute(e.target.value)}
+            >
+              {routes.map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+            </select>
+            <Input
+              placeholder={t("scanner.walkInNote")}
+              value={walkInNote}
+              onChange={(e) => setWalkInNote(e.target.value)}
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              className="btn-gold w-full"
+              disabled={!walkInRoute || walkInBusy}
+              onClick={() => void logWalkIn(walkInRoute, isMorningSlot ? "morning" : "return")}
+            >
+              {walkInBusy ? "…" : t("scanner.walkInConfirm")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

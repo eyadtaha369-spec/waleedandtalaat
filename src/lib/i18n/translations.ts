@@ -314,6 +314,11 @@ export const translations: Record<Lang, Record<string, string>> = {
     "scanner.scanFailed": "فشل المسح",
     "scanner.checkinAnyway": "قبول التذكرة",
     "scanner.manualOverride": "تسجيل يدوي",
+    "scanner.addWalkIn": "تسجيل راكب يدوي (+1)",
+    "scanner.walkInDialogTitle": "اختر الخط",
+    "scanner.walkInNote": "ملاحظة (اختياري)",
+    "scanner.walkInConfirm": "تأكيد",
+    "scanner.walkInFailed": "تعذر تسجيل الراكب",
 
     // Manifests
     "manifests.totalPassengers": "إجمالي الركاب",
@@ -867,6 +872,11 @@ export const translations: Record<Lang, Record<string, string>> = {
     "scanner.scanFailed": "Scan failed",
     "scanner.checkinAnyway": "Check-in Anyway",
     "scanner.manualOverride": "Manual Override",
+    "scanner.addWalkIn": "Add Walk-in Passenger",
+    "scanner.walkInDialogTitle": "Choose route",
+    "scanner.walkInNote": "Note (optional)",
+    "scanner.walkInConfirm": "Confirm",
+    "scanner.walkInFailed": "Could not log walk-in passenger",
 
     "manifests.totalPassengers": "total passengers",
     "manifests.allPaymentStatuses": "All payment statuses",

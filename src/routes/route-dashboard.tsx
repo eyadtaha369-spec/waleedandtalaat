@@ -51,7 +51,7 @@ function toWhatsAppNumber(phone: string): string {
 function RouteDashboardPage() {
   const { isAdmin, profile } = useAuth();
   const { t } = useLanguage();
-  const { routes } = useRoutes();
+  const { routes, stopsByRoute, loading: routesLoading } = useRoutes();
 
   // Defaults to the trip that's actually upcoming, with a 4:00 AM
   // operating-day cutoff so the view doesn't jump to the wrong date
@@ -84,25 +84,60 @@ function RouteDashboardPage() {
     })();
   }, [effectiveRoute, serviceDate]);
 
+  const searchQuery = search.trim().toLowerCase();
   const filteredRows = rows.filter((r) => {
-    const q = search.trim().toLowerCase();
-    if (!q) return true;
-    return r.full_name.toLowerCase().includes(q) || (r.phone ?? "").includes(q);
+    if (!searchQuery) return true;
+    return r.full_name.toLowerCase().includes(searchQuery) || (r.phone ?? "").includes(searchQuery);
   });
 
-  // Group by route, then by stop, preserving the order the RPC already sorted them in.
+  // get_route_stop_breakdown() only returns rows for stops that actually
+  // have a passenger, so a stop with zero bookings has no row at all and
+  // would otherwise vanish from the manifest. Build the groups from the
+  // master route/stop list (already loaded via useRoutes(), already in
+  // display_order) instead of from the fetched rows alone, attaching an
+  // empty passengers array to any stop with none — so the full stop
+  // sequence always renders, not just the stops someone booked.
+  //
+  // Search is the one exception: while actively searching for a name/
+  // phone, a stop with no matching passenger is hidden rather than shown
+  // empty, since the point of a search is to narrow the list down, not
+  // to keep showing every stop regardless of match. With the search box
+  // empty, every stop shows, including empty ones.
   const grouped = useMemo(() => {
-    const byRoute = new Map<string, Map<string, PassengerRow[]>>();
+    const byRouteStop = new Map<string, Map<string, PassengerRow[]>>();
     for (const r of filteredRows) {
       const routeKey = r.route ?? "—";
       const stopKey = r.pickup_stop ?? "—";
-      if (!byRoute.has(routeKey)) byRoute.set(routeKey, new Map());
-      const stops = byRoute.get(routeKey)!;
+      if (!byRouteStop.has(routeKey)) byRouteStop.set(routeKey, new Map());
+      const stops = byRouteStop.get(routeKey)!;
       if (!stops.has(stopKey)) stops.set(stopKey, []);
       stops.get(stopKey)!.push(r);
     }
-    return byRoute;
-  }, [filteredRows]);
+
+    const isSearching = searchQuery.length > 0;
+    const routeNames = effectiveRoute && effectiveRoute !== "all" ? [effectiveRoute] : routes;
+
+    const result = new Map<string, Map<string, PassengerRow[]>>();
+    for (const routeName of routeNames) {
+      const fetchedStops = byRouteStop.get(routeName);
+      const stopsMap = new Map<string, PassengerRow[]>();
+      for (const stopName of stopsByRoute[routeName] ?? []) {
+        const passengers = fetchedStops?.get(stopName) ?? [];
+        if (isSearching && passengers.length === 0) continue;
+        stopsMap.set(stopName, passengers);
+      }
+      // A passenger whose pickup_stop isn't in the master list (data
+      // drift, or a null pickup_stop grouped under "—") must still show
+      // up rather than being silently dropped.
+      if (fetchedStops) {
+        for (const [stopName, passengers] of fetchedStops) {
+          if (!stopsMap.has(stopName)) stopsMap.set(stopName, passengers);
+        }
+      }
+      if (stopsMap.size > 0) result.set(routeName, stopsMap);
+    }
+    return result;
+  }, [filteredRows, stopsByRoute, routes, effectiveRoute, searchQuery]);
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-8">
@@ -122,7 +157,10 @@ function RouteDashboardPage() {
 
       <div className="mt-6 rounded-3xl border border-border bg-card p-6">
         <div className="mb-4 flex flex-wrap items-center gap-3">
-          <label className="text-sm font-medium text-muted-foreground" htmlFor="route-dashboard-date">
+          <label
+            className="text-sm font-medium text-muted-foreground"
+            htmlFor="route-dashboard-date"
+          >
             {t("routeDash.tripDate")}
           </label>
           <input
@@ -196,9 +234,9 @@ function RouteDashboardPage() {
           </Badge>
         </div>
 
-        {loading ? (
+        {loading || routesLoading ? (
           <p className="mt-4 text-sm text-muted-foreground">{t("common.loading")}</p>
-        ) : filteredRows.length === 0 ? (
+        ) : grouped.size === 0 ? (
           <p className="mt-4 text-sm text-muted-foreground">{t("routeDash.noStops")}</p>
         ) : (
           <div className="mt-4 space-y-6">

@@ -189,3 +189,16 @@
     transform: none;
   }
 }
+
+/* html5-qrcode injects a bare <video> into #wt-qr-scanner at runtime
+   (ScannerPanel.tsx) with an inline `width: <px>` set from the
+   container's clientWidth and no height at all, so its native stream
+   resolution otherwise stretches non-uniformly to fill the square
+   container — this is what causes the iOS "environment" camera's
+   non-square feed to distort. The !important is required since it
+   has to beat that inline style. */
+#wt-qr-scanner video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+}

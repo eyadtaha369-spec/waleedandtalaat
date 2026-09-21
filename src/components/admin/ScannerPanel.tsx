@@ -65,7 +65,27 @@ export function ScannerPanel() {
     try {
       await scanner.start(
         { facingMode: "environment" },
-        { fps: 10, qrbox: 250 },
+        {
+          fps: 10,
+          // A fixed pixel qrbox doesn't scale with the actual
+          // viewfinder size, and on iOS (see videoConstraints below)
+          // that viewfinder isn't a fixed size to begin with — derive
+          // the box from whatever the viewfinder actually renders at.
+          qrbox: (viewfinderWidth, viewfinderHeight) => {
+            const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+            const qrboxSize = Math.floor(minEdge * 0.7);
+            return { width: qrboxSize, height: qrboxSize };
+          },
+          // iOS Safari's "environment" camera commonly reports a native
+          // stream resolution that isn't square (e.g. 4:3 or 16:9),
+          // which html5-qrcode then stretches non-uniformly into our
+          // square container. Requesting a 1:1 aspect ratio directly on
+          // the camera track fixes the distortion at the source, rather
+          // than relying on CSS to visually crop an already-mismatched
+          // stream. Passing videoConstraints overrides the first
+          // argument above, so facingMode has to be repeated here.
+          videoConstraints: { facingMode: "environment", aspectRatio: 1.0 },
+        },
         (decodedText) => void handleScan(decodedText),
         () => {},
       );

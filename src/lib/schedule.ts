@@ -76,11 +76,21 @@ export function morningWindow(now = cairoNow()): WindowState {
  * see an empty manifest for a trip that hasn't happened yet, while
  * the real upcoming trip's passengers were hidden a day back.
  *
- * Fix: treat any time before `cutoffHour` (default 4:00 AM) as still
- * "yesterday" for this calculation only — the operating day doesn't
- * roll over until the early-morning cutoff, not at midnight.
+ * Fix: treat any time before `cutoffHour` (default noon, 12:00 PM) as
+ * still "yesterday" for this calculation only — the operating day
+ * doesn't roll over until noon, not at midnight. Noon is not
+ * arbitrary: it's the exact instant morningWindow() reopens and starts
+ * targeting the NEXT day's trip (mins >= 12*60, serviceDate =
+ * addDays(now, 1)). Today's own trip — whether it's 1:00 AM or
+ * 11:59 AM — must keep resolving to today, since it hasn't departed
+ * yet and today's bookings are still keyed to today's date; only once
+ * the booking window itself has moved on to tomorrow should this
+ * function agree with it. An earlier 4:00 AM cutoff was too early:
+ * morning trips depart at 6:00/8:00 AM, so between 4:00 AM and noon it
+ * was already rolling students' confirmed today-bookings over to
+ * tomorrow, making their pass and dashboard show no booking at all.
  */
-export function routeDashboardDefaultDate(now = cairoNow(), cutoffHour = 4): string {
+export function routeDashboardDefaultDate(now = cairoNow(), cutoffHour = 12): string {
   const mins = minutesOfDay(now);
   const operatingNow = mins < cutoffHour * 60 ? addDays(now, -1) : now;
   return toDateKey(addDays(operatingNow, 1));

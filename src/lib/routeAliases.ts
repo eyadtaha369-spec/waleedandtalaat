@@ -28,10 +28,23 @@ const ROUTE_ALIASES: Record<string, string> = {
   "برج العرب": "خط برج العرب",
 };
 
+function foldArabic(s: string): string {
+  return s
+    .replace(/[أإآٱ]/g, "ا")
+    .replace(/ى/g, "ي")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+const FOLDED_ROUTE_ALIASES = new Map(
+  Object.entries(ROUTE_ALIASES).map(([k, v]) => [foldArabic(k), v]),
+);
+
 export function normalizeRouteName(raw: string): string {
   const trimmed = raw.trim();
   if (!trimmed) return trimmed;
-  return ROUTE_ALIASES[trimmed] ?? trimmed;
+  if (ROUTE_ALIASES[trimmed]) return ROUTE_ALIASES[trimmed];
+  return FOLDED_ROUTE_ALIASES.get(foldArabic(trimmed)) ?? trimmed;
 }
 
 /**

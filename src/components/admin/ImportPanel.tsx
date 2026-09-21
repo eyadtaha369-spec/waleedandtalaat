@@ -15,7 +15,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { credentialsWhatsAppLink } from "@/lib/credentials";
-import { edgeFunctionErrorMessage } from "@/lib/functionsError";
 import { RecoverCredentialsPanel } from "@/components/admin/RecoverCredentialsPanel";
 import { useLanguage } from "@/hooks/useLanguage";
 import { withUtf8Bom, excelTextCell } from "@/lib/csvExport";
@@ -263,21 +262,34 @@ export function ImportPanel() {
 
   const createAccounts = async () => {
     setBusy(true);
-    const { data, error } = await supabase.functions.invoke("bulk-import-students", {
-      body: { students: rows },
-    });
-    setBusy(false);
-    if (error) {
-      toast.error(
-        await edgeFunctionErrorMessage(
-          error,
-          "Import failed. Is the bulk-import-students function deployed?",
-        ),
-      );
-      return;
+    const CHUNK_SIZE = 40;
+    const allResults: ImportResult[] = [];
+    let chunkFailed = false;
+    for (let i = 0; i < rows.length; i += CHUNK_SIZE) {
+      const chunk = rows.slice(i, i + CHUNK_SIZE);
+      const { data, error } = await supabase.functions.invoke("bulk-import-students", {
+        body: { students: chunk },
+      });
+      if (error) {
+        chunkFailed = true;
+        chunk.forEach((r, j) =>
+          allResults.push({
+            full_name: r.full_name,
+            phone: r.phone,
+            username: r.username,
+            email: "",
+            temp_password: "",
+            status: "failed",
+            error: `Row ${i + j + 2} failed: ${error.message ?? "network/edge function error"}`,
+          }),
+        );
+      } else {
+        allResults.push(...((data?.results as ImportResult[]) ?? []));
+      }
+      setResults([...allResults]); // keep the table live as batches finish
     }
-    const created = (data?.results as ImportResult[]) ?? [];
-    setResults(created);
+    setBusy(false);
+    const created = allResults;
     const failCount = created.filter((r) => r.status === "failed").length;
     const updatedCount = created.filter((r) => r.status === "updated").length;
     const createdCount = created.length - failCount - updatedCount;
@@ -289,6 +301,7 @@ export function ImportPanel() {
       skippedOnLoad > 0 ? `${t("import.skippedRefunded")}: ${skippedOnLoad}` : null,
     ].filter(Boolean);
     toast.success(t("import.summaryTitle"), { description: lines.join("\n") });
+    if (chunkFailed) toast.error("Some batches failed outright — see the failed rows below.");
   };
 
   const downloadCredentials = () => {
@@ -376,8 +389,8 @@ export function ImportPanel() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rows.map((r) => {
-                const outcome = results.find((res) => res.phone === r.phone);
+              {rows.map((r, idx) => {
+                const outcome = results[idx];
                 return (
                   <TableRow key={r.username}>
                     <TableCell>
@@ -426,10 +439,7 @@ export function ImportPanel() {
                               {t("import.sendWhatsapp")}
                             </a>
                             {outcome.warning && (
-                              <span
-                                className="text-warning cursor-help"
-                                title={outcome.warning}
-                              >
+                              <span className="text-warning cursor-help" title={outcome.warning}>
                                 ⚠️
                               </span>
                             )}
@@ -451,6 +461,23 @@ export function ImportPanel() {
               })}
             </TableBody>
           </Table>
+        </section>
+      )}
+
+      {results.some((r) => r.status === "failed") && (
+        <section className="rounded-3xl border border-destructive/40 bg-card p-6">
+          <h3 className="mb-3 font-semibold text-destructive">{t("import.failed")}</h3>
+          <ul className="space-y-2 text-sm">
+            {results
+              .filter((r) => r.status === "failed")
+              .map((r, i) => (
+                <li key={`${r.phone}-${i}`} className="rounded-lg border border-border p-3">
+                  <p className="font-medium">{r.full_name || "—"}</p>
+                  <p className="text-xs text-muted-foreground">{r.phone || "—"}</p>
+                  <p className="mt-1 text-xs text-destructive">{r.error}</p>
+                </li>
+              ))}
+          </ul>
         </section>
       )}
 

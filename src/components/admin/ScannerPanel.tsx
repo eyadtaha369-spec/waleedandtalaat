@@ -14,13 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  ALL_SLOTS,
-  MORNING_SLOTS,
-  cairoNow,
-  routeDashboardDefaultDate,
-  toDateKey,
-} from "@/lib/schedule";
+import { ALL_SLOTS, MORNING_SLOTS, cairoNow, toDateKey } from "@/lib/schedule";
 import { edgeFunctionErrorMessage } from "@/lib/functionsError";
 import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/hooks/useLanguage";
@@ -252,11 +246,15 @@ export function ScannerPanel() {
   const logWalkIn = async (route: string, kind: "morning" | "return") => {
     setWalkInBusy(true);
     try {
-      // Mirrors dashboard.tsx/pass.tsx exactly, not duplicated in SQL:
-      // morning uses the same cutoff-aware "trip actually departing
-      // next" date, return (any of 12:30/1:30/2:30/4:00 PM) is always
-      // the same day.
-      const serviceDate = kind === "morning" ? routeDashboardDefaultDate() : toDateKey(cairoNow());
+      // A walk-in is a real-time boarding log, not a booking — it must
+      // mirror scan_pass()'s own stamp (always the actual current Cairo
+      // calendar date, no cutoff widening) so it lands in the same
+      // service_date bucket fleet_manifest_report() and real QR scans
+      // use. routeDashboardDefaultDate() is for booking dashboards; it
+      // rolls to TOMORROW after noon, which silently misdated morning
+      // walk-ins logged in the afternoon/evening and made them vanish
+      // from that day's Fleet Allocation counter.
+      const serviceDate = toDateKey(cairoNow());
       const { data, error } = await supabase.rpc("log_walk_in_passenger", {
         p_route: route,
         p_slot: slot,

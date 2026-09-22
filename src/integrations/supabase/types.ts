@@ -523,6 +523,15 @@ export type Database = {
         };
         Returns: Json;
       };
+      undo_walk_in_passenger: {
+        Args: {
+          p_route: string;
+          p_slot: string;
+          p_kind: string;
+          p_service_date?: string | null | undefined;
+        };
+        Returns: Json;
+      };
       fleet_manifest_report: {
         Args: { p_date: string | null };
         Returns: {

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Html5Qrcode } from "html5-qrcode";
 import { toast } from "sonner";
-import { CheckCircle2, ScanLine, UserPlus, Users, XCircle } from "lucide-react";
+import { CheckCircle2, ScanLine, UserMinus, UserPlus, Users, XCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { SmartAvatar } from "@/components/SmartAvatar";
 import { Badge } from "@/components/ui/badge";
@@ -46,6 +46,7 @@ export function ScannerPanel() {
   const [scannedToday, setScannedToday] = useState<number | null>(null);
   const [overriding, setOverriding] = useState(false);
   const [walkInDialogOpen, setWalkInDialogOpen] = useState(false);
+  const [walkInMode, setWalkInMode] = useState<"add" | "undo">("add");
   const [walkInRoute, setWalkInRoute] = useState("");
   const [walkInNote, setWalkInNote] = useState("");
   const [walkInBusy, setWalkInBusy] = useState(false);
@@ -276,6 +277,7 @@ export function ScannerPanel() {
       }
 
       toast.success(`+1 راكب يدوي — ${route}`);
+      void loadScannedCount();
       setWalkInDialogOpen(false);
       setWalkInRoute("");
       setWalkInNote("");
@@ -284,9 +286,47 @@ export function ScannerPanel() {
     }
   };
 
+  const undoWalkIn = async (route: string, kind: "morning" | "return") => {
+    setWalkInBusy(true);
+    try {
+      const serviceDate = toDateKey(cairoNow());
+      const { data, error } = await supabase.rpc("undo_walk_in_passenger", {
+        p_route: route,
+        p_slot: slot,
+        p_kind: kind,
+        p_service_date: serviceDate,
+      });
+
+      if (error || (data as { error?: string })?.error) {
+        toast.error(
+          (data as { error?: string })?.error ?? error?.message ?? t("scanner.walkInUndoFailed"),
+        );
+        return;
+      }
+
+      toast.success(`-1 راكب يدوي — ${route}`);
+      setWalkInDialogOpen(false);
+      setWalkInRoute("");
+      void loadScannedCount();
+    } finally {
+      setWalkInBusy(false);
+    }
+  };
+
   const handleWalkInClick = () => {
+    setWalkInMode("add");
     if (isMorningSlot && canUseOwnRouteForMorning) {
       void logWalkIn(profile!.assigned_route!, "morning");
+      return;
+    }
+    setWalkInRoute(routes[0] ?? "");
+    setWalkInDialogOpen(true);
+  };
+
+  const handleUndoWalkInClick = () => {
+    setWalkInMode("undo");
+    if (isMorningSlot && canUseOwnRouteForMorning) {
+      void undoWalkIn(profile!.assigned_route!, "morning");
       return;
     }
     setWalkInRoute(routes[0] ?? "");
@@ -327,14 +367,24 @@ export function ScannerPanel() {
             </Button>
           </div>
 
-          <Button
-            variant="outline"
-            className="mt-3 w-full border-dashed"
-            disabled={walkInBusy}
-            onClick={handleWalkInClick}
-          >
-            <UserPlus className="size-4" /> {t("scanner.addWalkIn")}
-          </Button>
+          <div className="mt-3 flex gap-2">
+            <Button
+              variant="outline"
+              className="flex-1 border-dashed"
+              disabled={walkInBusy}
+              onClick={handleWalkInClick}
+            >
+              <UserPlus className="size-4" /> {t("scanner.addWalkIn")}
+            </Button>
+            <Button
+              variant="outline"
+              className="flex-1 border-dashed"
+              disabled={walkInBusy}
+              onClick={handleUndoWalkInClick}
+            >
+              <UserMinus className="size-4" /> {t("scanner.undoWalkIn")}
+            </Button>
+          </div>
 
           {isAdmin && (
             <div className="mt-3 flex flex-wrap items-center gap-3">
@@ -382,7 +432,11 @@ export function ScannerPanel() {
       <Dialog open={walkInDialogOpen} onOpenChange={setWalkInDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{t("scanner.walkInDialogTitle")}</DialogTitle>
+            <DialogTitle>
+              {walkInMode === "undo"
+                ? t("scanner.walkInUndoDialogTitle")
+                : t("scanner.walkInDialogTitle")}
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <select
@@ -396,19 +450,29 @@ export function ScannerPanel() {
                 </option>
               ))}
             </select>
-            <Input
-              placeholder={t("scanner.walkInNote")}
-              value={walkInNote}
-              onChange={(e) => setWalkInNote(e.target.value)}
-            />
+            {walkInMode !== "undo" && (
+              <Input
+                placeholder={t("scanner.walkInNote")}
+                value={walkInNote}
+                onChange={(e) => setWalkInNote(e.target.value)}
+              />
+            )}
           </div>
           <DialogFooter>
             <Button
               className="btn-gold w-full"
               disabled={!walkInRoute || walkInBusy}
-              onClick={() => void logWalkIn(walkInRoute, isMorningSlot ? "morning" : "return")}
+              onClick={() =>
+                void (walkInMode === "undo"
+                  ? undoWalkIn(walkInRoute, isMorningSlot ? "morning" : "return")
+                  : logWalkIn(walkInRoute, isMorningSlot ? "morning" : "return"))
+              }
             >
-              {walkInBusy ? "…" : t("scanner.walkInConfirm")}
+              {walkInBusy
+                ? "…"
+                : walkInMode === "undo"
+                  ? t("scanner.walkInUndoConfirm")
+                  : t("scanner.walkInConfirm")}
             </Button>
           </DialogFooter>
         </DialogContent>

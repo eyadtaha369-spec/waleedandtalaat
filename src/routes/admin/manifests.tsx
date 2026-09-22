@@ -6,12 +6,13 @@ import { ManifestsPanel } from "@/components/admin/ManifestsPanel";
 import { FleetPanel } from "@/components/admin/FleetPanel";
 import { TripBalancesPanel } from "@/components/admin/TripBalancesPanel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/hooks/useLanguage";
 
 export const Route = createFileRoute("/admin/manifests")({
   head: () => ({ meta: [{ title: "Fleet manifests — Waleed & Talaat" }] }),
   component: () => (
-    <AdminGuard requireAdmin>
+    <AdminGuard>
       <ManifestsPage />
     </AdminGuard>
   ),
@@ -20,6 +21,7 @@ export const Route = createFileRoute("/admin/manifests")({
 function ManifestsPage() {
   const [tab, setTab] = useState("manifests");
   const { t } = useLanguage();
+  const { isAdmin } = useAuth();
   return (
     <main className="mx-auto max-w-6xl px-4 py-8">
       <div className="surface-navy shadow-luxe flex flex-wrap items-center justify-between gap-4 rounded-3xl p-6">
@@ -40,9 +42,11 @@ function ManifestsPage() {
           <TabsTrigger value="fleet">
             <Bus className="size-4" /> {t("fleet.title").split(" — ")[0]}
           </TabsTrigger>
-          <TabsTrigger value="trips">
-            <Ticket className="size-4" /> {t("manifests.tripBalances")}
-          </TabsTrigger>
+          {isAdmin && (
+            <TabsTrigger value="trips">
+              <Ticket className="size-4" /> {t("manifests.tripBalances")}
+            </TabsTrigger>
+          )}
         </TabsList>
         <TabsContent value="manifests" className="mt-5">
           <ManifestsPanel />
@@ -50,9 +54,11 @@ function ManifestsPage() {
         <TabsContent value="fleet" className="mt-5">
           <FleetPanel />
         </TabsContent>
-        <TabsContent value="trips" className="mt-5">
-          <TripBalancesPanel />
-        </TabsContent>
+        {isAdmin && (
+          <TabsContent value="trips" className="mt-5">
+            <TripBalancesPanel />
+          </TabsContent>
+        )}
       </Tabs>
     </main>
   );

@@ -52,6 +52,7 @@ function useNavLinks() {
     { to: "/admin/scan", label: t("nav.scanQr") },
   ];
   const supervisorLinks = [
+    { to: "/admin/manifests", label: t("nav.manifests") },
     { to: "/supervisor/students", label: t("nav.students") },
     { to: "/admin/student-accounts", label: t("studentAccounts.title") },
     { to: "/route-dashboard", label: t("routeDash.title") },

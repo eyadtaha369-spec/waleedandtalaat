@@ -45,6 +45,11 @@ export const Route = createFileRoute("/dashboard")({
 });
 
 const BORG_EL_ARAB_ROUTE = "خط برج العرب";
+const ALEXANDRIA_MIX_ROUTE = "خط البحر";
+// Not in the stops table — specific to the 08:00 AM Alexandria Mix bus.
+// خط البحر's own stop list already has a stop literally named "الموقف",
+// so it's deliberately not repeated here.
+const ALEXANDRIA_MIX_EXTRA_STOPS = ["قناة السويس عند الرادار", "النجار", "ال 21"];
 
 type Booking = {
   id: string;
@@ -123,6 +128,13 @@ function Dashboard() {
   const [returnStop, setReturnStop] = useState<string>("");
   const [fourPmStop, setFourPmStop] = useState<string>("");
   const stopsForMyRoute = profile?.route ? (stopsByRoute[profile.route] ?? []) : [];
+  // The 08:00 AM Alexandria Mix bus runs خط البحر's route with three
+  // extra pickup points, regardless of it also being a normal 8AM slot
+  // for every other route (those keep their own stops unchanged below).
+  const isAlexandriaMixSlot = morningSlot === "08:00 AM" && profile?.route === ALEXANDRIA_MIX_ROUTE;
+  const morningStopOptions = isAlexandriaMixSlot
+    ? [...(stopsByRoute[ALEXANDRIA_MIX_ROUTE] ?? []), ...ALEXANDRIA_MIX_EXTRA_STOPS]
+    : stopsForMyRoute;
   // Return trips drop students off in the reverse order the morning
   // pickup runs the route, so the return dropoff dropdown uses the
   // route's stop list reversed — distinct from stopsForMyRoute, which
@@ -253,6 +265,19 @@ function Dashboard() {
     void reload();
   };
 
+  const handleMorningSlotChange = (newSlot: string) => {
+    setMorningSlot(newSlot);
+    // The valid stop list depends on the slot (Alexandria Mix's extra
+    // stops only apply to 08:00 AM) — reset to the new list's first
+    // option so a student can't submit a stop that's no longer valid.
+    const isNewSlotAlexandriaMix =
+      newSlot === "08:00 AM" && profile?.route === ALEXANDRIA_MIX_ROUTE;
+    const newOptions = isNewSlotAlexandriaMix
+      ? [...(stopsByRoute[ALEXANDRIA_MIX_ROUTE] ?? []), ...ALEXANDRIA_MIX_EXTRA_STOPS]
+      : stopsForMyRoute;
+    setStop(newOptions[0] ?? "");
+  };
+
   const cancel = async (id: string) => {
     await supabase.from("bookings").delete().eq("id", id);
     toast.success(t("dashboard.bookingCancelled"));
@@ -359,14 +384,14 @@ function Dashboard() {
               <SelectField
                 label={t("dashboard.departureStopLabel")}
                 value={stop}
-                options={stopsForMyRoute}
+                options={morningStopOptions}
                 onChange={setStop}
               />
               <SlotPicker
                 label={t("dashboard.timeSlot")}
                 options={activeMorningSlots}
                 value={morningSlot}
-                onChange={setMorningSlot}
+                onChange={handleMorningSlotChange}
                 lang={lang}
               />
               <Button

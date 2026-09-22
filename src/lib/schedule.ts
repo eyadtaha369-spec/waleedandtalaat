@@ -1,6 +1,6 @@
 export const TIMEZONE = "Africa/Cairo";
 
-export const MORNING_SLOTS = ["06:00 AM", "08:00 AM"] as const;
+export const MORNING_SLOTS = ["06:00 AM", "08:00 AM", "09:00 AM"] as const;
 export const RETURN_SLOTS = ["12:30 PM", "01:30 PM", "02:30 PM"] as const;
 export const ALL_SLOTS = [...MORNING_SLOTS, ...RETURN_SLOTS, "04:00 PM"] as const;
 

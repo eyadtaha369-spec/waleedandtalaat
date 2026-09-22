@@ -20,6 +20,9 @@ import {
 type FleetRow = {
   route: string;
   morning_scans: number;
+  morning_6am: number;
+  morning_8am: number;
+  morning_9am: number;
   early_return_passengers: number;
   opted_out_count: number;
   remaining_for_4pm: number;
@@ -51,6 +54,9 @@ export function FleetPanel() {
       rows.map((r) => ({
         Route: r.route,
         "Morning scans": r.morning_scans,
+        "Bus 6:00 AM": r.morning_6am,
+        "Bus 8:00 AM (Alexandria Mix)": r.morning_8am,
+        "Bus 9:00 AM (Borg El-Arab)": r.morning_9am,
         "Early return passengers": r.early_return_passengers,
         "Opted out": r.opted_out_count,
         "Remaining for 4PM": r.remaining_for_4pm,
@@ -90,6 +96,9 @@ export function FleetPanel() {
             <TableRow>
               <TableHead>{t("common.route")}</TableHead>
               <TableHead>{t("fleet.morningScans")}</TableHead>
+              <TableHead>{t("fleet.slot6am")}</TableHead>
+              <TableHead>{t("fleet.slot8am")}</TableHead>
+              <TableHead>{t("fleet.slot9am")}</TableHead>
               <TableHead>{t("fleet.earlyReturn")}</TableHead>
               <TableHead>{t("fleet.optedOut")}</TableHead>
               <TableHead>{t("fleet.remaining4pm")}</TableHead>
@@ -101,6 +110,9 @@ export function FleetPanel() {
               <TableRow key={r.route}>
                 <TableCell className="font-medium">{r.route}</TableCell>
                 <TableCell>{r.morning_scans}</TableCell>
+                <TableCell>{r.morning_6am}</TableCell>
+                <TableCell>{r.morning_8am}</TableCell>
+                <TableCell>{r.morning_9am}</TableCell>
                 <TableCell>{r.early_return_passengers}</TableCell>
                 <TableCell>{r.opted_out_count}</TableCell>
                 <TableCell>{r.remaining_for_4pm}</TableCell>

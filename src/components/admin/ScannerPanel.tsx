@@ -174,13 +174,13 @@ export function ScannerPanel() {
         tripsTotal: data.trips_total ?? null,
         hasCompanion: !!data.has_companion,
       });
-      if (
-        data.status === "booked" &&
-        data.trips_remaining !== null &&
-        data.trips_remaining !== undefined
-      ) {
+      if (data.status === "booked") {
+        const tripInfo =
+          data.trips_remaining !== null && data.trips_remaining !== undefined
+            ? ` | المتبقي: ${data.trips_remaining}/${data.trips_total} رحلة`
+            : "";
         toast.success(
-          `تم تسجيل الركوب بنجاح! المتبقي: ${data.trips_remaining}/${data.trips_total} رحلة 🟢`,
+          `تم تسجيل الحضور - الطالب: ${data.full_name} | الخط: ${data.route ?? "—"}${tripInfo} 🟢`,
         );
       } else if (data.status === "no_trips_left") {
         toast.error(`عفواً، استنفذ الطالب جميع الرحلات (0/${data.trips_total}) 🔴`, {

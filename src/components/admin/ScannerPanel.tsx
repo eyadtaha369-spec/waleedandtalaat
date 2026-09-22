@@ -59,9 +59,17 @@ export function ScannerPanel() {
   // they (like everyone for a return walk-in, where the bus isn't
   // route-specific to begin with) pick a route via the dialog instead.
   const canUseOwnRouteForMorning = !isAdmin && !!profile?.assigned_route;
+  const scannedCountLabel =
+    slot === "06:00 AM"
+      ? `ركاب ${profile?.assigned_route ?? "—"} (06:00 AM)`
+      : `إجمالي ركاب ميعاد (${slot})`;
 
   const loadScannedCount = async () => {
-    const { data } = await supabase.rpc("count_today_scanned_exam_passes");
+    const { data } = await supabase.rpc("count_today_scanned_passengers", {
+      p_slot: slot,
+      p_date: dateOverride || undefined,
+      p_route: slot === "06:00 AM" ? (profile?.assigned_route ?? null) : null,
+    });
     setScannedToday((data as number) ?? 0);
   };
 
@@ -69,7 +77,7 @@ export function ScannerPanel() {
     void loadScannedCount();
     const interval = setInterval(() => void loadScannedCount(), 20000);
     return () => clearInterval(interval);
-  }, []);
+  }, [slot, dateOverride, profile?.assigned_route]);
 
   useEffect(() => {
     return () => {
@@ -133,9 +141,8 @@ export function ScannerPanel() {
         token?: string;
         id?: string;
         guest?: boolean;
-        exam?: boolean;
       };
-      // v2 student passes carry a rotating boarding_token; guest/exam
+      // v2 student passes carry a rotating boarding_token; guest
       // passes still use their own static per-booking token under `id`.
       if (!payload.token && !payload.id) throw new Error("bad payload");
 
@@ -149,13 +156,11 @@ export function ScannerPanel() {
       const { data, error } = await supabase.functions.invoke("scan-pass", {
         body: payload.guest
           ? { guest_token: payload.id }
-          : payload.exam
-            ? { exam_token: payload.id }
-            : {
-                boarding_token: payload.token,
-                slot,
-                service_date: dateOverride || undefined,
-              },
+          : {
+              boarding_token: payload.token,
+              slot,
+              service_date: dateOverride || undefined,
+            },
       });
 
       if (error || data?.error) {
@@ -187,7 +192,7 @@ export function ScannerPanel() {
           duration: 10000,
         });
       }
-      if (payload.exam && data.status === "booked") {
+      if (data.status === "booked") {
         void loadScannedCount();
       }
     } catch {
@@ -292,7 +297,7 @@ export function ScannerPanel() {
     <div>
       <div className="mb-5 rounded-2xl border border-gilded p-4 text-center">
         <p className="text-xs tracking-widest text-muted-foreground uppercase">
-          {t("summer.scannedToday")}
+          {scannedCountLabel}
         </p>
         <p className="text-gilded mt-1 text-2xl font-bold">
           {scannedToday === null ? "…" : scannedToday}

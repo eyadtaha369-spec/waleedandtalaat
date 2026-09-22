@@ -1,9 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
 import { BusFront, QrCode, ShieldCheck, Ticket } from "lucide-react";
 import { Logo } from "@/components/Brand";
 import { Button } from "@/components/ui/button";
-import { ExamBookingModal } from "@/components/ExamBookingModal";
 import { MORNING_SLOTS, RETURN_SLOTS } from "@/lib/schedule";
 import { useLanguage } from "@/hooks/useLanguage";
 import { formatSlotLabel } from "@/lib/i18n/dateFormat";
@@ -28,7 +26,6 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
-  const [examModalOpen, setExamModalOpen] = useState(false);
   const { t, lang } = useLanguage();
 
   const features = [
@@ -51,15 +48,6 @@ function Index() {
               {t("landing.title2")}
             </h1>
             <p className="mt-5 max-w-lg text-sm opacity-80 md:text-base">{t("landing.subtitle")}</p>
-            <div className="mt-6">
-              <button
-                type="button"
-                onClick={() => setExamModalOpen(true)}
-                className="animate-pulse rounded-2xl bg-gradient-to-r from-[var(--gold)] to-amber-400 px-6 py-4 text-lg font-bold text-black shadow-lg transition-transform hover:scale-105"
-              >
-                {t("landing.examCta")}
-              </button>
-            </div>
             <div className="mt-6 flex flex-wrap gap-3">
               <Link to="/auth">
                 <Button size="lg" className="btn-gold">
@@ -114,8 +102,6 @@ function Index() {
           <span>{t("landing.footer")}</span>
         </div>
       </footer>
-
-      <ExamBookingModal open={examModalOpen} onOpenChange={setExamModalOpen} />
     </main>
   );
 }

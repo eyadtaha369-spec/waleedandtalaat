@@ -696,6 +696,14 @@ export type Database = {
         Args: Record<string, never>;
         Returns: number;
       };
+      count_today_scanned_passengers: {
+        Args: {
+          p_slot: string;
+          p_date?: string | undefined;
+          p_route?: string | null | undefined;
+        };
+        Returns: number;
+      };
       check_exam_duplicate: {
         Args: { p_phone: string; p_exam_date: string };
         Returns: boolean;

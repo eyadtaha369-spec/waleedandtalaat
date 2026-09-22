@@ -4,7 +4,6 @@ import { toast } from "sonner";
 import {
   Bus,
   ClipboardList,
-  GraduationCap,
   MessageCircle,
   ScanLine,
   ShieldCheck,
@@ -187,12 +186,6 @@ function AdminConsole() {
           icon={ClipboardList}
           title={t("admin.dailyPassApprovalsTitle")}
           description={t("admin.dailyPassApprovalsDesc")}
-        />
-        <ShortcutCard
-          to="/admin/summer-bookings"
-          icon={GraduationCap}
-          title={t("admin.summerBookingsTitle")}
-          description={t("admin.summerBookingsDesc")}
         />
         <ShortcutCard
           to="/admin/students"

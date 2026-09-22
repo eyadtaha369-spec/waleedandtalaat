@@ -44,7 +44,6 @@ function useNavLinks() {
     { to: "/admin/schedules", label: t("schedules.title") },
     { to: "/admin/installments", label: t("nav.installments") },
     { to: "/admin/requests", label: t("nav.adminDailyPass") },
-    { to: "/admin/summer-bookings", label: t("nav.summerBookings") },
     { to: "/admin/students", label: t("nav.students") },
     { to: "/admin/student-accounts", label: t("studentAccounts.title") },
     { to: "/whatsapp-live", label: t("nav.whatsappLive") },

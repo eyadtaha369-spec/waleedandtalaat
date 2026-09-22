@@ -30,9 +30,7 @@ import { Route as AdminScanRouteImport } from './routes/admin/scan'
 import { Route as AdminSchedulesRouteImport } from './routes/admin/schedules'
 import { Route as AdminStudentAccountsRouteImport } from './routes/admin/student-accounts'
 import { Route as AdminStudentsRouteImport } from './routes/admin/students'
-import { Route as AdminSummerBookingsRouteImport } from './routes/admin/summer-bookings'
 import { Route as AdminUsersRouteImport } from './routes/admin/users'
-import { Route as ExamPassTokenRouteImport } from './routes/exam-pass/$token'
 import { Route as GuestPassTokenRouteImport } from './routes/guest-pass/$token'
 import { Route as SupervisorStudentsRouteImport } from './routes/supervisor/students'
 
@@ -141,20 +139,10 @@ const AdminStudentsRoute = AdminStudentsRouteImport.update({
   path: '/students',
   getParentRoute: () => AdminRoute,
 } as any)
-const AdminSummerBookingsRoute = AdminSummerBookingsRouteImport.update({
-  id: '/summer-bookings',
-  path: '/summer-bookings',
-  getParentRoute: () => AdminRoute,
-} as any)
 const AdminUsersRoute = AdminUsersRouteImport.update({
   id: '/users',
   path: '/users',
   getParentRoute: () => AdminRoute,
-} as any)
-const ExamPassTokenRoute = ExamPassTokenRouteImport.update({
-  id: '/exam-pass/$token',
-  path: '/exam-pass/$token',
-  getParentRoute: () => rootRouteImport,
 } as any)
 const GuestPassTokenRoute = GuestPassTokenRouteImport.update({
   id: '/guest-pass/$token',
@@ -188,9 +176,7 @@ export interface FileRoutesByFullPath {
   '/admin/schedules': typeof AdminSchedulesRoute
   '/admin/student-accounts': typeof AdminStudentAccountsRoute
   '/admin/students': typeof AdminStudentsRoute
-  '/admin/summer-bookings': typeof AdminSummerBookingsRoute
   '/admin/users': typeof AdminUsersRoute
-  '/exam-pass/$token': typeof ExamPassTokenRoute
   '/guest-pass/$token': typeof GuestPassTokenRoute
   '/supervisor/students': typeof SupervisorStudentsRoute
   '/admin/': typeof AdminIndexRoute
@@ -215,9 +201,7 @@ export interface FileRoutesByTo {
   '/admin/schedules': typeof AdminSchedulesRoute
   '/admin/student-accounts': typeof AdminStudentAccountsRoute
   '/admin/students': typeof AdminStudentsRoute
-  '/admin/summer-bookings': typeof AdminSummerBookingsRoute
   '/admin/users': typeof AdminUsersRoute
-  '/exam-pass/$token': typeof ExamPassTokenRoute
   '/guest-pass/$token': typeof GuestPassTokenRoute
   '/supervisor/students': typeof SupervisorStudentsRoute
   '/admin': typeof AdminIndexRoute
@@ -244,9 +228,7 @@ export interface FileRoutesById {
   '/admin/schedules': typeof AdminSchedulesRoute
   '/admin/student-accounts': typeof AdminStudentAccountsRoute
   '/admin/students': typeof AdminStudentsRoute
-  '/admin/summer-bookings': typeof AdminSummerBookingsRoute
   '/admin/users': typeof AdminUsersRoute
-  '/exam-pass/$token': typeof ExamPassTokenRoute
   '/guest-pass/$token': typeof GuestPassTokenRoute
   '/supervisor/students': typeof SupervisorStudentsRoute
   '/admin/': typeof AdminIndexRoute
@@ -274,9 +256,7 @@ export interface FileRouteTypes {
     | '/admin/schedules'
     | '/admin/student-accounts'
     | '/admin/students'
-    | '/admin/summer-bookings'
     | '/admin/users'
-    | '/exam-pass/$token'
     | '/guest-pass/$token'
     | '/supervisor/students'
     | '/admin/'
@@ -301,9 +281,7 @@ export interface FileRouteTypes {
     | '/admin/schedules'
     | '/admin/student-accounts'
     | '/admin/students'
-    | '/admin/summer-bookings'
     | '/admin/users'
-    | '/exam-pass/$token'
     | '/guest-pass/$token'
     | '/supervisor/students'
     | '/admin'
@@ -329,9 +307,7 @@ export interface FileRouteTypes {
     | '/admin/schedules'
     | '/admin/student-accounts'
     | '/admin/students'
-    | '/admin/summer-bookings'
     | '/admin/users'
-    | '/exam-pass/$token'
     | '/guest-pass/$token'
     | '/supervisor/students'
     | '/admin/'
@@ -349,7 +325,6 @@ export interface RootRouteChildren {
   TripsRoute: typeof TripsRoute
   TripsBalanceRoute: typeof TripsBalanceRoute
   WhatsappLiveRoute: typeof WhatsappLiveRoute
-  ExamPassTokenRoute: typeof ExamPassTokenRoute
   GuestPassTokenRoute: typeof GuestPassTokenRoute
   SupervisorStudentsRoute: typeof SupervisorStudentsRoute
 }
@@ -503,26 +478,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminStudentsRouteImport
       parentRoute: typeof AdminRoute
     }
-    '/admin/summer-bookings': {
-      id: '/admin/summer-bookings'
-      path: '/summer-bookings'
-      fullPath: '/admin/summer-bookings'
-      preLoaderRoute: typeof AdminSummerBookingsRouteImport
-      parentRoute: typeof AdminRoute
-    }
     '/admin/users': {
       id: '/admin/users'
       path: '/users'
       fullPath: '/admin/users'
       preLoaderRoute: typeof AdminUsersRouteImport
       parentRoute: typeof AdminRoute
-    }
-    '/exam-pass/$token': {
-      id: '/exam-pass/$token'
-      path: '/exam-pass/$token'
-      fullPath: '/exam-pass/$token'
-      preLoaderRoute: typeof ExamPassTokenRouteImport
-      parentRoute: typeof rootRouteImport
     }
     '/guest-pass/$token': {
       id: '/guest-pass/$token'
@@ -551,7 +512,6 @@ interface AdminRouteChildren {
   AdminSchedulesRoute: typeof AdminSchedulesRoute
   AdminStudentAccountsRoute: typeof AdminStudentAccountsRoute
   AdminStudentsRoute: typeof AdminStudentsRoute
-  AdminSummerBookingsRoute: typeof AdminSummerBookingsRoute
   AdminUsersRoute: typeof AdminUsersRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
@@ -566,7 +526,6 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminSchedulesRoute: AdminSchedulesRoute,
   AdminStudentAccountsRoute: AdminStudentAccountsRoute,
   AdminStudentsRoute: AdminStudentsRoute,
-  AdminSummerBookingsRoute: AdminSummerBookingsRoute,
   AdminUsersRoute: AdminUsersRoute,
   AdminIndexRoute: AdminIndexRoute,
 }
@@ -585,7 +544,6 @@ const rootRouteChildren: RootRouteChildren = {
   TripsRoute: TripsRoute,
   TripsBalanceRoute: TripsBalanceRoute,
   WhatsappLiveRoute: WhatsappLiveRoute,
-  ExamPassTokenRoute: ExamPassTokenRoute,
   GuestPassTokenRoute: GuestPassTokenRoute,
   SupervisorStudentsRoute: SupervisorStudentsRoute,
 }

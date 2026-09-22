@@ -626,6 +626,26 @@ export type Database = {
         Args: { p_date: string };
         Returns: { kind: string; slot: string; total: number }[];
       };
+      get_early_return_slot_summary: {
+        Args: { p_date?: string | null | undefined };
+        Returns: {
+          slot: string;
+          total_booked: number;
+          qr_scanned: number;
+          walk_in_count: number;
+          total_onboard: number;
+        }[];
+      };
+      get_morning_departure_route_summary: {
+        Args: { p_date?: string | null | undefined };
+        Returns: {
+          route: string;
+          slot: string;
+          qr_scanned: number;
+          walk_in_count: number;
+          total_onboard: number;
+        }[];
+      };
       list_bus_schedules: {
         Args: { p_route: string | null };
         Returns: {

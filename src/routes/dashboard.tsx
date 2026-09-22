@@ -128,10 +128,11 @@ function Dashboard() {
   const [returnStop, setReturnStop] = useState<string>("");
   const [fourPmStop, setFourPmStop] = useState<string>("");
   const stopsForMyRoute = profile?.route ? (stopsByRoute[profile.route] ?? []) : [];
-  // The 08:00 AM Alexandria Mix bus runs خط البحر's route with three
-  // extra pickup points, regardless of it also being a normal 8AM slot
-  // for every other route (those keep their own stops unchanged below).
-  const isAlexandriaMixSlot = morningSlot === "08:00 AM" && profile?.route === ALEXANDRIA_MIX_ROUTE;
+  // The 08:00 AM slot is always the Alexandria Mix bus, running خط
+  // البحر's route with three extra pickup points — regardless of the
+  // student's own route, since every route's students booking 08:00 AM
+  // ride this same shared bus.
+  const isAlexandriaMixSlot = morningSlot === "08:00 AM";
   const morningStopOptions = isAlexandriaMixSlot
     ? [...(stopsByRoute[ALEXANDRIA_MIX_ROUTE] ?? []), ...ALEXANDRIA_MIX_EXTRA_STOPS]
     : stopsForMyRoute;
@@ -270,8 +271,7 @@ function Dashboard() {
     // The valid stop list depends on the slot (Alexandria Mix's extra
     // stops only apply to 08:00 AM) — reset to the new list's first
     // option so a student can't submit a stop that's no longer valid.
-    const isNewSlotAlexandriaMix =
-      newSlot === "08:00 AM" && profile?.route === ALEXANDRIA_MIX_ROUTE;
+    const isNewSlotAlexandriaMix = newSlot === "08:00 AM";
     const newOptions = isNewSlotAlexandriaMix
       ? [...(stopsByRoute[ALEXANDRIA_MIX_ROUTE] ?? []), ...ALEXANDRIA_MIX_EXTRA_STOPS]
       : stopsForMyRoute;

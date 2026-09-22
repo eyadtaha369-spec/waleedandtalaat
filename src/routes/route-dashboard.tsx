@@ -31,6 +31,7 @@ export const Route = createFileRoute("/route-dashboard")({
 type PassengerRow = {
   route: string | null;
   pickup_stop: string | null;
+  stop_order: number | null;
   student_id: string | null;
   full_name: string;
   phone: string | null;
@@ -87,7 +88,10 @@ function RouteDashboardPage() {
   const searchQuery = search.trim().toLowerCase();
   const filteredRows = rows.filter((r) => {
     if (!searchQuery) return true;
-    return r.full_name.toLowerCase().includes(searchQuery) || (r.phone ?? "").includes(searchQuery);
+    return (
+      (r.full_name ?? "").toLowerCase().includes(searchQuery) ||
+      (r.phone ?? "").includes(searchQuery)
+    );
   });
 
   // get_route_stop_breakdown() only returns rows for stops that actually
@@ -111,6 +115,9 @@ function RouteDashboardPage() {
       if (!byRouteStop.has(routeKey)) byRouteStop.set(routeKey, new Map());
       const stops = byRouteStop.get(routeKey)!;
       if (!stops.has(stopKey)) stops.set(stopKey, []);
+      // Placeholder rows (empty stops with nobody booked) exist only to
+      // put the stop on the map — they aren't a real passenger to list.
+      if (!r.student_id && !r.full_name) continue;
       stops.get(stopKey)!.push(r);
     }
 

@@ -682,6 +682,7 @@ export type Database = {
         Returns: {
           route: string | null;
           pickup_stop: string | null;
+          stop_order: number | null;
           student_id: string | null;
           full_name: string;
           phone: string | null;

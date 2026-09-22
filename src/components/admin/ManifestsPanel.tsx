@@ -29,7 +29,7 @@ type PaymentFilter = "all" | "paid_full" | "installment_pending";
 
 export function ManifestsPanel() {
   const { t } = useLanguage();
-  const { routes } = useRoutes();
+  const { routes, stopsByRoute } = useRoutes();
   const todayKey = useMemo(() => toDateKey(cairoNow()), []);
   const [date, setDate] = useState<string>(todayKey);
   const [slot, setSlot] = useState<string>(ALL_SLOTS[0]);
@@ -40,6 +40,12 @@ export function ManifestsPanel() {
   const [slotTotals, setSlotTotals] = useState<{ kind: string; slot: string; total: number }[]>([]);
 
   const isEarlyReturn = (RETURN_SLOTS as readonly string[]).includes(slot);
+
+  const stopIndex = (route: string | null, stop: string | null): number => {
+    if (!route || !stop) return Number.MAX_SAFE_INTEGER;
+    const idx = stopsByRoute[route]?.indexOf(stop) ?? -1;
+    return idx === -1 ? Number.MAX_SAFE_INTEGER : idx; // unknown/custom stops sort last, never crash
+  };
 
   useEffect(() => {
     void load(slot, date);
@@ -107,7 +113,7 @@ export function ManifestsPanel() {
         .sort(
           (a, b) =>
             (a.route ?? "").localeCompare(b.route ?? "") ||
-            (a.pickup_stop ?? "").localeCompare(b.pickup_stop ?? ""),
+            stopIndex(a.route, a.pickup_stop) - stopIndex(b.route, b.pickup_stop),
         );
       setRows(built);
     } else {
@@ -128,14 +134,16 @@ export function ManifestsPanel() {
       const profileById = new Map((profiles ?? []).map((p) => [p.id, p]));
 
       setRows(
-        (bookings ?? []).map((b) => ({
-          student_id: b.student_id,
-          full_name: profileById.get(b.student_id)?.full_name ?? "—",
-          route: b.route,
-          pickup_stop: b.pickup_stop,
-          sector: b.sector,
-          payment_status: profileById.get(b.student_id)?.payment_status ?? "paid_full",
-        })),
+        (bookings ?? [])
+          .map((b) => ({
+            student_id: b.student_id,
+            full_name: profileById.get(b.student_id)?.full_name ?? "—",
+            route: b.route,
+            pickup_stop: b.pickup_stop,
+            sector: b.sector,
+            payment_status: profileById.get(b.student_id)?.payment_status ?? "paid_full",
+          }))
+          .sort((a, b) => stopIndex(a.route, a.pickup_stop) - stopIndex(b.route, b.pickup_stop)),
       );
     }
     setLoading(false);

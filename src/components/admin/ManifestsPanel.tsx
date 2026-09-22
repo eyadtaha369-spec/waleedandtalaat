@@ -27,21 +27,6 @@ type Row = {
 
 type PaymentFilter = "all" | "paid_full" | "installment_pending";
 
-type EarlyReturnSlotRow = {
-  slot: string;
-  total_booked: number;
-  qr_scanned: number;
-  walk_in_count: number;
-  total_onboard: number;
-};
-type MorningRouteRow = {
-  route: string;
-  slot: string;
-  qr_scanned: number;
-  walk_in_count: number;
-  total_onboard: number;
-};
-
 export function ManifestsPanel() {
   const { t } = useLanguage();
   const { routes, stopsByRoute } = useRoutes();
@@ -53,8 +38,6 @@ export function ManifestsPanel() {
   const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>("all");
   const [routeFilter, setRouteFilter] = useState<string>("all");
   const [slotTotals, setSlotTotals] = useState<{ kind: string; slot: string; total: number }[]>([]);
-  const [earlyReturnRows, setEarlyReturnRows] = useState<EarlyReturnSlotRow[]>([]);
-  const [morningRouteRows, setMorningRouteRows] = useState<MorningRouteRow[]>([]);
 
   const isEarlyReturn = (RETURN_SLOTS as readonly string[]).includes(slot);
 
@@ -65,11 +48,7 @@ export function ManifestsPanel() {
   };
 
   useEffect(() => {
-    // "early-returns"/"morning-departure" are summary tabs, not real
-    // slots — nothing to fetch for the per-slot manifest here.
-    if ((ALL_SLOTS as readonly string[]).includes(slot)) {
-      void load(slot, date);
-    }
+    void load(slot, date);
   }, [slot, date]);
 
   const loadSlotTotals = async (currentDate: string) => {
@@ -77,64 +56,21 @@ export function ManifestsPanel() {
     setSlotTotals(data ?? []);
   };
 
-  const loadEarlyReturnSummary = async (currentDate: string) => {
-    const { data } = await supabase.rpc("get_early_return_slot_summary", { p_date: currentDate });
-    setEarlyReturnRows(data ?? []);
-  };
-
-  const loadMorningDepartureSummary = async (currentDate: string) => {
-    const { data } = await supabase.rpc("get_morning_departure_route_summary", {
-      p_date: currentDate,
-    });
-    setMorningRouteRows(data ?? []);
-  };
-
   useEffect(() => {
     void loadSlotTotals(date);
-    void loadEarlyReturnSummary(date);
-    void loadMorningDepartureSummary(date);
-    // Recalculate live as bookings/opt-outs/scans/walk-ins change for
-    // this date, not just when the admin changes a filter themselves.
+    // Recalculate live as bookings/opt-outs change for this date,
+    // not just when the admin changes a filter themselves.
     const channel = supabase
       .channel(`manifest-totals-${date}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "bookings", filter: `service_date=eq.${date}` },
-        () => {
-          void loadSlotTotals(date);
-          void loadEarlyReturnSummary(date);
-          void loadMorningDepartureSummary(date);
-        },
+        () => void loadSlotTotals(date),
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "opt_outs", filter: `service_date=eq.${date}` },
-        () => {
-          void loadSlotTotals(date);
-          void loadEarlyReturnSummary(date);
-          void loadMorningDepartureSummary(date);
-        },
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "scans", filter: `service_date=eq.${date}` },
-        () => {
-          void loadEarlyReturnSummary(date);
-          void loadMorningDepartureSummary(date);
-        },
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "walk_in_passengers",
-          filter: `service_date=eq.${date}`,
-        },
-        () => {
-          void loadEarlyReturnSummary(date);
-          void loadMorningDepartureSummary(date);
-        },
+        () => void loadSlotTotals(date),
       )
       .subscribe();
     return () => {
@@ -276,18 +212,6 @@ export function ManifestsPanel() {
         </div>
 
         <TabsList className="flex h-auto flex-wrap gap-1 bg-transparent p-0">
-          <TabsTrigger
-            value="early-returns"
-            className="rounded-full border border-border data-[state=active]:border-accent data-[state=active]:bg-accent data-[state=active]:text-accent-foreground"
-          >
-            {t("manifests.earlyReturnsTab")}
-          </TabsTrigger>
-          <TabsTrigger
-            value="morning-departure"
-            className="rounded-full border border-border data-[state=active]:border-accent data-[state=active]:bg-accent data-[state=active]:text-accent-foreground"
-          >
-            {t("manifests.morningDepartureTab")}
-          </TabsTrigger>
           {ALL_SLOTS.map((s) => (
             <TabsTrigger
               key={s}
@@ -299,10 +223,7 @@ export function ManifestsPanel() {
           ))}
         </TabsList>
 
-        <TabsContent
-          value={(ALL_SLOTS as readonly string[]).includes(slot) ? slot : "__none__"}
-          className="mt-5"
-        >
+        <TabsContent value={slot} className="mt-5">
           <div className="mb-4 flex flex-wrap items-center gap-2">
             <Badge className="btn-gold">
               <Users className="me-1 size-3.5" /> {filteredRows.length}{" "}
@@ -434,64 +355,6 @@ export function ManifestsPanel() {
             </div>
           ) : (
             <ManifestTable rows={filteredRows} />
-          )}
-        </TabsContent>
-
-        <TabsContent value="early-returns" className="mt-5">
-          {earlyReturnRows.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{t("manifests.noPassengers")}</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t("manifests.timeSlot")}</TableHead>
-                  <TableHead>{t("manifests.totalBooked")}</TableHead>
-                  <TableHead>{t("manifests.qrScanned")}</TableHead>
-                  <TableHead>{t("manifests.walkInCount")}</TableHead>
-                  <TableHead>{t("manifests.totalOnboard")}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {earlyReturnRows.map((r) => (
-                  <TableRow key={r.slot}>
-                    <TableCell className="font-medium">{r.slot}</TableCell>
-                    <TableCell>{r.total_booked}</TableCell>
-                    <TableCell>{r.qr_scanned}</TableCell>
-                    <TableCell>{r.walk_in_count}</TableCell>
-                    <TableCell className="font-semibold">{r.total_onboard}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </TabsContent>
-
-        <TabsContent value="morning-departure" className="mt-5">
-          {morningRouteRows.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{t("manifests.noPassengers")}</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t("common.route")}</TableHead>
-                  <TableHead>{t("manifests.timeSlot")}</TableHead>
-                  <TableHead>{t("manifests.qrScanned")}</TableHead>
-                  <TableHead>{t("manifests.walkInCount")}</TableHead>
-                  <TableHead>{t("manifests.totalOnboard")}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {morningRouteRows.map((r) => (
-                  <TableRow key={`${r.route}-${r.slot}`}>
-                    <TableCell className="font-medium">{r.route}</TableCell>
-                    <TableCell>{r.slot}</TableCell>
-                    <TableCell>{r.qr_scanned}</TableCell>
-                    <TableCell>{r.walk_in_count}</TableCell>
-                    <TableCell className="font-semibold">{r.total_onboard}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
           )}
         </TabsContent>
       </Tabs>

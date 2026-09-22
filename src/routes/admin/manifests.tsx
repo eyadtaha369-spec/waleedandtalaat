@@ -5,6 +5,7 @@ import { AdminGuard } from "@/components/admin/AdminGuard";
 import { ManifestsPanel } from "@/components/admin/ManifestsPanel";
 import { FleetPanel } from "@/components/admin/FleetPanel";
 import { TripBalancesPanel } from "@/components/admin/TripBalancesPanel";
+import { EarlyReturnsPanel, MorningDeparturePanel } from "@/components/admin/ManifestSummaryPanels";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/hooks/useLanguage";
@@ -47,6 +48,12 @@ function ManifestsPage() {
               <Ticket className="size-4" /> {t("manifests.tripBalances")}
             </TabsTrigger>
           )}
+          <TabsTrigger value="early-returns">
+            <Users className="size-4" /> {t("manifests.earlyReturnsTab")}
+          </TabsTrigger>
+          <TabsTrigger value="morning-departure">
+            <Bus className="size-4" /> {t("manifests.morningDepartureTab")}
+          </TabsTrigger>
         </TabsList>
         <TabsContent value="manifests" className="mt-5">
           <ManifestsPanel />
@@ -59,6 +66,12 @@ function ManifestsPage() {
             <TripBalancesPanel />
           </TabsContent>
         )}
+        <TabsContent value="early-returns" className="mt-5">
+          <EarlyReturnsPanel />
+        </TabsContent>
+        <TabsContent value="morning-departure" className="mt-5">
+          <MorningDeparturePanel />
+        </TabsContent>
       </Tabs>
     </main>
   );

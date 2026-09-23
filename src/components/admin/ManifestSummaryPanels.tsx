@@ -22,9 +22,15 @@ type EarlyReturnSlotRow = {
 type MorningRouteRow = {
   route: string;
   slot: string;
+  total_booked: number;
   qr_scanned: number;
   walk_in_count: number;
   total_onboard: number;
+};
+
+const EARLY_RETURN_SLOT_LABELS: Record<string, string> = {
+  "08:00 AM": "08:00 AM (Alexandria Mix)",
+  "09:00 AM": "09:00 AM (Borg El-Arab)",
 };
 
 function useManifestDate() {
@@ -119,28 +125,32 @@ export function EarlyReturnsPanel() {
       {rows.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t("manifests.noPassengers")}</p>
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>{t("manifests.timeSlot")}</TableHead>
-              <TableHead>{t("manifests.totalBooked")}</TableHead>
-              <TableHead>{t("manifests.qrScanned")}</TableHead>
-              <TableHead>{t("manifests.walkInCount")}</TableHead>
-              <TableHead>{t("manifests.totalOnboard")}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.map((r) => (
-              <TableRow key={r.slot}>
-                <TableCell className="font-medium">{r.slot}</TableCell>
-                <TableCell>{r.total_booked}</TableCell>
-                <TableCell>{r.qr_scanned}</TableCell>
-                <TableCell>{r.walk_in_count}</TableCell>
-                <TableCell className="font-semibold">{r.total_onboard}</TableCell>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t("manifests.timeSlot")}</TableHead>
+                <TableHead>{t("manifests.totalBooked")}</TableHead>
+                <TableHead>{t("manifests.qrScanned")}</TableHead>
+                <TableHead>{t("manifests.walkInCount")}</TableHead>
+                <TableHead>{t("manifests.totalOnboard")}</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {rows.map((r) => (
+                <TableRow key={r.slot}>
+                  <TableCell className="font-medium">
+                    {EARLY_RETURN_SLOT_LABELS[r.slot] ?? r.slot}
+                  </TableCell>
+                  <TableCell>{r.total_booked}</TableCell>
+                  <TableCell>{r.qr_scanned}</TableCell>
+                  <TableCell>{r.walk_in_count}</TableCell>
+                  <TableCell className="font-semibold">{r.total_onboard}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       )}
     </section>
   );
@@ -189,28 +199,32 @@ export function MorningDeparturePanel() {
       {rows.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t("manifests.noPassengers")}</p>
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>{t("common.route")}</TableHead>
-              <TableHead>{t("manifests.timeSlot")}</TableHead>
-              <TableHead>{t("manifests.qrScanned")}</TableHead>
-              <TableHead>{t("manifests.walkInCount")}</TableHead>
-              <TableHead>{t("manifests.totalOnboard")}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.map((r) => (
-              <TableRow key={`${r.route}-${r.slot}`}>
-                <TableCell className="font-medium">{r.route}</TableCell>
-                <TableCell>{r.slot}</TableCell>
-                <TableCell>{r.qr_scanned}</TableCell>
-                <TableCell>{r.walk_in_count}</TableCell>
-                <TableCell className="font-semibold">{r.total_onboard}</TableCell>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t("common.route")}</TableHead>
+                <TableHead>{t("manifests.booked")}</TableHead>
+                <TableHead>{t("manifests.timeSlot")}</TableHead>
+                <TableHead>{t("manifests.qrScanned")}</TableHead>
+                <TableHead>{t("manifests.walkInCount")}</TableHead>
+                <TableHead>{t("manifests.totalOnboard")}</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {rows.map((r) => (
+                <TableRow key={`${r.route}-${r.slot}`}>
+                  <TableCell className="font-medium">{r.route}</TableCell>
+                  <TableCell>{r.total_booked}</TableCell>
+                  <TableCell>{r.slot}</TableCell>
+                  <TableCell>{r.qr_scanned}</TableCell>
+                  <TableCell>{r.walk_in_count}</TableCell>
+                  <TableCell className="font-semibold">{r.total_onboard}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       )}
     </section>
   );

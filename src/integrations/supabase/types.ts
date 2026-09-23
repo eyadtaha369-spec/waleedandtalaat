@@ -641,6 +641,7 @@ export type Database = {
         Returns: {
           route: string;
           slot: string;
+          total_booked: number;
           qr_scanned: number;
           walk_in_count: number;
           total_onboard: number;

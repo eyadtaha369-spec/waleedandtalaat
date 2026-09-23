@@ -53,7 +53,7 @@ export type Database = {
           route: string;
           pickup_stop: string | null;
           service_date: string;
-          slot: string;
+          slot: string | null;
           status: string;
           trip_type: string;
           return_slot: string | null;
@@ -69,7 +69,7 @@ export type Database = {
           route: string;
           pickup_stop?: string | null;
           service_date?: string;
-          slot: string;
+          slot?: string | null;
           status?: string;
           trip_type?: string;
           return_slot?: string | null;
@@ -85,7 +85,7 @@ export type Database = {
           route?: string;
           pickup_stop?: string | null;
           service_date?: string;
-          slot?: string;
+          slot?: string | null;
           status?: string;
           trip_type?: string;
           return_slot?: string | null;
@@ -625,6 +625,56 @@ export type Database = {
       get_slot_totals: {
         Args: { p_date: string };
         Returns: { kind: string; slot: string; total: number }[];
+      };
+      list_approved_daily_passes: {
+        Args: { p_date?: string | null | undefined };
+        Returns: {
+          id: string;
+          full_name: string;
+          phone: string;
+          route: string;
+          pickup_stop: string | null;
+          trip_type: string;
+          payment_method: string;
+          amount: number;
+          service_date: string;
+          created_at: string;
+          approved_by_name: string | null;
+        }[];
+      };
+      log_collection: {
+        Args: {
+          p_student_name: string;
+          p_amount: number;
+          p_payment_method: string;
+          p_route: string;
+          p_receipt_url?: string | null | undefined;
+        };
+        Returns: Json;
+      };
+      get_collections_summary: {
+        Args: { p_date?: string | null | undefined };
+        Returns: {
+          route: string;
+          collected_by_name: string;
+          cash_total: number;
+          instapay_total: number;
+          grand_total: number;
+        }[];
+      };
+      list_collections: {
+        Args: { p_date?: string | null | undefined };
+        Returns: {
+          id: string;
+          student_name: string;
+          amount: number;
+          payment_method: string;
+          receipt_url: string | null;
+          route: string;
+          collected_by: string | null;
+          collected_by_name: string | null;
+          collected_at: string;
+        }[];
       };
       get_early_return_slot_summary: {
         Args: { p_date?: string | null | undefined };

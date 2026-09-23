@@ -49,6 +49,8 @@ function useNavLinks() {
     { to: "/whatsapp-live", label: t("nav.whatsappLive") },
     { to: "/admin/users", label: t("nav.users") },
     { to: "/admin/scan", label: t("nav.scanQr") },
+    { to: "/supervisor/collections", label: t("nav.collections") },
+    { to: "/admin/collections", label: t("nav.collectionsAudit") },
   ];
   const supervisorLinks = [
     { to: "/admin/manifests", label: t("nav.manifests") },
@@ -59,6 +61,7 @@ function useNavLinks() {
     { to: "/admin/schedules", label: t("schedules.title") },
     { to: "/whatsapp-live", label: t("nav.whatsappLive") },
     { to: "/admin/scan", label: t("nav.scanQr") },
+    { to: "/supervisor/collections", label: t("nav.collections") },
   ];
   return { studentLinks, adminLinks, supervisorLinks };
 }

@@ -21,6 +21,7 @@ import { Route as TripsRouteImport } from './routes/trips'
 import { Route as TripsBalanceRouteImport } from './routes/trips-balance'
 import { Route as WhatsappLiveRouteImport } from './routes/whatsapp-live'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
+import { Route as AdminCollectionsRouteImport } from './routes/admin/collections'
 import { Route as AdminDailyPassesRouteImport } from './routes/admin/daily-passes'
 import { Route as AdminImportRouteImport } from './routes/admin/import'
 import { Route as AdminInstallmentsRouteImport } from './routes/admin/installments'
@@ -32,6 +33,7 @@ import { Route as AdminStudentAccountsRouteImport } from './routes/admin/student
 import { Route as AdminStudentsRouteImport } from './routes/admin/students'
 import { Route as AdminUsersRouteImport } from './routes/admin/users'
 import { Route as GuestPassTokenRouteImport } from './routes/guest-pass/$token'
+import { Route as SupervisorCollectionsRouteImport } from './routes/supervisor/collections'
 import { Route as SupervisorStudentsRouteImport } from './routes/supervisor/students'
 
 const IndexRoute = IndexRouteImport.update({
@@ -94,6 +96,11 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminCollectionsRoute = AdminCollectionsRouteImport.update({
+  id: '/collections',
+  path: '/collections',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminDailyPassesRoute = AdminDailyPassesRouteImport.update({
   id: '/daily-passes',
   path: '/daily-passes',
@@ -149,6 +156,11 @@ const GuestPassTokenRoute = GuestPassTokenRouteImport.update({
   path: '/guest-pass/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SupervisorCollectionsRoute = SupervisorCollectionsRouteImport.update({
+  id: '/supervisor/collections',
+  path: '/supervisor/collections',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SupervisorStudentsRoute = SupervisorStudentsRouteImport.update({
   id: '/supervisor/students',
   path: '/supervisor/students',
@@ -167,6 +179,7 @@ export interface FileRoutesByFullPath {
   '/trips': typeof TripsRoute
   '/trips-balance': typeof TripsBalanceRoute
   '/whatsapp-live': typeof WhatsappLiveRoute
+  '/admin/collections': typeof AdminCollectionsRoute
   '/admin/daily-passes': typeof AdminDailyPassesRoute
   '/admin/import': typeof AdminImportRoute
   '/admin/installments': typeof AdminInstallmentsRoute
@@ -178,6 +191,7 @@ export interface FileRoutesByFullPath {
   '/admin/students': typeof AdminStudentsRoute
   '/admin/users': typeof AdminUsersRoute
   '/guest-pass/$token': typeof GuestPassTokenRoute
+  '/supervisor/collections': typeof SupervisorCollectionsRoute
   '/supervisor/students': typeof SupervisorStudentsRoute
   '/admin/': typeof AdminIndexRoute
 }
@@ -192,6 +206,7 @@ export interface FileRoutesByTo {
   '/trips': typeof TripsRoute
   '/trips-balance': typeof TripsBalanceRoute
   '/whatsapp-live': typeof WhatsappLiveRoute
+  '/admin/collections': typeof AdminCollectionsRoute
   '/admin/daily-passes': typeof AdminDailyPassesRoute
   '/admin/import': typeof AdminImportRoute
   '/admin/installments': typeof AdminInstallmentsRoute
@@ -203,6 +218,7 @@ export interface FileRoutesByTo {
   '/admin/students': typeof AdminStudentsRoute
   '/admin/users': typeof AdminUsersRoute
   '/guest-pass/$token': typeof GuestPassTokenRoute
+  '/supervisor/collections': typeof SupervisorCollectionsRoute
   '/supervisor/students': typeof SupervisorStudentsRoute
   '/admin': typeof AdminIndexRoute
 }
@@ -219,6 +235,7 @@ export interface FileRoutesById {
   '/trips': typeof TripsRoute
   '/trips-balance': typeof TripsBalanceRoute
   '/whatsapp-live': typeof WhatsappLiveRoute
+  '/admin/collections': typeof AdminCollectionsRoute
   '/admin/daily-passes': typeof AdminDailyPassesRoute
   '/admin/import': typeof AdminImportRoute
   '/admin/installments': typeof AdminInstallmentsRoute
@@ -230,6 +247,7 @@ export interface FileRoutesById {
   '/admin/students': typeof AdminStudentsRoute
   '/admin/users': typeof AdminUsersRoute
   '/guest-pass/$token': typeof GuestPassTokenRoute
+  '/supervisor/collections': typeof SupervisorCollectionsRoute
   '/supervisor/students': typeof SupervisorStudentsRoute
   '/admin/': typeof AdminIndexRoute
 }
@@ -247,6 +265,7 @@ export interface FileRouteTypes {
     | '/trips'
     | '/trips-balance'
     | '/whatsapp-live'
+    | '/admin/collections'
     | '/admin/daily-passes'
     | '/admin/import'
     | '/admin/installments'
@@ -258,6 +277,7 @@ export interface FileRouteTypes {
     | '/admin/students'
     | '/admin/users'
     | '/guest-pass/$token'
+    | '/supervisor/collections'
     | '/supervisor/students'
     | '/admin/'
   fileRoutesByTo: FileRoutesByTo
@@ -272,6 +292,7 @@ export interface FileRouteTypes {
     | '/trips'
     | '/trips-balance'
     | '/whatsapp-live'
+    | '/admin/collections'
     | '/admin/daily-passes'
     | '/admin/import'
     | '/admin/installments'
@@ -283,6 +304,7 @@ export interface FileRouteTypes {
     | '/admin/students'
     | '/admin/users'
     | '/guest-pass/$token'
+    | '/supervisor/collections'
     | '/supervisor/students'
     | '/admin'
   id:
@@ -298,6 +320,7 @@ export interface FileRouteTypes {
     | '/trips'
     | '/trips-balance'
     | '/whatsapp-live'
+    | '/admin/collections'
     | '/admin/daily-passes'
     | '/admin/import'
     | '/admin/installments'
@@ -309,6 +332,7 @@ export interface FileRouteTypes {
     | '/admin/students'
     | '/admin/users'
     | '/guest-pass/$token'
+    | '/supervisor/collections'
     | '/supervisor/students'
     | '/admin/'
   fileRoutesById: FileRoutesById
@@ -326,6 +350,7 @@ export interface RootRouteChildren {
   TripsBalanceRoute: typeof TripsBalanceRoute
   WhatsappLiveRoute: typeof WhatsappLiveRoute
   GuestPassTokenRoute: typeof GuestPassTokenRoute
+  SupervisorCollectionsRoute: typeof SupervisorCollectionsRoute
   SupervisorStudentsRoute: typeof SupervisorStudentsRoute
 }
 
@@ -415,6 +440,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/collections': {
+      id: '/admin/collections'
+      path: '/collections'
+      fullPath: '/admin/collections'
+      preLoaderRoute: typeof AdminCollectionsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/daily-passes': {
       id: '/admin/daily-passes'
       path: '/daily-passes'
@@ -492,6 +524,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GuestPassTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/supervisor/collections': {
+      id: '/supervisor/collections'
+      path: '/supervisor/collections'
+      fullPath: '/supervisor/collections'
+      preLoaderRoute: typeof SupervisorCollectionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/supervisor/students': {
       id: '/supervisor/students'
       path: '/supervisor/students'
@@ -503,6 +542,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AdminRouteChildren {
+  AdminCollectionsRoute: typeof AdminCollectionsRoute
   AdminDailyPassesRoute: typeof AdminDailyPassesRoute
   AdminImportRoute: typeof AdminImportRoute
   AdminInstallmentsRoute: typeof AdminInstallmentsRoute
@@ -517,6 +557,7 @@ interface AdminRouteChildren {
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminCollectionsRoute: AdminCollectionsRoute,
   AdminDailyPassesRoute: AdminDailyPassesRoute,
   AdminImportRoute: AdminImportRoute,
   AdminInstallmentsRoute: AdminInstallmentsRoute,
@@ -545,6 +586,7 @@ const rootRouteChildren: RootRouteChildren = {
   TripsBalanceRoute: TripsBalanceRoute,
   WhatsappLiveRoute: WhatsappLiveRoute,
   GuestPassTokenRoute: GuestPassTokenRoute,
+  SupervisorCollectionsRoute: SupervisorCollectionsRoute,
   SupervisorStudentsRoute: SupervisorStudentsRoute,
 }
 export const routeTree = rootRouteImport

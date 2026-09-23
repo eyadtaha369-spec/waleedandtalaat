@@ -1,13 +1,34 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Check, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { prettyDate } from "@/lib/schedule";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { cairoNow, prettyDate, toDateKey } from "@/lib/schedule";
 import { formatSlotLabel } from "@/lib/i18n/dateFormat";
 import { edgeFunctionErrorMessage } from "@/lib/functionsError";
 import { useLanguage } from "@/hooks/useLanguage";
+
+type ApprovedPassRow = {
+  id: string;
+  full_name: string;
+  phone: string;
+  route: string;
+  pickup_stop: string | null;
+  trip_type: string;
+  payment_method: string;
+  amount: number;
+  service_date: string;
+  approved_by_name: string | null;
+};
 
 type Request = {
   id: string;
@@ -82,7 +103,6 @@ export function RequestsPanel() {
   };
 
   const pending = requests.filter((r) => r.status === "pending");
-  const decided = requests.filter((r) => r.status !== "pending").slice(0, 20);
 
   return (
     <div className="space-y-6">
@@ -161,32 +181,88 @@ export function RequestsPanel() {
         )}
       </section>
 
-      {decided.length > 0 && (
-        <section className="rounded-3xl border border-border bg-card p-6">
-          <h2 className="font-semibold">{t("requests.recentlyDecided")}</h2>
-          <div className="mt-4 space-y-2">
-            {decided.map((r) => (
-              <div
-                key={r.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/60 px-4 py-2.5 text-sm"
-              >
-                <span>
-                  {r.full_name} · {r.route} · {formatSlotLabel(r.slot, lang)}
-                </span>
-                <Badge
-                  className={
-                    r.status === "approved"
-                      ? "bg-success text-success-foreground"
-                      : "bg-muted text-muted-foreground"
-                  }
-                >
-                  {r.status}
-                </Badge>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
+      <ApprovedPassesRoster />
     </div>
+  );
+}
+
+function ApprovedPassesRoster() {
+  const { t } = useLanguage();
+  const todayKey = useMemo(() => toDateKey(cairoNow()), []);
+  const [date, setDate] = useState(todayKey);
+  const [rows, setRows] = useState<ApprovedPassRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    void (async () => {
+      setLoading(true);
+      const { data } = await supabase.rpc("list_approved_daily_passes", { p_date: date });
+      setRows(data ?? []);
+      setLoading(false);
+    })();
+  }, [date]);
+
+  return (
+    <section className="rounded-3xl border border-border bg-card p-6">
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <h2 className="font-semibold">{t("requests.approvedRoster")}</h2>
+        <input
+          type="date"
+          className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+        />
+      </div>
+      {loading ? (
+        <p className="text-sm text-muted-foreground">{t("common.loading")}</p>
+      ) : rows.length === 0 ? (
+        <p className="text-sm text-muted-foreground">{t("requests.noApproved")}</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t("common.name")}</TableHead>
+                <TableHead>{t("common.phone")}</TableHead>
+                <TableHead>{t("common.route")}</TableHead>
+                <TableHead>{t("common.stop")}</TableHead>
+                <TableHead>{t("requests.passType")}</TableHead>
+                <TableHead>{t("dailyPass.paymentMethod")}</TableHead>
+                <TableHead>{t("requests.amount")}</TableHead>
+                <TableHead>{t("manifests.date")}</TableHead>
+                <TableHead>{t("requests.approvedBy")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map((r) => (
+                <TableRow key={r.id}>
+                  <TableCell className="font-medium">{r.full_name}</TableCell>
+                  <TableCell className="whitespace-nowrap">{r.phone}</TableCell>
+                  <TableCell>{r.route}</TableCell>
+                  <TableCell>{r.pickup_stop ?? "—"}</TableCell>
+                  <TableCell>
+                    {r.trip_type === "round_trip"
+                      ? t("dailyPass.roundTrip")
+                      : r.trip_type === "return_only"
+                        ? t("dailyPass.returnOnly")
+                        : t("dailyPass.oneWay")}
+                  </TableCell>
+                  <TableCell>
+                    {r.payment_method === "instapay"
+                      ? t("dailyPass.instapay")
+                      : t("dailyPass.cash")}
+                  </TableCell>
+                  <TableCell>
+                    {r.amount} {t("common.egp")}
+                  </TableCell>
+                  <TableCell>{prettyDate(r.service_date)}</TableCell>
+                  <TableCell>{r.approved_by_name ?? "—"}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+    </section>
   );
 }

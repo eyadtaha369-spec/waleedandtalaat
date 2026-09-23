@@ -29,7 +29,7 @@ export const Route = createFileRoute("/daily-pass")({
   component: DailyPass,
 });
 
-type TripType = "one_way" | "round_trip";
+type TripType = "one_way" | "round_trip" | "return_only";
 type PaymentMethod = "cash" | "instapay";
 
 const RETURN_SLOT_CHOICES = ["12:30 PM", "01:30 PM", "02:30 PM", "04:00 PM"];
@@ -47,6 +47,11 @@ const baseSchema = {
   slot: z.string().min(1),
 };
 const schema = z.object(baseSchema);
+const returnOnlySchema = z.object({
+  full_name: baseSchema.full_name,
+  phone: baseSchema.phone,
+  route: baseSchema.route,
+});
 
 function DailyPass() {
   const { t, lang } = useLanguage();
@@ -88,10 +93,11 @@ function DailyPass() {
   }, [isFourPmReturn, form.route, stopsByRoute]);
 
   const submit = async () => {
-    const parsed = schema.safeParse(form);
+    const parsed =
+      tripType === "return_only" ? returnOnlySchema.safeParse(form) : schema.safeParse(form);
     if (!parsed.success) return toast.error(parsed.error.issues[0]!.message);
 
-    if (tripType === "round_trip") {
+    if (tripType === "round_trip" || tripType === "return_only") {
       if (!isFourPmReturn && (!returnSector || !returnStop)) {
         toast.error(t("dailyPass.chooseReturnSectorStop"));
         return;
@@ -124,10 +130,16 @@ function DailyPass() {
     }
 
     const { error } = await supabase.from("daily_pass_requests").insert({
-      ...parsed.data,
+      full_name: parsed.data.full_name,
+      phone: parsed.data.phone,
+      route: parsed.data.route,
+      pickup_stop:
+        tripType === "return_only" ? null : (parsed.data as z.infer<typeof schema>).pickup_stop,
+      slot: tripType === "return_only" ? null : (parsed.data as z.infer<typeof schema>).slot,
       trip_type: tripType,
-      return_slot: tripType === "round_trip" ? returnSlot : null,
-      return_pickup_stop: tripType === "round_trip" ? returnStop : null,
+      return_slot: tripType === "round_trip" || tripType === "return_only" ? returnSlot : null,
+      return_pickup_stop:
+        tripType === "round_trip" || tripType === "return_only" ? returnStop : null,
       payment_method: paymentMethod,
       receipt_url: receiptPath,
     });
@@ -147,8 +159,10 @@ function DailyPass() {
             <div className="mt-6 rounded-2xl border border-border bg-secondary p-4 text-start text-sm">
               <p className="font-semibold">{form.full_name}</p>
               <p className="text-muted-foreground">
-                {form.route} · {form.pickup_stop} · {formatSlotLabel(form.slot, lang)}
-                {tripType === "round_trip" &&
+                {form.route}
+                {tripType !== "return_only" &&
+                  ` · ${form.pickup_stop} · ${formatSlotLabel(form.slot, lang)}`}
+                {(tripType === "round_trip" || tripType === "return_only") &&
                   ` · ${formatSlotLabel(returnSlot, lang)} · ${returnStop}`}
               </p>
             </div>
@@ -191,7 +205,7 @@ function DailyPass() {
 
               <div className="space-y-2">
                 <Label>{t("dailyPass.tripType")}</Label>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-3 gap-2">
                   <button
                     type="button"
                     onClick={() => setTripType("one_way")}
@@ -214,6 +228,17 @@ function DailyPass() {
                   >
                     {t("dailyPass.roundTrip")}
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setTripType("return_only")}
+                    className={`rounded-md border px-3 py-2 text-sm ${
+                      tripType === "return_only"
+                        ? "border-accent bg-accent text-accent-foreground"
+                        : "border-input bg-background"
+                    }`}
+                  >
+                    {t("dailyPass.returnOnly")}
+                  </button>
                 </div>
               </div>
 
@@ -235,40 +260,46 @@ function DailyPass() {
                   ))}
                 </select>
               </div>
-              <div className="space-y-2">
-                <Label>
-                  {tripType === "round_trip"
-                    ? t("dailyPass.morningStop")
-                    : t("dailyPass.pickupStop")}
-                </Label>
-                <select
-                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                  value={form.pickup_stop}
-                  onChange={(e) => setForm({ ...form, pickup_stop: e.target.value })}
-                >
-                  {(stopsByRoute[form.route] ?? []).map((s) => (
-                    <option key={s}>{s}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-2">
-                <Label>
-                  {tripType === "round_trip" ? t("dailyPass.morningSlot") : t("dailyPass.timeSlot")}
-                </Label>
-                <select
-                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                  value={form.slot}
-                  onChange={(e) => setForm({ ...form, slot: e.target.value })}
-                >
-                  {MORNING_SLOTS.map((s) => (
-                    <option key={s} value={s}>
-                      {formatSlotLabel(s, lang)}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {tripType !== "return_only" && (
+                <div className="space-y-2">
+                  <Label>
+                    {tripType === "round_trip"
+                      ? t("dailyPass.morningStop")
+                      : t("dailyPass.pickupStop")}
+                  </Label>
+                  <select
+                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                    value={form.pickup_stop}
+                    onChange={(e) => setForm({ ...form, pickup_stop: e.target.value })}
+                  >
+                    {(stopsByRoute[form.route] ?? []).map((s) => (
+                      <option key={s}>{s}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              {tripType !== "return_only" && (
+                <div className="space-y-2">
+                  <Label>
+                    {tripType === "round_trip"
+                      ? t("dailyPass.morningSlot")
+                      : t("dailyPass.timeSlot")}
+                  </Label>
+                  <select
+                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                    value={form.slot}
+                    onChange={(e) => setForm({ ...form, slot: e.target.value })}
+                  >
+                    {MORNING_SLOTS.map((s) => (
+                      <option key={s} value={s}>
+                        {formatSlotLabel(s, lang)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
-              {tripType === "round_trip" && (
+              {(tripType === "round_trip" || tripType === "return_only") && (
                 <div className="space-y-4 rounded-xl border border-border p-3">
                   <div className="space-y-2">
                     <Label>{t("dailyPass.returnSlot")}</Label>

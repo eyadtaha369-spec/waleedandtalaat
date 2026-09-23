@@ -206,6 +206,12 @@ function AdminConsole() {
           description={t("admin.dailyPassesTrackingDesc")}
         />
         <ShortcutCard
+          to="/admin/collections"
+          icon={Wallet}
+          title={t("admin.collectionsAuditTitle")}
+          description={t("admin.collectionsAuditDesc")}
+        />
+        <ShortcutCard
           to="/whatsapp-live"
           icon={MessageCircle}
           title={t("whatsapp.title")}

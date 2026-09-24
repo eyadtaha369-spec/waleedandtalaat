@@ -55,6 +55,7 @@ export function ScannerPanel() {
   const lastScanRef = useRef<{ token: string; slot: string } | null>(null);
   const todayKey = toDateKey(cairoNow());
   const isMorningSlot = (MORNING_SLOTS as readonly string[]).includes(slot);
+  const isReturnSlot = !isMorningSlot;
   // A supervisor's own route is unambiguous for a departure walk-in.
   // An admin using the scanner has no such context in this page, so
   // they (like everyone for a return walk-in, where the bus isn't
@@ -71,7 +72,9 @@ export function ScannerPanel() {
       p_date: dateOverride || undefined,
       p_route: slot === "06:00 AM" ? (profile?.assigned_route ?? null) : null,
     });
-    setScannedToday((data as number) ?? 0);
+    const count = (data as number) ?? 0;
+    setScannedToday(count);
+    return count;
   };
 
   useEffect(() => {
@@ -188,13 +191,17 @@ export function ScannerPanel() {
         toast.success(
           `تم تسجيل الحضور - الطالب: ${data.full_name} | الخط: ${data.route ?? "—"}${tripInfo} 🟢`,
         );
+        const count = await loadScannedCount();
+        console.log(
+          `[fleet-audit] scan persisted — slot=${slot} route=${data.route} running_total=${count}`,
+        );
+        if (isReturnSlot) {
+          toast.info(`✅ محفوظ في قاعدة البيانات — إجمالي ${slot}: ${count}`, { duration: 3000 });
+        }
       } else if (data.status === "no_trips_left") {
         toast.error(`عفواً، استنفذ الطالب جميع الرحلات (0/${data.trips_total}) 🔴`, {
           duration: 10000,
         });
-      }
-      if (data.status === "booked") {
-        void loadScannedCount();
       }
     } catch {
       toast.error(t("scanner.unrecognizedQr"));
@@ -244,6 +251,13 @@ export function ScannerPanel() {
       toast.success(
         `تم تسجيل الركوب بنجاح! المتبقي: ${result.trips_remaining}/${result.trips_total} رحلة 🟢`,
       );
+      const count = await loadScannedCount();
+      console.log(
+        `[fleet-audit] scan persisted — slot=${slot} route=${result.route} running_total=${count}`,
+      );
+      if (isReturnSlot) {
+        toast.info(`✅ محفوظ في قاعدة البيانات — إجمالي ${slot}: ${count}`, { duration: 3000 });
+      }
     } finally {
       setOverriding(false);
     }
@@ -277,7 +291,13 @@ export function ScannerPanel() {
       }
 
       toast.success(`+1 راكب يدوي — ${route}`);
-      void loadScannedCount();
+      const count = await loadScannedCount();
+      console.log(
+        `[fleet-audit] walk-in persisted — slot=${slot} route=${route} running_total=${count}`,
+      );
+      if (isReturnSlot) {
+        toast.info(`✅ راكب يدوي محفوظ — إجمالي ${slot}: ${count}`, { duration: 3000 });
+      }
       setWalkInDialogOpen(false);
       setWalkInRoute("");
       setWalkInNote("");
@@ -305,9 +325,15 @@ export function ScannerPanel() {
       }
 
       toast.success(`-1 راكب يدوي — ${route}`);
+      const count = await loadScannedCount();
+      console.log(
+        `[fleet-audit] walk-in undone — slot=${slot} route=${route} running_total=${count}`,
+      );
+      if (isReturnSlot) {
+        toast.info(`↩️ تم التراجع — إجمالي ${slot}: ${count}`, { duration: 3000 });
+      }
       setWalkInDialogOpen(false);
       setWalkInRoute("");
-      void loadScannedCount();
     } finally {
       setWalkInBusy(false);
     }

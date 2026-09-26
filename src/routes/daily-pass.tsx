@@ -144,7 +144,12 @@ function DailyPass() {
       receipt_url: receiptPath,
     });
     setBusy(false);
-    if (error) return toast.error(error.message);
+    if (error) {
+      if (error.code === "23505") {
+        return toast.error("هذا الطلب مسجل بالفعل — لديك طلب مماثل قيد المراجعة اليوم");
+      }
+      return toast.error(error.message);
+    }
     setSent(true);
   };
 

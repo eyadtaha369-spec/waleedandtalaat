@@ -773,6 +773,23 @@ export type Database = {
           payment_method: string | null;
         }[];
       };
+      get_route_stop_breakdown_by_slot: {
+        Args: { p_route: string | null; p_service_date: string | null; p_slot: string | null };
+        Returns: {
+          route: string | null;
+          pickup_stop: string | null;
+          stop_order: number | null;
+          student_id: string | null;
+          full_name: string;
+          phone: string | null;
+          photo_url: string | null;
+          subscription_type: string;
+          payment_status: string;
+          source: string;
+          payment_method: string | null;
+          slot: string | null;
+        }[];
+      };
       count_today_scanned_exam_passes: {
         Args: Record<string, never>;
         Returns: number;

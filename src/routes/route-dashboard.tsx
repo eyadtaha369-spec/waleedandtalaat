@@ -40,7 +40,21 @@ type PassengerRow = {
   payment_status: string;
   source: string;
   payment_method: string | null;
+  slot: string | null;
 };
+
+const SLOT_OPTIONS = [
+  { value: "all", label: null },
+  { value: "06:00 AM", label: "06:00 AM" },
+  { value: "08:00 AM", label: "08:00 AM (Alexandria Mix)" },
+  { value: "09:00 AM", label: "09:00 AM (Borg El-Arab)" },
+  { value: "12:30 PM", label: "12:30 PM" },
+  { value: "01:30 PM", label: "01:30 PM" },
+  { value: "02:30 PM", label: "02:30 PM" },
+  { value: "04:00 PM", label: "04:00 PM" },
+] as const;
+
+const RETURN_SLOT_VALUES = ["12:30 PM", "01:30 PM", "02:30 PM", "04:00 PM"] as const;
 
 function toWhatsAppNumber(phone: string): string {
   const digits = phone.replace(/\D/g, "");
@@ -63,18 +77,21 @@ function RouteDashboardPage() {
   const [serviceDate, setServiceDate] = useState<string>(defaultDate);
 
   const [routeFilter, setRouteFilter] = useState<string>("all");
+  const [slotFilter, setSlotFilter] = useState<string>("all");
   const [rows, setRows] = useState<PassengerRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
   const effectiveRoute = isAdmin ? routeFilter : (profile?.assigned_route ?? "");
+  const isReturnSlotFilter = (RETURN_SLOT_VALUES as readonly string[]).includes(slotFilter);
 
   useEffect(() => {
     void (async () => {
       setLoading(true);
-      const { data, error } = await supabase.rpc("get_route_stop_breakdown", {
+      const { data, error } = await supabase.rpc("get_route_stop_breakdown_by_slot", {
         p_route: !effectiveRoute || effectiveRoute === "all" ? null : effectiveRoute,
         p_service_date: serviceDate,
+        p_slot: slotFilter === "all" ? null : slotFilter,
       });
       setLoading(false);
       if (error) {
@@ -83,7 +100,7 @@ function RouteDashboardPage() {
       }
       setRows((data as PassengerRow[]) ?? []);
     })();
-  }, [effectiveRoute, serviceDate]);
+  }, [effectiveRoute, serviceDate, slotFilter]);
 
   const searchQuery = search.trim().toLowerCase();
   const filteredRows = rows.filter((r) => {
@@ -163,6 +180,29 @@ function RouteDashboardPage() {
       </div>
 
       <div className="mt-6 rounded-3xl border border-border bg-card p-6">
+        <div className="mb-4">
+          <label
+            className="mb-1.5 block text-sm font-medium text-muted-foreground"
+            htmlFor="route-dashboard-slot"
+          >
+            {t("routeDash.timeSlot")}
+          </label>
+          <select
+            id="route-dashboard-slot"
+            className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+            value={slotFilter}
+            onChange={(e) => setSlotFilter(e.target.value)}
+          >
+            {SLOT_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label ?? t("routeDash.allSlots")}
+              </option>
+            ))}
+          </select>
+          {isReturnSlotFilter && (
+            <p className="mt-1.5 text-xs text-muted-foreground">{t("routeDash.returnStopsHint")}</p>
+          )}
+        </div>
         <div className="mb-4 flex flex-wrap items-center gap-3">
           <label
             className="text-sm font-medium text-muted-foreground"
@@ -237,7 +277,8 @@ function RouteDashboardPage() {
             className="max-w-xs"
           />
           <Badge className="ms-auto bg-muted text-muted-foreground">
-            <Users className="me-1 size-3.5" /> {filteredRows.length}
+            <Users className="me-1 size-3.5" />{" "}
+            {filteredRows.filter((r) => r.student_id || r.full_name).length}
           </Badge>
         </div>
 
@@ -254,7 +295,11 @@ function RouteDashboardPage() {
                 )}
                 <Accordion type="multiple" className="rounded-xl border border-border">
                   {[...stops.entries()].map(([stopName, passengers]) => (
-                    <AccordionItem key={stopName} value={stopName} className="px-4">
+                    <AccordionItem
+                      key={stopName}
+                      value={stopName}
+                      className={`px-4 ${slotFilter !== "all" && passengers.length === 0 ? "opacity-50" : ""}`}
+                    >
                       <AccordionTrigger>
                         <span className="flex items-center gap-3">
                           <span className="font-medium">{stopName}</span>

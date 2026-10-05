@@ -27,6 +27,7 @@ import {
   optOutWindow,
   returnWindow,
 } from "@/lib/schedule";
+import { ALEXANDRIA_MIX_ROUTE, ALEXANDRIA_MIX_EXTRA_STOPS } from "@/lib/alexandriaMix";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
@@ -45,11 +46,6 @@ export const Route = createFileRoute("/dashboard")({
 });
 
 const BORG_EL_ARAB_ROUTE = "خط برج العرب";
-const ALEXANDRIA_MIX_ROUTE = "خط البحر";
-// Not in the stops table — specific to the 08:00 AM Alexandria Mix bus.
-// خط البحر's own stop list already has a stop literally named "الموقف",
-// so it's deliberately not repeated here.
-const ALEXANDRIA_MIX_EXTRA_STOPS = ["قناة السويس عند الرادار", "النجار", "ال 21"];
 
 type Booking = {
   id: string;

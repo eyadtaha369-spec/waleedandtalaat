@@ -18,6 +18,11 @@ import {
 } from "@/components/ui/accordion";
 import { subscriptionBadge } from "@/lib/subscription";
 import { addDays, cairoNow, routeDashboardDefaultDate, toDateKey } from "@/lib/schedule";
+import {
+  ALEXANDRIA_MIX_ROUTE,
+  ALEXANDRIA_MIX_SLOT,
+  ALEXANDRIA_MIX_EXTRA_STOPS,
+} from "@/lib/alexandriaMix";
 
 export const Route = createFileRoute("/route-dashboard")({
   head: () => ({ meta: [{ title: "Route Dashboard — Waleed & Talaat" }] }),
@@ -124,7 +129,53 @@ function RouteDashboardPage() {
   // empty, since the point of a search is to narrow the list down, not
   // to keep showing every stop regardless of match. With the search box
   // empty, every stop shows, including empty ones.
+  const isMixMode = slotFilter === ALEXANDRIA_MIX_SLOT;
+
   const grouped = useMemo(() => {
+    const isSearching = searchQuery.length > 0;
+
+    // 08:00 AM (Alexandria Mix) is one shared bus that every route's
+    // riders board, regardless of their own route — so instead of a
+    // card per route, consolidate everyone into a single card keyed
+    // on the Mix's own physical stop order, plus a second card for
+    // any stop outside that list (older bookings made before this
+    // bus existed) rather than silently dropping them.
+    if (slotFilter === ALEXANDRIA_MIX_SLOT) {
+      const mixStops = [
+        ...(stopsByRoute[ALEXANDRIA_MIX_ROUTE] ?? []),
+        ...ALEXANDRIA_MIX_EXTRA_STOPS,
+      ];
+      const mixStopsSet = new Set(mixStops);
+
+      const mixMap = new Map<string, PassengerRow[]>();
+      for (const stopName of mixStops) mixMap.set(stopName, []);
+      const otherMap = new Map<string, PassengerRow[]>();
+
+      for (const r of filteredRows) {
+        // Placeholder rows (empty stops with nobody booked) exist
+        // only to put the stop on the map — not a real passenger.
+        if (!r.student_id && !r.full_name) continue;
+        const stopKey = r.pickup_stop ?? "—";
+        if (mixStopsSet.has(stopKey)) {
+          mixMap.get(stopKey)!.push(r);
+        } else {
+          if (!otherMap.has(stopKey)) otherMap.set(stopKey, []);
+          otherMap.get(stopKey)!.push(r);
+        }
+      }
+
+      const mixResult = new Map<string, PassengerRow[]>();
+      for (const [stopName, passengers] of mixMap) {
+        if (isSearching && passengers.length === 0) continue;
+        mixResult.set(stopName, passengers);
+      }
+
+      const result = new Map<string, Map<string, PassengerRow[]>>();
+      if (mixResult.size > 0) result.set("__mix__", mixResult);
+      if (otherMap.size > 0) result.set("__mix_other__", otherMap);
+      return result;
+    }
+
     const byRouteStop = new Map<string, Map<string, PassengerRow[]>>();
     for (const r of filteredRows) {
       const routeKey = r.route ?? "—";
@@ -138,7 +189,6 @@ function RouteDashboardPage() {
       stops.get(stopKey)!.push(r);
     }
 
-    const isSearching = searchQuery.length > 0;
     const routeNames = effectiveRoute && effectiveRoute !== "all" ? [effectiveRoute] : routes;
 
     const result = new Map<string, Map<string, PassengerRow[]>>();
@@ -161,7 +211,7 @@ function RouteDashboardPage() {
       if (stopsMap.size > 0) result.set(routeName, stopsMap);
     }
     return result;
-  }, [filteredRows, stopsByRoute, routes, effectiveRoute, searchQuery]);
+  }, [filteredRows, stopsByRoute, routes, effectiveRoute, searchQuery, slotFilter]);
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-8">
@@ -290,8 +340,14 @@ function RouteDashboardPage() {
           <div className="mt-4 space-y-6">
             {[...grouped.entries()].map(([routeName, stops]) => (
               <div key={routeName}>
-                {routeFilter === "all" && isAdmin && (
-                  <p className="mb-2 text-sm font-semibold text-muted-foreground">{routeName}</p>
+                {(isMixMode || (routeFilter === "all" && isAdmin)) && (
+                  <p className="mb-2 text-sm font-semibold text-muted-foreground">
+                    {isMixMode
+                      ? routeName === "__mix__"
+                        ? t("routeDash.mixRouteTitle")
+                        : t("routeDash.mixOtherStops")
+                      : routeName}
+                  </p>
                 )}
                 <Accordion type="multiple" className="rounded-xl border border-border">
                   {[...stops.entries()].map(([stopName, passengers]) => (
@@ -334,6 +390,7 @@ function RouteDashboardPage() {
                                   <p className="text-sm font-medium">{p.full_name}</p>
                                   <p className="text-xs text-muted-foreground">
                                     {p.phone ?? "—"} · {stopName}
+                                    {isMixMode && ` · ${p.route ?? "—"}`}
                                   </p>
                                   {p.source === "daily_pass" && (
                                     <p className="mt-1 text-xs">

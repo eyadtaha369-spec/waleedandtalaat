@@ -139,6 +139,10 @@ export const translations: Record<Lang, Record<string, string>> = {
     "auth.pickupStop": "محطة الركوب",
     "auth.welcomeBack": "أهلاً بعودتك",
     "auth.accountCreated": "تم إنشاء الحساب — يمكنك تسجيل الدخول الآن.",
+    "auth.invalidCredentials": "رقم الهاتف أو كلمة المرور غير صحيحة",
+    "auth.rateLimited": "محاولات كثيرة، يرجى الانتظار دقيقة ثم المحاولة مرة أخرى",
+    "auth.connectionError":
+      "حدث خطأ أثناء الاتصال، يرجى المحاولة مرة أخرى أو فتح اللينك في متصفح Chrome/Safari خارجي",
 
     // Dashboard
     "dashboard.welcomeBack": "أهلاً بعودتك",
@@ -723,6 +727,10 @@ export const translations: Record<Lang, Record<string, string>> = {
     "auth.pickupStop": "Pickup stop",
     "auth.welcomeBack": "Welcome back",
     "auth.accountCreated": "Account created — you can sign in now.",
+    "auth.invalidCredentials": "Incorrect phone number or password",
+    "auth.rateLimited": "Too many attempts, please wait a minute and try again",
+    "auth.connectionError":
+      "A connection error occurred — please try again, or open the link in Chrome/Safari",
 
     "dashboard.welcomeBack": "Welcome back",
     "dashboard.morningDeparture": "Morning departure",

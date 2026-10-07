@@ -6,6 +6,7 @@ import { ManifestsPanel } from "@/components/admin/ManifestsPanel";
 import { FleetPanel } from "@/components/admin/FleetPanel";
 import { TripBalancesPanel } from "@/components/admin/TripBalancesPanel";
 import { EarlyReturnsPanel, MorningDeparturePanel } from "@/components/admin/ManifestSummaryPanels";
+import { ManifestSearch } from "@/components/admin/ManifestSearch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/hooks/useLanguage";
@@ -33,6 +34,10 @@ function ManifestsPage() {
         <Link to="/admin" className="text-sm text-white/80 hover:text-white">
           <ArrowLeft className="me-1 inline size-4" /> {t("common.backToConsole")}
         </Link>
+      </div>
+
+      <div className="mt-6">
+        <ManifestSearch />
       </div>
 
       <Tabs value={tab} onValueChange={setTab} className="mt-6">

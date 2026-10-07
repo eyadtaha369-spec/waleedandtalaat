@@ -790,6 +790,20 @@ export type Database = {
           slot: string | null;
         }[];
       };
+      search_manifest_students: {
+        Args: { p_query: string; p_date: string | null };
+        Returns: {
+          student_name: string;
+          phone: string | null;
+          route: string | null;
+          pickup_stop: string | null;
+          slot: string | null;
+          kind: string;
+          status: string;
+          source: string;
+          service_date: string;
+        }[];
+      };
       count_today_scanned_exam_passes: {
         Args: Record<string, never>;
         Returns: number;

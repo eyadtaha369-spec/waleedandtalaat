@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { Users } from "lucide-react";
+import { Users, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -13,6 +14,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ALL_SLOTS, cairoNow, MORNING_SLOTS, RETURN_SLOTS, toDateKey } from "@/lib/schedule";
 import { SECTOR_LABELS, type EarlyReturnSector } from "@/lib/earlyReturnSectors";
+import { matchesQuery } from "@/lib/searchNormalize";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useRoutes } from "@/hooks/useRoutes";
 
@@ -23,6 +25,7 @@ type Row = {
   pickup_stop: string | null;
   sector: string | null;
   payment_status: string;
+  phone: string | null;
 };
 
 type PaymentFilter = "all" | "paid_full" | "installment_pending";
@@ -37,6 +40,7 @@ export function ManifestsPanel() {
   const [loading, setLoading] = useState(true);
   const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>("all");
   const [routeFilter, setRouteFilter] = useState<string>("all");
+  const [search, setSearch] = useState("");
   const [slotTotals, setSlotTotals] = useState<{ kind: string; slot: string; total: number }[]>([]);
 
   const isEarlyReturn = (RETURN_SLOTS as readonly string[]).includes(slot);
@@ -83,7 +87,9 @@ export function ManifestsPanel() {
     if (currentSlot === "04:00 PM") {
       const [{ data: optedOut }, { data: profiles }, { data: fourPmBookings }] = await Promise.all([
         supabase.from("opt_outs").select("student_id").eq("service_date", currentDate),
-        supabase.from("profiles").select("id,full_name,route,pickup_stop,payment_status"),
+        supabase
+          .from("profiles")
+          .select("id,full_name,route,pickup_stop,payment_status,phone,username"),
         supabase
           .from("bookings")
           .select("student_id,route,pickup_stop")
@@ -108,6 +114,7 @@ export function ManifestsPanel() {
             pickup_stop: booking?.pickup_stop ?? p.pickup_stop,
             sector: null,
             payment_status: p.payment_status,
+            phone: p.phone ?? p.username,
           };
         })
         .sort(
@@ -129,7 +136,10 @@ export function ManifestsPanel() {
 
       const ids = (bookings ?? []).map((b) => b.student_id);
       const { data: profiles } = ids.length
-        ? await supabase.from("profiles").select("id,full_name,payment_status").in("id", ids)
+        ? await supabase
+            .from("profiles")
+            .select("id,full_name,payment_status,phone,username")
+            .in("id", ids)
         : { data: [] };
       const profileById = new Map((profiles ?? []).map((p) => [p.id, p]));
 
@@ -142,6 +152,10 @@ export function ManifestsPanel() {
             pickup_stop: b.pickup_stop,
             sector: b.sector,
             payment_status: profileById.get(b.student_id)?.payment_status ?? "paid_full",
+            phone:
+              profileById.get(b.student_id)?.phone ??
+              profileById.get(b.student_id)?.username ??
+              null,
           }))
           .sort((a, b) => stopIndex(a.route, a.pickup_stop) - stopIndex(b.route, b.pickup_stop)),
       );
@@ -154,20 +168,24 @@ export function ManifestsPanel() {
       (paymentFilter === "all" || r.payment_status === paymentFilter) &&
       (routeFilter === "all" || r.route === routeFilter),
   );
+  const searchQuery = search.trim();
+  const searchedRows = searchQuery
+    ? filteredRows.filter((r) => matchesQuery([r.full_name, r.phone ?? ""], searchQuery))
+    : filteredRows;
   const installmentCount = rows.filter((r) => r.payment_status === "installment_pending").length;
 
-  const bySector = (sector: EarlyReturnSector) => filteredRows.filter((r) => r.sector === sector);
+  const bySector = (sector: EarlyReturnSector) => searchedRows.filter((r) => r.sector === sector);
 
   const byRoute = useMemo(() => {
     const groups = new Map<string, Row[]>();
-    for (const r of filteredRows) {
+    for (const r of searchedRows) {
       const key = r.route ?? t("manifests.noRouteAssigned");
       const list = groups.get(key) ?? [];
       list.push(r);
       groups.set(key, list);
     }
     return [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0]));
-  }, [filteredRows]);
+  }, [searchedRows]);
 
   // Not every early-return booking uses the Sea Route sector system —
   // خط برج العرب runs its own return route with a direct stop pick
@@ -176,7 +194,7 @@ export function ManifestsPanel() {
   // them by route instead, same as the 04:00 PM tab does.
   const noSectorByRoute = useMemo(() => {
     const groups = new Map<string, Row[]>();
-    for (const r of filteredRows) {
+    for (const r of searchedRows) {
       if (r.sector) continue;
       const key = r.route ?? t("manifests.noRouteAssigned");
       const list = groups.get(key) ?? [];
@@ -184,7 +202,7 @@ export function ManifestsPanel() {
       groups.set(key, list);
     }
     return [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0]));
-  }, [filteredRows]);
+  }, [searchedRows]);
 
   return (
     <section className="rounded-3xl border border-border bg-card p-6">
@@ -226,7 +244,10 @@ export function ManifestsPanel() {
         <TabsContent value={slot} className="mt-5">
           <div className="mb-4 flex flex-wrap items-center gap-2">
             <Badge className="btn-gold">
-              <Users className="me-1 size-3.5" /> {filteredRows.length}{" "}
+              <Users className="me-1 size-3.5" />{" "}
+              {searchQuery
+                ? `${searchedRows.length} / ${filteredRows.length}`
+                : filteredRows.length}{" "}
               {t("manifests.totalPassenger")}
               {filteredRows.length === 1 ? "" : "s"}
             </Badge>
@@ -261,6 +282,27 @@ export function ManifestsPanel() {
               <option value="paid_full">{t("manifests.paidInFull")}</option>
               <option value="installment_pending">{t("manifests.installmentPending")}</option>
             </select>
+            <div className="relative">
+              <Input
+                type="search"
+                inputMode="search"
+                dir="auto"
+                placeholder={t("manifests.searchPlaceholder")}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="h-8 w-48 pe-7 text-xs"
+              />
+              {search && (
+                <button
+                  type="button"
+                  aria-label={t("manifests.searchClear")}
+                  className="absolute end-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  onClick={() => setSearch("")}
+                >
+                  <X className="size-3.5" />
+                </button>
+              )}
+            </div>
           </div>
 
           {slotTotals.length > 0 && (
@@ -301,10 +343,15 @@ export function ManifestsPanel() {
             <p className="text-sm text-muted-foreground">{t("manifests.loadingManifest")}</p>
           ) : filteredRows.length === 0 ? (
             <p className="text-sm text-muted-foreground">{t("manifests.noPassengers")}</p>
+          ) : searchedRows.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{t("manifests.searchNotFound")}</p>
           ) : isEarlyReturn ? (
             <div className="space-y-6">
               {(Object.keys(SECTOR_LABELS) as EarlyReturnSector[]).map((sector) => {
                 const group = bySector(sector);
+                // While searching, an empty sector is just noise — skip it
+                // entirely instead of rendering its "no passengers" placeholder.
+                if (searchQuery && group.length === 0) return null;
                 return (
                   <div key={sector}>
                     <div className="mb-2 flex items-center gap-2">
@@ -354,7 +401,7 @@ export function ManifestsPanel() {
               ))}
             </div>
           ) : (
-            <ManifestTable rows={filteredRows} />
+            <ManifestTable rows={searchedRows} />
           )}
         </TabsContent>
       </Tabs>

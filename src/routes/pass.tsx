@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
-import { Lock, ShieldAlert } from "lucide-react";
+import { AlertCircle, Loader2, Lock, ShieldAlert } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/hooks/useLanguage";
@@ -41,6 +41,9 @@ const TOKEN_LIFETIME_SECONDS = 60;
 // Refresh a bit before actual expiry so there's never a dead window
 // where the displayed QR is already invalid.
 const REFRESH_EVERY_SECONDS = 45;
+// Backoff between retries on a failed token fetch.
+const RETRY_DELAYS_MS = [1500, 3000, 6000];
+type TokenState = "loading" | "ready" | "error";
 
 /**
  * Security note on what this page actually protects against, and what
@@ -85,9 +88,11 @@ function PassPage() {
 
   const [token, setToken] = useState<string | null>(null);
   const [expiresAt, setExpiresAt] = useState<number | null>(null);
+  const [tokenState, setTokenState] = useState<TokenState>("loading");
   const [now, setNow] = useState(() => Date.now());
   const [locked, setLocked] = useState(false);
   const refreshTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!loading && !user) void navigate({ to: "/auth" });
@@ -104,13 +109,53 @@ function PassPage() {
 
   // Rotating boarding token: generate one immediately, then again every
   // ~45s. This is the real security layer — see the note above.
-  const refreshToken = async () => {
+  //
+  // A failed background refresh (attempt > 0 exhausted, or the interval
+  // firing while the network is briefly down) must never blank a QR
+  // that's already on screen — PassQr only shows the loading/error
+  // placeholders when there's no payload yet, so an existing token
+  // simply stays displayed while tokenState flips to "error" behind it.
+  const refreshToken = async (attempt = 0, didRefreshSession = false): Promise<void> => {
     if (!user) return;
-    const { data, error } = await supabase.rpc("generate_boarding_token");
-    if (error || !data) return;
-    const result = data as { token: string; expires_at: string };
-    setToken(result.token);
-    setExpiresAt(new Date(result.expires_at).getTime());
+    if (attempt === 0) {
+      if (retryTimerRef.current) {
+        clearTimeout(retryTimerRef.current);
+        retryTimerRef.current = null;
+      }
+      setTokenState("loading");
+    }
+    try {
+      const { data, error, status } = await supabase.rpc("generate_boarding_token");
+      if (error || !data) {
+        const isJwtError = status === 401 || (error?.message ?? "").includes("JWT");
+        if (isJwtError && !didRefreshSession) {
+          await supabase.auth.refreshSession();
+          didRefreshSession = true;
+        }
+        if (attempt < RETRY_DELAYS_MS.length) {
+          retryTimerRef.current = setTimeout(
+            () => void refreshToken(attempt + 1, didRefreshSession),
+            RETRY_DELAYS_MS[attempt],
+          );
+          return;
+        }
+        setTokenState("error");
+        return;
+      }
+      const result = data as { token: string; expires_at: string };
+      setToken(result.token);
+      setExpiresAt(new Date(result.expires_at).getTime());
+      setTokenState("ready");
+    } catch {
+      if (attempt < RETRY_DELAYS_MS.length) {
+        retryTimerRef.current = setTimeout(
+          () => void refreshToken(attempt + 1, didRefreshSession),
+          RETRY_DELAYS_MS[attempt],
+        );
+        return;
+      }
+      setTokenState("error");
+    }
   };
 
   useEffect(() => {
@@ -119,6 +164,7 @@ function PassPage() {
     refreshTimerRef.current = setInterval(() => void refreshToken(), REFRESH_EVERY_SECONDS * 1000);
     return () => {
       if (refreshTimerRef.current) clearInterval(refreshTimerRef.current);
+      if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
@@ -129,22 +175,33 @@ function PassPage() {
     return () => clearInterval(interval);
   }, []);
 
-  // Blur/hide the QR when the tab loses focus or the app is switched
-  // away from. Doesn't stop a screenshot taken while focused — see the
-  // note above — but does stop a QR sitting visible in the background
-  // while the student is doing something else with the phone unlocked.
+  // Hide the QR while the tab/app is actually backgrounded (not just
+  // unfocused — window "blur" also fires for in-page things like a
+  // native date picker or an autofill popup, which was locking the QR
+  // spuriously). Doesn't stop a screenshot taken while visible — see
+  // the note above — but does stop a QR sitting visible while the
+  // student is doing something else with the phone unlocked. A
+  // backgrounded tab can also be holding an expired token by the time
+  // it's shown again, so refresh immediately on return.
   useEffect(() => {
-    const onVisibility = () => setLocked(document.hidden);
-    const onBlur = () => setLocked(true);
-    const onFocus = () => setLocked(document.hidden);
+    const onVisibility = () => {
+      if (document.hidden) {
+        setLocked(true);
+      } else {
+        setLocked(false);
+        void refreshToken();
+      }
+    };
+    // Covers back/forward-cache restores, which don't always fire a
+    // visibilitychange event on their own.
+    const onPageShow = () => setLocked(false);
     document.addEventListener("visibilitychange", onVisibility);
-    window.addEventListener("blur", onBlur);
-    window.addEventListener("focus", onFocus);
+    window.addEventListener("pageshow", onPageShow);
     return () => {
       document.removeEventListener("visibilitychange", onVisibility);
-      window.removeEventListener("blur", onBlur);
-      window.removeEventListener("focus", onFocus);
+      window.removeEventListener("pageshow", onPageShow);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (!profile) {
@@ -219,6 +276,9 @@ function PassPage() {
                 detail={`${formatSlotLabel(morningBooking.slot, lang)}${morningBooking.pickup_stop ? ` · ${morningBooking.pickup_stop}` : ""}`}
                 payload={payload}
                 locked={locked}
+                tokenState={tokenState}
+                onRetry={() => void refreshToken()}
+                onUnlock={() => setLocked(false)}
                 secondsLeft={secondsLeft}
                 clockLabel={clockLabel}
                 studentName={profile.full_name}
@@ -232,6 +292,9 @@ function PassPage() {
                 detail={formatSlotLabel(returnBooking.slot, lang)}
                 payload={payload}
                 locked={locked}
+                tokenState={tokenState}
+                onRetry={() => void refreshToken()}
+                onUnlock={() => setLocked(false)}
                 secondsLeft={secondsLeft}
                 clockLabel={clockLabel}
                 studentName={profile.full_name}
@@ -281,6 +344,9 @@ function PassQr({
   detail,
   payload,
   locked,
+  tokenState,
+  onRetry,
+  onUnlock,
   secondsLeft,
   clockLabel,
   studentName,
@@ -291,12 +357,21 @@ function PassQr({
   detail: string;
   payload: string | null;
   locked: boolean;
+  tokenState: TokenState;
+  onRetry: () => void;
+  onUnlock: () => void;
   secondsLeft: number | null;
   clockLabel: string;
   studentName: string;
   studentPhone: string | null;
   t: (key: string) => string;
 }) {
+  // Everything inside this forced-white box must use explicit colors,
+  // never theme tokens (text-muted-foreground etc.) — the box stays
+  // white (colorScheme: light) even when the app itself is in dark
+  // mode, which is exactly what made the old locked-state text
+  // invisible: it inherited a light-on-dark theme color onto a white
+  // background.
   return (
     <div className="flex flex-col items-center gap-3 bg-secondary/60 p-6">
       <div className="text-center">
@@ -315,14 +390,33 @@ function PassQr({
         onContextMenu={(e) => e.preventDefault()}
         onDragStart={(e) => e.preventDefault()}
       >
-        {locked || !payload ? (
+        {tokenState === "loading" && !payload ? (
           <div className="flex size-[200px] flex-col items-center justify-center gap-2 text-center">
-            <ShieldAlert className="size-8 text-muted-foreground" />
-            <p className="px-4 text-xs font-medium text-muted-foreground">
-              {t("pass.securityLocked")}
-            </p>
+            <Loader2 className="size-8 animate-spin text-[#6b7280]" />
+            <p className="px-4 text-xs font-medium text-[#1f2937]">{t("pass.loadingQr")}</p>
           </div>
-        ) : (
+        ) : tokenState === "error" && !payload ? (
+          <div className="flex size-[200px] flex-col items-center justify-center gap-2 text-center">
+            <AlertCircle className="size-8 text-[#6b7280]" />
+            <p className="px-4 text-xs font-medium text-[#1f2937]">{t("pass.qrLoadFailed")}</p>
+            <button
+              type="button"
+              onClick={onRetry}
+              className="btn-gold rounded-full px-4 py-1.5 text-xs"
+            >
+              {t("pass.retry")}
+            </button>
+          </div>
+        ) : locked ? (
+          <button
+            type="button"
+            onClick={onUnlock}
+            className="flex size-[200px] flex-col items-center justify-center gap-2 text-center"
+          >
+            <ShieldAlert className="size-8 text-[#6b7280]" />
+            <p className="px-4 text-xs font-medium text-[#1f2937]">{t("pass.tapToShow")}</p>
+          </button>
+        ) : payload ? (
           <>
             <div className="pointer-events-none">
               <QRCodeSVG
@@ -348,6 +442,8 @@ function PassQr({
               <p className="text-[9px] font-bold whitespace-nowrap text-black">{clockLabel}</p>
             </div>
           </>
+        ) : (
+          <div className="size-[200px]" />
         )}
       </div>
       {!locked && payload && secondsLeft !== null && (

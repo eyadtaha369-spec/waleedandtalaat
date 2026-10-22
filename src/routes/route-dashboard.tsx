@@ -22,6 +22,11 @@ import {
   ALEXANDRIA_MIX_ROUTE,
   ALEXANDRIA_MIX_SLOT,
   ALEXANDRIA_MIX_EXTRA_STOPS,
+  SEYOUF_MAHMOUDIA_STOPS,
+  SUB_ROUTE_SHORT,
+  SECOND_BUS_MIN_PASSENGERS,
+  MorningSubRoute,
+  subRouteOf,
 } from "@/lib/alexandriaMix";
 
 export const Route = createFileRoute("/route-dashboard")({
@@ -46,7 +51,10 @@ type PassengerRow = {
   source: string;
   payment_method: string | null;
   slot: string | null;
+  sub_route: string | null;
 };
+
+const OTHER_STOPS_KEY = "__sub_other_stops__";
 
 const SLOT_OPTIONS = [
   { value: "all", label: null },
@@ -93,7 +101,7 @@ function RouteDashboardPage() {
   useEffect(() => {
     void (async () => {
       setLoading(true);
-      const { data, error } = await supabase.rpc("get_route_stop_breakdown_by_slot", {
+      const { data, error } = await supabase.rpc("get_route_stop_breakdown_by_slot_v2", {
         p_route: !effectiveRoute || effectiveRoute === "all" ? null : effectiveRoute,
         p_service_date: serviceDate,
         p_slot: slotFilter === "all" ? null : slotFilter,
@@ -135,44 +143,50 @@ function RouteDashboardPage() {
     const isSearching = searchQuery.length > 0;
 
     // 08:00 AM (Alexandria Mix) is one shared bus that every route's
-    // riders board, regardless of their own route — so instead of a
-    // card per route, consolidate everyone into a single card keyed
-    // on the Mix's own physical stop order, plus a second card for
-    // any stop outside that list (older bookings made before this
-    // bus existed) rather than silently dropping them.
+    // riders board, regardless of their own route, now split into two
+    // sub-routes (خط البحر vs خط السيوف والمحمودية) — one card each,
+    // keyed on each sub-route's own physical stop order, with any stop
+    // outside that list folded into an "other stops" group at the
+    // bottom of that same card rather than silently dropped.
     if (slotFilter === ALEXANDRIA_MIX_SLOT) {
-      const mixStops = [
+      const buildSubRouteCard = (stopList: string[], sub: MorningSubRoute) => {
+        const stopSet = new Set(stopList);
+        const map = new Map<string, PassengerRow[]>();
+        for (const stopName of stopList) map.set(stopName, []);
+        const otherStops: PassengerRow[] = [];
+
+        for (const r of filteredRows) {
+          // Placeholder rows (empty stops with nobody booked) exist
+          // only to put the stop on the map — not a real passenger.
+          if (!r.student_id && !r.full_name) continue;
+          if (subRouteOf(r) !== sub) continue;
+          const stopKey = r.pickup_stop ?? "—";
+          if (stopSet.has(stopKey)) {
+            map.get(stopKey)!.push(r);
+          } else {
+            otherStops.push(r);
+          }
+        }
+
+        const result = new Map<string, PassengerRow[]>();
+        for (const [stopName, passengers] of map) {
+          if (isSearching && passengers.length === 0) continue;
+          result.set(stopName, passengers);
+        }
+        if (otherStops.length > 0) result.set(OTHER_STOPS_KEY, otherStops);
+        return result;
+      };
+
+      const elBahrStops = [
         ...(stopsByRoute[ALEXANDRIA_MIX_ROUTE] ?? []),
         ...ALEXANDRIA_MIX_EXTRA_STOPS,
       ];
-      const mixStopsSet = new Set(mixStops);
-
-      const mixMap = new Map<string, PassengerRow[]>();
-      for (const stopName of mixStops) mixMap.set(stopName, []);
-      const otherMap = new Map<string, PassengerRow[]>();
-
-      for (const r of filteredRows) {
-        // Placeholder rows (empty stops with nobody booked) exist
-        // only to put the stop on the map — not a real passenger.
-        if (!r.student_id && !r.full_name) continue;
-        const stopKey = r.pickup_stop ?? "—";
-        if (mixStopsSet.has(stopKey)) {
-          mixMap.get(stopKey)!.push(r);
-        } else {
-          if (!otherMap.has(stopKey)) otherMap.set(stopKey, []);
-          otherMap.get(stopKey)!.push(r);
-        }
-      }
-
-      const mixResult = new Map<string, PassengerRow[]>();
-      for (const [stopName, passengers] of mixMap) {
-        if (isSearching && passengers.length === 0) continue;
-        mixResult.set(stopName, passengers);
-      }
+      const elBahrCard = buildSubRouteCard(elBahrStops, "el_bahr");
+      const seyoufCard = buildSubRouteCard(SEYOUF_MAHMOUDIA_STOPS, "seyouf_mahmoudia");
 
       const result = new Map<string, Map<string, PassengerRow[]>>();
-      if (mixResult.size > 0) result.set("__mix__", mixResult);
-      if (otherMap.size > 0) result.set("__mix_other__", otherMap);
+      if (elBahrCard.size > 0) result.set("__sub_el_bahr__", elBahrCard);
+      if (seyoufCard.size > 0) result.set("__sub_seyouf__", seyoufCard);
       return result;
     }
 
@@ -212,6 +226,20 @@ function RouteDashboardPage() {
     }
     return result;
   }, [filteredRows, stopsByRoute, routes, effectiveRoute, searchQuery, slotFilter]);
+
+  // Banner totals ignore the search box (unlike the cards above) — they
+  // reflect the full, route/date/slot-scoped fetch, not a narrowed view.
+  const mixBannerCounts = useMemo(() => {
+    if (!isMixMode) return null;
+    let elBahr = 0;
+    let seyouf = 0;
+    for (const r of rows) {
+      if (!r.student_id && !r.full_name) continue;
+      if (subRouteOf(r) === "seyouf_mahmoudia") seyouf++;
+      else elBahr++;
+    }
+    return { elBahr, seyouf, total: elBahr + seyouf };
+  }, [isMixMode, rows]);
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-8">
@@ -332,114 +360,173 @@ function RouteDashboardPage() {
           </Badge>
         </div>
 
+        {isMixMode && mixBannerCounts && (
+          <div className="mb-4 space-y-2 rounded-2xl border border-dashed border-border p-4">
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+              <span>
+                {t("routeDash.summaryTotalLabel")}: {mixBannerCounts.total}
+              </span>
+              <span>
+                {SUB_ROUTE_SHORT.el_bahr}: {mixBannerCounts.elBahr}
+              </span>
+              <span>
+                {SUB_ROUTE_SHORT.seyouf_mahmoudia}: {mixBannerCounts.seyouf}
+              </span>
+            </div>
+            <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+              <div
+                className={`h-full rounded-full ${
+                  mixBannerCounts.seyouf >= SECOND_BUS_MIN_PASSENGERS ? "bg-success" : "bg-warning"
+                }`}
+                style={{
+                  width: `${Math.min(100, (mixBannerCounts.seyouf / SECOND_BUS_MIN_PASSENGERS) * 100)}%`,
+                }}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {mixBannerCounts.seyouf} / {SECOND_BUS_MIN_PASSENGERS}
+            </p>
+            {mixBannerCounts.seyouf === 0 ? (
+              <p className="text-sm text-muted-foreground">{t("routeDash.secondBusNone")}</p>
+            ) : mixBannerCounts.seyouf >= SECOND_BUS_MIN_PASSENGERS ? (
+              <p className="rounded-lg bg-success/15 p-2 text-sm font-medium text-success-foreground">
+                {SUB_ROUTE_SHORT.seyouf_mahmoudia} {t("routeDash.secondBusReady")} (
+                {mixBannerCounts.seyouf}/{SECOND_BUS_MIN_PASSENGERS}) —{" "}
+                {t("routeDash.secondBusReadyAdvice")}
+              </p>
+            ) : (
+              <p className="rounded-lg bg-warning/15 p-2 text-sm font-medium text-warning-foreground">
+                {SUB_ROUTE_SHORT.seyouf_mahmoudia} {t("routeDash.secondBusNotReady")} (
+                {mixBannerCounts.seyouf}/{SECOND_BUS_MIN_PASSENGERS}) —{" "}
+                {t("routeDash.secondBusNotReadyAdvice")}
+              </p>
+            )}
+          </div>
+        )}
+
         {loading || routesLoading ? (
           <p className="mt-4 text-sm text-muted-foreground">{t("common.loading")}</p>
         ) : grouped.size === 0 ? (
           <p className="mt-4 text-sm text-muted-foreground">{t("routeDash.noStops")}</p>
         ) : (
           <div className="mt-4 space-y-6">
-            {[...grouped.entries()].map(([routeName, stops]) => (
-              <div key={routeName}>
-                {(isMixMode || (routeFilter === "all" && isAdmin)) && (
-                  <p className="mb-2 text-sm font-semibold text-muted-foreground">
-                    {isMixMode
-                      ? routeName === "__mix__"
-                        ? t("routeDash.mixRouteTitle")
-                        : t("routeDash.mixOtherStops")
-                      : routeName}
-                  </p>
-                )}
-                <Accordion type="multiple" className="rounded-xl border border-border">
-                  {[...stops.entries()].map(([stopName, passengers]) => (
-                    <AccordionItem
-                      key={stopName}
-                      value={stopName}
-                      className={`px-4 ${slotFilter !== "all" && passengers.length === 0 ? "opacity-50" : ""}`}
-                    >
-                      <AccordionTrigger>
-                        <span className="flex items-center gap-3">
-                          <span className="font-medium">{stopName}</span>
-                          <Badge className="btn-gold">
-                            {passengers.length} {t("routeDash.passengers")}
-                          </Badge>
-                        </span>
-                      </AccordionTrigger>
-                      <AccordionContent>
-                        <ul className="divide-y divide-border">
-                          {passengers.map((p, i) => {
-                            const badge =
-                              p.source === "daily_pass"
-                                ? null
-                                : subscriptionBadge(p.subscription_type, p.payment_status);
-                            const isCash = p.source === "daily_pass" && p.payment_method === "cash";
-                            return (
-                              <li
-                                key={p.student_id ?? `${stopName}-${i}`}
-                                className={`flex flex-wrap items-center gap-3 py-3 ${
-                                  isCash ? "bg-warning/15 -mx-4 px-4" : ""
-                                }`}
-                              >
-                                <div className="size-9 shrink-0 overflow-hidden rounded-full">
-                                  <SmartAvatar
-                                    photoUrl={p.photo_url}
-                                    name={p.full_name}
-                                    className="size-full text-xs"
-                                  />
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                  <p className="text-sm font-medium">{p.full_name}</p>
-                                  <p className="text-xs text-muted-foreground">
-                                    {p.phone ?? "—"} · {stopName}
-                                    {isMixMode && ` · ${p.route ?? "—"}`}
-                                  </p>
-                                  {p.source === "daily_pass" && (
-                                    <p className="mt-1 text-xs">
-                                      {p.payment_method === "instapay"
-                                        ? "InstaPay"
-                                        : t("routeDash.cashOnBoard")}
-                                    </p>
-                                  )}
-                                </div>
-                                {badge ? (
-                                  <Badge className={badge.className}>
-                                    {badge.emoji} {badge.label}
-                                  </Badge>
-                                ) : (
-                                  <Badge className="bg-orange-500 text-white">
-                                    {t("routeDash.dailyPass")}
-                                  </Badge>
-                                )}
-                                {p.source === "daily_pass" &&
-                                  (p.payment_method === "instapay" ? (
-                                    <Badge className="bg-success text-success-foreground">
-                                      {t("routeDash.paidConfirmed")}
-                                    </Badge>
-                                  ) : (
-                                    <Badge className="bg-warning text-warning-foreground">
-                                      {t("routeDash.cashDue")}
-                                    </Badge>
-                                  ))}
-                                {p.phone && (
-                                  <a
-                                    href={`https://wa.me/${toWhatsAppNumber(p.phone)}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-accent"
-                                    title={t("routeDash.callWhatsapp")}
+            {[...grouped.entries()].map(([routeName, stops]) => {
+              const cardTotal = [...stops.values()].reduce((sum, arr) => sum + arr.length, 0);
+              return (
+                <div key={routeName}>
+                  {(isMixMode || (routeFilter === "all" && isAdmin)) && (
+                    <div className="mb-2 flex items-center gap-2">
+                      <p className="text-sm font-semibold text-muted-foreground">
+                        {isMixMode
+                          ? routeName === "__sub_el_bahr__"
+                            ? t("routeDash.subRouteElBahrTitle")
+                            : t("routeDash.subRouteSeyoufTitle")
+                          : routeName}
+                      </p>
+                      {isMixMode && (
+                        <Badge className="btn-gold">
+                          {cardTotal} {t("routeDash.passengers")}
+                        </Badge>
+                      )}
+                    </div>
+                  )}
+                  <Accordion type="multiple" className="rounded-xl border border-border">
+                    {[...stops.entries()].map(([stopName, passengers]) => {
+                      const displayStopName =
+                        stopName === OTHER_STOPS_KEY ? t("routeDash.subRouteOtherStops") : stopName;
+                      return (
+                        <AccordionItem
+                          key={stopName}
+                          value={stopName}
+                          className={`px-4 ${slotFilter !== "all" && passengers.length === 0 ? "opacity-50" : ""}`}
+                        >
+                          <AccordionTrigger>
+                            <span className="flex items-center gap-3">
+                              <span className="font-medium">{displayStopName}</span>
+                              <Badge className="btn-gold">
+                                {passengers.length} {t("routeDash.passengers")}
+                              </Badge>
+                            </span>
+                          </AccordionTrigger>
+                          <AccordionContent>
+                            <ul className="divide-y divide-border">
+                              {passengers.map((p, i) => {
+                                const badge =
+                                  p.source === "daily_pass"
+                                    ? null
+                                    : subscriptionBadge(p.subscription_type, p.payment_status);
+                                const isCash =
+                                  p.source === "daily_pass" && p.payment_method === "cash";
+                                return (
+                                  <li
+                                    key={p.student_id ?? `${stopName}-${i}`}
+                                    className={`flex flex-wrap items-center gap-3 py-3 ${
+                                      isCash ? "bg-warning/15 -mx-4 px-4" : ""
+                                    }`}
                                   >
-                                    <MessageCircle className="size-4" />
-                                  </a>
-                                )}
-                              </li>
-                            );
-                          })}
-                        </ul>
-                      </AccordionContent>
-                    </AccordionItem>
-                  ))}
-                </Accordion>
-              </div>
-            ))}
+                                    <div className="size-9 shrink-0 overflow-hidden rounded-full">
+                                      <SmartAvatar
+                                        photoUrl={p.photo_url}
+                                        name={p.full_name}
+                                        className="size-full text-xs"
+                                      />
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                      <p className="text-sm font-medium">{p.full_name}</p>
+                                      <p className="text-xs text-muted-foreground">
+                                        {p.phone ?? "—"} · {displayStopName}
+                                        {isMixMode && ` · ${p.route ?? "—"}`}
+                                      </p>
+                                      {p.source === "daily_pass" && (
+                                        <p className="mt-1 text-xs">
+                                          {p.payment_method === "instapay"
+                                            ? "InstaPay"
+                                            : t("routeDash.cashOnBoard")}
+                                        </p>
+                                      )}
+                                    </div>
+                                    {badge ? (
+                                      <Badge className={badge.className}>
+                                        {badge.emoji} {badge.label}
+                                      </Badge>
+                                    ) : (
+                                      <Badge className="bg-orange-500 text-white">
+                                        {t("routeDash.dailyPass")}
+                                      </Badge>
+                                    )}
+                                    {p.source === "daily_pass" &&
+                                      (p.payment_method === "instapay" ? (
+                                        <Badge className="bg-success text-success-foreground">
+                                          {t("routeDash.paidConfirmed")}
+                                        </Badge>
+                                      ) : (
+                                        <Badge className="bg-warning text-warning-foreground">
+                                          {t("routeDash.cashDue")}
+                                        </Badge>
+                                      ))}
+                                    {p.phone && (
+                                      <a
+                                        href={`https://wa.me/${toWhatsAppNumber(p.phone)}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-accent"
+                                        title={t("routeDash.callWhatsapp")}
+                                      >
+                                        <MessageCircle className="size-4" />
+                                      </a>
+                                    )}
+                                  </li>
+                                );
+                              })}
+                            </ul>
+                          </AccordionContent>
+                        </AccordionItem>
+                      );
+                    })}
+                  </Accordion>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

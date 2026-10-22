@@ -27,7 +27,14 @@ import {
   optOutWindow,
   returnWindow,
 } from "@/lib/schedule";
-import { ALEXANDRIA_MIX_ROUTE, ALEXANDRIA_MIX_EXTRA_STOPS } from "@/lib/alexandriaMix";
+import {
+  ALEXANDRIA_MIX_ROUTE,
+  ALEXANDRIA_MIX_EXTRA_STOPS,
+  MorningSubRoute,
+  SUB_ROUTE_LABELS,
+  SUB_ROUTE_SHORT,
+  subRouteStops,
+} from "@/lib/alexandriaMix";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
@@ -55,6 +62,7 @@ type Booking = {
   pickup_stop: string | null;
   route: string | null;
   sector: string | null;
+  sub_route: string | null;
 };
 
 function Dashboard() {
@@ -116,6 +124,7 @@ function Dashboard() {
   const morningServiceDate = specialSundayActive ? mw.serviceDate : routeDashboardDefaultDate();
 
   const [stop, setStop] = useState<string>("");
+  const [subRoute, setSubRoute] = useState<MorningSubRoute | "">("");
   const [activeMorningSlots, setActiveMorningSlots] = useState<string[]>([...MORNING_SLOTS]);
   const [activeReturnSlots, setActiveReturnSlots] = useState<string[]>([...RETURN_SLOTS]);
   const [morningSlot, setMorningSlot] = useState<string>(MORNING_SLOTS[0]);
@@ -130,7 +139,9 @@ function Dashboard() {
   // ride this same shared bus.
   const isAlexandriaMixSlot = morningSlot === "08:00 AM";
   const morningStopOptions = isAlexandriaMixSlot
-    ? [...(stopsByRoute[ALEXANDRIA_MIX_ROUTE] ?? []), ...ALEXANDRIA_MIX_EXTRA_STOPS]
+    ? subRoute
+      ? subRouteStops(subRoute, stopsByRoute[ALEXANDRIA_MIX_ROUTE] ?? [])
+      : []
     : stopsForMyRoute;
   // Return trips drop students off in the reverse order the morning
   // pickup runs the route, so the return dropoff dropdown uses the
@@ -202,7 +213,7 @@ function Dashboard() {
     const [{ data: b }, { data: o }] = await Promise.all([
       supabase
         .from("bookings")
-        .select("id,kind,slot,service_date,pickup_stop,route,sector")
+        .select("id,kind,slot,service_date,pickup_stop,route,sector,sub_route")
         .in("service_date", [morningServiceDate, rw.serviceDate]),
       supabase.from("opt_outs").select("id").eq("service_date", ow.serviceDate),
     ]);
@@ -215,6 +226,13 @@ function Dashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, morningServiceDate]);
 
+  useEffect(() => {
+    const mb = bookings.find((b) => b.kind === "morning" && b.service_date === morningServiceDate);
+    if (mb?.sub_route === "el_bahr" || mb?.sub_route === "seyouf_mahmoudia") {
+      setSubRoute(mb.sub_route);
+    }
+  }, [bookings, morningServiceDate]);
+
   const morningBooking = bookings.find(
     (b) => b.kind === "morning" && b.service_date === morningServiceDate,
   );
@@ -224,6 +242,10 @@ function Dashboard() {
 
   const book = async (kind: "morning" | "return") => {
     if (!user) return;
+    if (kind === "morning" && isAlexandriaMixSlot && !subRoute) {
+      toast.error(t("subRoute.chooseFirst"));
+      return;
+    }
     if (kind === "return") {
       if (isFourPmReturn && !fourPmStop) {
         toast.error(t("dashboard.chooseStopFirst"));
@@ -250,12 +272,16 @@ function Dashboard() {
           : EARLY_RETURN_ROUTE_NAME,
       pickup_stop: kind === "morning" ? stop : isFourPmReturn ? fourPmStop : returnStop,
       sector: kind === "return" && !isFourPmReturn && !isBorgElArabReturn ? returnSector : null,
+      sub_route: kind === "morning" && morningSlot === "08:00 AM" ? subRoute : null,
     };
     const { error } = await supabase
       .from("bookings")
       .upsert(payload, { onConflict: "student_id,service_date,kind" });
     setBusy(false);
-    if (error) return toast.error(error.message);
+    if (error) {
+      if (error.code === "23514") return toast.error(t("subRoute.mismatch"));
+      return toast.error(error.message);
+    }
     toast.success(
       kind === "morning" ? t("dashboard.morningReserved") : t("dashboard.returnReserved"),
     );
@@ -268,9 +294,17 @@ function Dashboard() {
     // stops only apply to 08:00 AM) — reset to the new list's first
     // option so a student can't submit a stop that's no longer valid.
     const isNewSlotAlexandriaMix = newSlot === "08:00 AM";
-    const newOptions = isNewSlotAlexandriaMix
-      ? [...(stopsByRoute[ALEXANDRIA_MIX_ROUTE] ?? []), ...ALEXANDRIA_MIX_EXTRA_STOPS]
-      : stopsForMyRoute;
+    if (!isNewSlotAlexandriaMix) {
+      setSubRoute("");
+      setStop(stopsForMyRoute[0] ?? "");
+      return;
+    }
+    setStop("");
+  };
+
+  const handleSubRouteChange = (newSubRoute: MorningSubRoute) => {
+    setSubRoute(newSubRoute);
+    const newOptions = subRouteStops(newSubRoute, stopsByRoute[ALEXANDRIA_MIX_ROUTE] ?? []);
     setStop(newOptions[0] ?? "");
   };
 
@@ -364,7 +398,12 @@ function Dashboard() {
           {morningBooking ? (
             <Confirmed
               t={t}
-              text={`${formatSlotLabel(morningBooking.slot, lang)} · ${morningBooking.pickup_stop ?? ""}`}
+              text={`${formatSlotLabel(morningBooking.slot, lang)} · ${morningBooking.pickup_stop ?? ""}${
+                morningBooking.sub_route === "el_bahr" ||
+                morningBooking.sub_route === "seyouf_mahmoudia"
+                  ? ` · ${SUB_ROUTE_SHORT[morningBooking.sub_route]}`
+                  : ""
+              }`}
               onCancel={mw.open ? () => void cancel(morningBooking.id) : undefined}
             />
           ) : mw.open ? (
@@ -377,11 +416,31 @@ function Dashboard() {
                   {profile.route ?? t("dashboard.noRouteContactAdmin")}
                 </p>
               </div>
+              {isAlexandriaMixSlot && (
+                <div className="space-y-2">
+                  <Label>{t("subRoute.chooseLabel")}</Label>
+                  <select
+                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                    value={subRoute}
+                    onChange={(e) => handleSubRouteChange(e.target.value as MorningSubRoute)}
+                  >
+                    <option value="" disabled>
+                      {t("subRoute.chooseLabel")}
+                    </option>
+                    {(Object.keys(SUB_ROUTE_LABELS) as MorningSubRoute[]).map((sr) => (
+                      <option key={sr} value={sr}>
+                        {SUB_ROUTE_LABELS[sr]}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <SelectField
                 label={t("dashboard.departureStopLabel")}
                 value={stop}
                 options={morningStopOptions}
                 onChange={setStop}
+                disabled={isAlexandriaMixSlot && !subRoute}
               />
               <SlotPicker
                 label={t("dashboard.timeSlot")}
@@ -392,7 +451,7 @@ function Dashboard() {
               />
               <Button
                 className="btn-gold w-full"
-                disabled={busy || !profile.route}
+                disabled={busy || !profile.route || (isAlexandriaMixSlot && !subRoute)}
                 onClick={() => void book("morning")}
               >
                 {t("dashboard.reserveSeat")}
@@ -620,11 +679,13 @@ function SelectField({
   value,
   options,
   onChange,
+  disabled,
 }: {
   label: string;
   value: string;
   options: string[];
   onChange: (v: string) => void;
+  disabled?: boolean;
 }) {
   return (
     <div className="space-y-2">
@@ -633,6 +694,7 @@ function SelectField({
         className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        disabled={disabled}
       >
         {options.map((o) => (
           <option key={o}>{o}</option>

@@ -19,6 +19,7 @@ export type Database = {
           service_date: string;
           slot: string;
           student_id: string;
+          sub_route: string | null;
         };
         Insert: {
           created_at?: string;
@@ -30,6 +31,7 @@ export type Database = {
           service_date: string;
           slot: string;
           student_id: string;
+          sub_route?: string | null;
         };
         Update: {
           created_at?: string;
@@ -41,6 +43,7 @@ export type Database = {
           service_date?: string;
           slot?: string;
           student_id?: string;
+          sub_route?: string | null;
         };
         Relationships: [];
       };
@@ -60,6 +63,7 @@ export type Database = {
           return_pickup_stop: string | null;
           payment_method: string;
           receipt_url: string | null;
+          sub_route: string | null;
         };
         Insert: {
           created_at?: string;
@@ -76,6 +80,7 @@ export type Database = {
           return_pickup_stop?: string | null;
           payment_method?: string;
           receipt_url?: string | null;
+          sub_route?: string | null;
         };
         Update: {
           created_at?: string;
@@ -92,6 +97,7 @@ export type Database = {
           return_pickup_stop?: string | null;
           payment_method?: string;
           receipt_url?: string | null;
+          sub_route?: string | null;
         };
         Relationships: [];
       };
@@ -418,6 +424,7 @@ export type Database = {
           scanned_by: string | null;
           kind: string;
           created_at: string;
+          sub_route: string | null;
         };
         Insert: {
           id?: string;
@@ -434,6 +441,7 @@ export type Database = {
           scanned_by?: string | null;
           kind?: string;
           created_at?: string;
+          sub_route?: string | null;
         };
         Update: {
           id?: string;
@@ -450,6 +458,7 @@ export type Database = {
           scanned_by?: string | null;
           kind?: string;
           created_at?: string;
+          sub_route?: string | null;
         };
         Relationships: [];
       };
@@ -788,6 +797,24 @@ export type Database = {
           source: string;
           payment_method: string | null;
           slot: string | null;
+        }[];
+      };
+      get_route_stop_breakdown_by_slot_v2: {
+        Args: { p_route: string | null; p_service_date: string | null; p_slot: string | null };
+        Returns: {
+          route: string | null;
+          pickup_stop: string | null;
+          stop_order: number | null;
+          student_id: string | null;
+          full_name: string;
+          phone: string | null;
+          photo_url: string | null;
+          subscription_type: string;
+          payment_status: string;
+          source: string;
+          payment_method: string | null;
+          slot: string | null;
+          sub_route: string | null;
         }[];
       };
       count_today_scanned_exam_passes: {

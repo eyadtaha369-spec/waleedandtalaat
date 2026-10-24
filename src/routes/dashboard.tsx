@@ -130,7 +130,8 @@ function Dashboard() {
     const id = setInterval(() => setNowTick(cairoNow()), 30_000);
     return () => clearInterval(id);
   }, []);
-  const closed0800 = !isStaff && isMorning0800Closed(morningServiceDate, nowTick);
+  const closed0800 =
+    !isStaff && morningStatus !== "FORCE_OPEN" && isMorning0800Closed(morningServiceDate, nowTick);
 
   const [stop, setStop] = useState<string>("");
   const [subRoute, setSubRoute] = useState<MorningSubRoute | "">("");

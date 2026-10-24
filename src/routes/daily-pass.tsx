@@ -72,8 +72,21 @@ function DailyPass() {
   const { routes, stopsByRoute } = useRoutes();
   // Daily passes are always dated today by the database, so the 6:00 PM
   // day-before cutoff has already passed for every moment of today —
-  // 08:00 AM is effectively unreachable here for non-staff guests.
-  const closed0800 = !isStaff && isMorning0800Closed(toDateKey(cairoNow()));
+  // 08:00 AM is effectively unreachable here for non-staff guests, unless
+  // an admin has forced the morning window open.
+  const [forceOpen, setForceOpen] = useState(false);
+  useEffect(() => {
+    void supabase
+      .from("app_settings")
+      .select("morning_departure_status")
+      .eq("id", true)
+      .maybeSingle()
+      .then(
+        ({ data }) => setForceOpen(data?.morning_departure_status === "FORCE_OPEN"),
+        () => setForceOpen(false),
+      );
+  }, []);
+  const closed0800 = !isStaff && !forceOpen && isMorning0800Closed(toDateKey(cairoNow()));
   const [form, setForm] = useState({
     full_name: "",
     phone: "",

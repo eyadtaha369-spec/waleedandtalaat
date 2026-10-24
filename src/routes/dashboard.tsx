@@ -467,11 +467,12 @@ function Dashboard() {
                 onChange={setStop}
                 disabled={isAlexandriaMixSlot && !subRoute}
               />
-              <SelectField
+              <SlotPicker
                 label={t("dashboard.timeSlot")}
-                value={morningSlot}
                 options={activeMorningSlots}
+                value={morningSlot}
                 onChange={handleMorningSlotChange}
+                lang={lang}
                 isOptionDisabled={(o) => o === "08:00 AM" && closed0800}
                 optionLabel={(o) =>
                   o === "08:00 AM" && closed0800
@@ -680,30 +681,40 @@ function SlotPicker({
   value,
   onChange,
   lang,
+  isOptionDisabled,
+  optionLabel,
 }: {
   label: string;
   options: string[];
   value: string;
   onChange: (v: string) => void;
   lang: "ar" | "en";
+  isOptionDisabled?: (v: string) => boolean;
+  optionLabel?: (v: string) => string;
 }) {
   return (
     <div className="space-y-2">
       <Label>{label}</Label>
       <div className="grid grid-cols-2 gap-3">
-        {options.map((o) => (
-          <button
-            key={o}
-            onClick={() => onChange(o)}
-            className={`rounded-xl border px-4 py-3 text-sm font-semibold transition-colors ${
-              value === o
-                ? "border-accent bg-accent text-accent-foreground"
-                : "border-border hover:bg-secondary"
-            }`}
-          >
-            {formatSlotLabel(o, lang)}
-          </button>
-        ))}
+        {options.map((o) => {
+          const disabled = isOptionDisabled?.(o) ?? false;
+          return (
+            <button
+              key={o}
+              disabled={disabled}
+              onClick={() => onChange(o)}
+              className={`rounded-xl border px-4 py-3 text-sm font-semibold transition-colors ${
+                disabled
+                  ? "cursor-not-allowed border-border opacity-50"
+                  : value === o
+                    ? "border-accent bg-accent text-accent-foreground"
+                    : "border-border hover:bg-secondary"
+              }`}
+            >
+              {optionLabel ? optionLabel(o) : formatSlotLabel(o, lang)}
+            </button>
+          );
+        })}
       </div>
     </div>
   );

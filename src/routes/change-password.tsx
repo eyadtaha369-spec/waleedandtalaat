@@ -14,6 +14,25 @@ export const Route = createFileRoute("/change-password")({
   component: ChangePasswordPage,
 });
 
+type AuthLikeError =
+  | { message?: string | undefined; code?: string | undefined; status?: number | undefined }
+  | null
+  | undefined;
+
+// Two distinct failure shapes land here: supabase-js throwing
+// AuthSessionMissingError (no local session at all), and a server-side
+// revoke (admin credential reset, or a logout elsewhere) that still
+// leaves a local session behind but makes the server reject it with
+// session_not_found / 401 / 403 — a getSession() check alone misses
+// the second case, so both must be mapped to the same recovery path.
+function isSessionLostError(error: AuthLikeError): boolean {
+  if (!error) return false;
+  if (error.message?.includes("Auth session missing")) return true;
+  if (error.code === "session_not_found") return true;
+  if (error.status === 401 || error.status === 403) return true;
+  return false;
+}
+
 function ChangePasswordPage() {
   const navigate = useNavigate();
   const { user, profile, loading, refresh } = useAuth();
@@ -35,6 +54,12 @@ function ChangePasswordPage() {
     }
   }, [loading, user, profile, navigate]);
 
+  const handleSessionLost = async () => {
+    toast.error(t("changePassword.sessionLost"));
+    await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
+    void navigate({ to: "/auth" });
+  };
+
   const submit = async () => {
     if (password.length < 6) {
       toast.error(t("changePassword.tooShort"));
@@ -48,22 +73,57 @@ function ChangePasswordPage() {
       toast.error(t("changePassword.sameAsDefault"));
       return;
     }
+
     setBusy(true);
-    const { error } = await supabase.auth.updateUser({ password });
-    if (error) {
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) {
+        await handleSessionLost();
+        return;
+      }
+
+      const { error } = await supabase.auth.updateUser({ password });
+      if (error) {
+        if (isSessionLostError(error)) {
+          await handleSessionLost();
+          return;
+        }
+        if (error.code === "same_password") {
+          toast.error(t("changePassword.samePassword"));
+          return;
+        }
+        if (error.code === "weak_password") {
+          toast.error(t("changePassword.weakPassword"));
+          return;
+        }
+        if (error.code === "over_request_rate_limit" || error.status === 429) {
+          toast.error(t("changePassword.rateLimited"));
+          return;
+        }
+        toast.error(t("changePassword.genericError"));
+        return;
+      }
+
+      const { error: flagError } = await supabase.rpc("mark_password_changed");
+      if (flagError) {
+        if (isSessionLostError(flagError)) {
+          await handleSessionLost();
+          return;
+        }
+        toast.error(t("changePassword.genericError"));
+        return;
+      }
+
+      toast.success(t("changePassword.success"));
+      await refresh();
+      void navigate({ to: "/dashboard" });
+    } catch {
+      toast.error(t("auth.connectionError"));
+    } finally {
       setBusy(false);
-      toast.error(error.message);
-      return;
     }
-    const { error: flagError } = await supabase.rpc("mark_password_changed");
-    setBusy(false);
-    if (flagError) {
-      toast.error(flagError.message);
-      return;
-    }
-    toast.success(t("changePassword.success"));
-    await refresh();
-    void navigate({ to: "/dashboard" });
   };
 
   return (

@@ -26,6 +26,8 @@ import {
   specialSundayWindow,
   optOutWindow,
   returnWindow,
+  cairoNow,
+  isMorning0800Closed,
 } from "@/lib/schedule";
 import {
   ALEXANDRIA_MIX_ROUTE,
@@ -66,7 +68,7 @@ type Booking = {
 };
 
 function Dashboard() {
-  const { user, profile, loading } = useAuth();
+  const { user, profile, loading, isStaff } = useAuth();
   const { t, lang } = useLanguage();
   const navigate = useNavigate();
   const { stopsByRoute } = useRoutes();
@@ -122,6 +124,13 @@ function Dashboard() {
   // everywhere below — but not when a special Sunday trip has already
   // pinned mw.serviceDate to a fixed target date.
   const morningServiceDate = specialSundayActive ? mw.serviceDate : routeDashboardDefaultDate();
+
+  const [nowTick, setNowTick] = useState<Date>(() => cairoNow());
+  useEffect(() => {
+    const id = setInterval(() => setNowTick(cairoNow()), 30_000);
+    return () => clearInterval(id);
+  }, []);
+  const closed0800 = !isStaff && isMorning0800Closed(morningServiceDate, nowTick);
 
   const [stop, setStop] = useState<string>("");
   const [subRoute, setSubRoute] = useState<MorningSubRoute | "">("");
@@ -242,6 +251,12 @@ function Dashboard() {
 
   const book = async (kind: "morning" | "return") => {
     if (!user) return;
+    if (kind === "morning" && morningSlot === "08:00 AM" && closed0800) {
+      toast.error(
+        "عفواً، تم إغلاق حجز ميعاد 8:00 صباحاً لهذا اليوم (الحد الأقصى للحجز الساعة 6:00 مساءً).",
+      );
+      return;
+    }
     if (kind === "morning" && isAlexandriaMixSlot && !subRoute) {
       toast.error(t("subRoute.chooseFirst"));
       return;
@@ -307,6 +322,16 @@ function Dashboard() {
     const newOptions = subRouteStops(newSubRoute, stopsByRoute[ALEXANDRIA_MIX_ROUTE] ?? []);
     setStop(newOptions[0] ?? "");
   };
+
+  useEffect(() => {
+    if (morningSlot !== "08:00 AM" || !closed0800) return;
+    const fallbackSlot =
+      activeMorningSlots.find((s) => s !== "08:00 AM") ?? activeMorningSlots[0] ?? MORNING_SLOTS[0];
+    setMorningSlot(fallbackSlot);
+    setSubRoute("");
+    setStop(stopsForMyRoute[0] ?? "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [closed0800, morningSlot, activeMorningSlots]);
 
   const cancel = async (id: string) => {
     await supabase.from("bookings").delete().eq("id", id);
@@ -442,16 +467,26 @@ function Dashboard() {
                 onChange={setStop}
                 disabled={isAlexandriaMixSlot && !subRoute}
               />
-              <SlotPicker
+              <SelectField
                 label={t("dashboard.timeSlot")}
-                options={activeMorningSlots}
                 value={morningSlot}
+                options={activeMorningSlots}
                 onChange={handleMorningSlotChange}
-                lang={lang}
+                isOptionDisabled={(o) => o === "08:00 AM" && closed0800}
+                optionLabel={(o) =>
+                  o === "08:00 AM" && closed0800
+                    ? `${formatSlotLabel(o, lang)} ${t("schedule.slot0800Closed")}`
+                    : formatSlotLabel(o, lang)
+                }
               />
               <Button
                 className="btn-gold w-full"
-                disabled={busy || !profile.route || (isAlexandriaMixSlot && !subRoute)}
+                disabled={
+                  busy ||
+                  !profile.route ||
+                  (isAlexandriaMixSlot && !subRoute) ||
+                  (morningSlot === "08:00 AM" && closed0800)
+                }
                 onClick={() => void book("morning")}
               >
                 {t("dashboard.reserveSeat")}
@@ -680,12 +715,16 @@ function SelectField({
   options,
   onChange,
   disabled,
+  isOptionDisabled,
+  optionLabel,
 }: {
   label: string;
   value: string;
   options: string[];
   onChange: (v: string) => void;
   disabled?: boolean;
+  isOptionDisabled?: (v: string) => boolean;
+  optionLabel?: (v: string) => string;
 }) {
   return (
     <div className="space-y-2">
@@ -697,7 +736,9 @@ function SelectField({
         disabled={disabled}
       >
         {options.map((o) => (
-          <option key={o}>{o}</option>
+          <option key={o} value={o} disabled={isOptionDisabled?.(o)}>
+            {optionLabel ? optionLabel(o) : o}
+          </option>
         ))}
       </select>
     </div>

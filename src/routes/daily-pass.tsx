@@ -5,11 +5,12 @@ import { toast } from "sonner";
 import { CheckCircle2, Hourglass } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/hooks/useLanguage";
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useRoutes } from "@/hooks/useRoutes";
-import { MORNING_SLOTS } from "@/lib/schedule";
+import { MORNING_SLOTS, cairoNow, isMorning0800Closed, toDateKey } from "@/lib/schedule";
 import { formatSlotLabel } from "@/lib/i18n/dateFormat";
 import { EarlyReturnSector, SECTOR_LABELS, stopsForSector } from "@/lib/earlyReturnSectors";
 import {
@@ -67,7 +68,12 @@ const returnOnlySchema = z.object({
 
 function DailyPass() {
   const { t, lang } = useLanguage();
+  const { isStaff } = useAuth();
   const { routes, stopsByRoute } = useRoutes();
+  // Daily passes are always dated today by the database, so the 6:00 PM
+  // day-before cutoff has already passed for every moment of today —
+  // 08:00 AM is effectively unreachable here for non-staff guests.
+  const closed0800 = !isStaff && isMorning0800Closed(toDateKey(cairoNow()));
   const [form, setForm] = useState({
     full_name: "",
     phone: "",
@@ -110,6 +116,19 @@ function DailyPass() {
       setReturnStop(stopsByRoute[form.route]?.[0] ?? "");
     }
   }, [isFourPmReturn, form.route, stopsByRoute]);
+
+  // 08:00 AM is unreachable for non-staff — never leave it selected.
+  useEffect(() => {
+    if (closed0800 && form.slot === "08:00 AM") {
+      setForm((f) => ({
+        ...f,
+        slot: "06:00 AM",
+        sub_route: "",
+        pickup_stop: stopsByRoute[f.route]?.[0] ?? "",
+      }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [closed0800, form.slot]);
 
   const submit = async () => {
     const parsed =
@@ -172,6 +191,8 @@ function DailyPass() {
       if (error.code === "23514") {
         return toast.error(t("subRoute.mismatch"));
       }
+      // P0001 (08:00 AM cutoff) and any other server error already carry
+      // user-facing Arabic text in error.message — show it as-is.
       return toast.error(error.message);
     }
     setSent(true);
@@ -366,8 +387,10 @@ function DailyPass() {
                     }}
                   >
                     {MORNING_SLOTS.map((s) => (
-                      <option key={s} value={s}>
-                        {formatSlotLabel(s, lang)}
+                      <option key={s} value={s} disabled={s === "08:00 AM" && closed0800}>
+                        {s === "08:00 AM" && closed0800
+                          ? `${formatSlotLabel(s, lang)} ${t("schedule.slot0800Closed")}`
+                          : formatSlotLabel(s, lang)}
                       </option>
                     ))}
                   </select>

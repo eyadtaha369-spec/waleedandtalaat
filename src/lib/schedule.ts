@@ -149,6 +149,19 @@ export function specialSundayWindow(now = cairoNow()): WindowState {
   };
 }
 
+/**
+ * The 08:00 AM morning slot stops taking bookings at 6:00 PM the day
+ * before its service date — mirrors the server-side trigger, which
+ * rejects non-staff inserts/updates past this instant with SQLSTATE
+ * P0001. Staff bypass the server check entirely; callers here must
+ * gate this with their own isStaff check rather than relying on this
+ * function alone.
+ */
+export function isMorning0800Closed(serviceDate: string, now = cairoNow()): boolean {
+  const [y, m, d] = serviceDate.split("-").map(Number);
+  return now.getTime() >= new Date(y!, m! - 1, d! - 1, 18, 0, 0).getTime();
+}
+
 export function prettyDate(key: string): string {
   const [y, m, d] = key.split("-").map(Number);
   return new Date(y!, (m ?? 1) - 1, d ?? 1).toLocaleDateString("en-GB", {

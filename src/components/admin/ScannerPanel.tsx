@@ -70,6 +70,11 @@ export function ScannerPanel() {
   // scan_trip_pass_test(), a read-only preview RPC that never writes
   // boarded_at and ignores the trip-date guard.
   const [testMode, setTestMode] = useState(false);
+  // start() hands handleScan -> handleTripScan to scanner.start() once,
+  // so that closure keeps whatever testMode was at the moment the
+  // camera started — flipping the switch afterward never reaches it.
+  // Read this ref inside handleTripScan instead of the state directly.
+  const testModeRef = useRef(false);
   const [scannedToday, setScannedToday] = useState<number | null>(null);
   const [overriding, setOverriding] = useState(false);
   const [walkInDialogOpen, setWalkInDialogOpen] = useState(false);
@@ -120,6 +125,10 @@ export function ScannerPanel() {
   // toggling the switch always clears whatever trip card is showing.
   useEffect(() => {
     setTripResult(null);
+  }, [testMode]);
+
+  useEffect(() => {
+    testModeRef.current = testMode;
   }, [testMode]);
 
   const start = async () => {
@@ -262,10 +271,10 @@ export function ScannerPanel() {
 
   const handleTripScan = async (token: string) => {
     setTripToken(token);
-    const { data, error } = await supabase.rpc(
-      testMode ? "scan_trip_pass_test" : "scan_trip_pass",
-      { p_token: token },
-    );
+    const isTest = testModeRef.current;
+    const { data, error } = await supabase.rpc(isTest ? "scan_trip_pass_test" : "scan_trip_pass", {
+      p_token: token,
+    });
     const payload = data as
       | (Omit<TripScanResult, "test_mode"> & { kind: "trip"; test_mode?: boolean })
       | { error: string; trip_date?: string; title?: string }
@@ -287,7 +296,7 @@ export function ScannerPanel() {
     // Trust our own flag over the server's echo, so a stale/missing
     // field can never show a test result without its badge or vice
     // versa — this is what the RPC we just called actually was.
-    setTripResult({ ...payload, test_mode: testMode });
+    setTripResult({ ...payload, test_mode: isTest });
   };
 
   // Real boarding — never called while Test Scan Mode is on.

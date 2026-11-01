@@ -495,6 +495,141 @@ export type Database = {
         };
         Relationships: [];
       };
+      tourism_trips: {
+        Row: {
+          id: string;
+          slug: string;
+          title: string;
+          subtitle: string | null;
+          trip_date: string;
+          price_per_person: number;
+          friends_price: number;
+          friends_group_size: number;
+          payment_instructions: string | null;
+          terms: string[];
+          is_active: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          slug: string;
+          title: string;
+          subtitle?: string | null;
+          trip_date: string;
+          price_per_person: number;
+          friends_price: number;
+          friends_group_size?: number;
+          payment_instructions?: string | null;
+          terms?: string[];
+          is_active?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          slug?: string;
+          title?: string;
+          subtitle?: string | null;
+          trip_date?: string;
+          price_per_person?: number;
+          friends_price?: number;
+          friends_group_size?: number;
+          payment_instructions?: string | null;
+          terms?: string[];
+          is_active?: boolean;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      tourism_trip_secrets: {
+        Row: {
+          trip_id: string;
+          whatsapp_group_link: string | null;
+        };
+        Insert: {
+          trip_id: string;
+          whatsapp_group_link?: string | null;
+        };
+        Update: {
+          trip_id?: string;
+          whatsapp_group_link?: string | null;
+        };
+        Relationships: [];
+      };
+      trip_bookings: {
+        Row: {
+          id: string;
+          trip_id: string;
+          package_type: string;
+          status: string;
+          amount: number;
+          sender_phone: string;
+          payment_method: string;
+          receipt_path: string;
+          pass_token: string;
+          reviewed_by: string | null;
+          reviewed_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          trip_id: string;
+          package_type: string;
+          status?: string;
+          amount: number;
+          sender_phone: string;
+          payment_method: string;
+          receipt_path: string;
+          pass_token?: string;
+          reviewed_by?: string | null;
+          reviewed_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          trip_id?: string;
+          package_type?: string;
+          status?: string;
+          amount?: number;
+          sender_phone?: string;
+          payment_method?: string;
+          receipt_path?: string;
+          pass_token?: string;
+          reviewed_by?: string | null;
+          reviewed_at?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      trip_booking_passengers: {
+        Row: {
+          id: string;
+          booking_id: string;
+          position: number;
+          full_name: string;
+          phone: string;
+          boarded_at: string | null;
+          boarded_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          booking_id: string;
+          position: number;
+          full_name: string;
+          phone: string;
+          boarded_at?: string | null;
+          boarded_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          booking_id?: string;
+          position?: number;
+          full_name?: string;
+          phone?: string;
+          boarded_at?: string | null;
+          boarded_by?: string | null;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       [_ in never]: never;
@@ -952,6 +1087,33 @@ export type Database = {
           is_scanned: boolean;
           kind: string;
         }[];
+      };
+      submit_trip_booking: {
+        Args: {
+          p_trip_id: string;
+          p_package: string;
+          p_sender_phone: string;
+          p_payment_method: string;
+          p_receipt_path: string;
+          p_passengers: Json;
+        };
+        Returns: Json;
+      };
+      review_trip_booking: {
+        Args: { p_booking_id: string; p_status: string };
+        Returns: Json;
+      };
+      get_trip_pass: {
+        Args: { p_token: string };
+        Returns: Json;
+      };
+      scan_trip_pass: {
+        Args: { p_token: string };
+        Returns: Json;
+      };
+      board_trip_passengers: {
+        Args: { p_token: string; p_passenger_ids?: string[] | null };
+        Returns: Json;
       };
     };
     Enums: {

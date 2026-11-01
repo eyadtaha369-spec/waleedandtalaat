@@ -31,10 +31,13 @@ import { Route as AdminScanRouteImport } from './routes/admin/scan'
 import { Route as AdminSchedulesRouteImport } from './routes/admin/schedules'
 import { Route as AdminStudentAccountsRouteImport } from './routes/admin/student-accounts'
 import { Route as AdminStudentsRouteImport } from './routes/admin/students'
+import { Route as AdminTripsRouteImport } from './routes/admin/trips'
 import { Route as AdminUsersRouteImport } from './routes/admin/users'
 import { Route as GuestPassTokenRouteImport } from './routes/guest-pass/$token'
 import { Route as SupervisorCollectionsRouteImport } from './routes/supervisor/collections'
 import { Route as SupervisorStudentsRouteImport } from './routes/supervisor/students'
+import { Route as TripPassTokenRouteImport } from './routes/trip-pass/$token'
+import { Route as TripsSlugRouteImport } from './routes/trips_/$slug'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -146,6 +149,11 @@ const AdminStudentsRoute = AdminStudentsRouteImport.update({
   path: '/students',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminTripsRoute = AdminTripsRouteImport.update({
+  id: '/trips',
+  path: '/trips',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminUsersRoute = AdminUsersRouteImport.update({
   id: '/users',
   path: '/users',
@@ -164,6 +172,16 @@ const SupervisorCollectionsRoute = SupervisorCollectionsRouteImport.update({
 const SupervisorStudentsRoute = SupervisorStudentsRouteImport.update({
   id: '/supervisor/students',
   path: '/supervisor/students',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TripPassTokenRoute = TripPassTokenRouteImport.update({
+  id: '/trip-pass/$token',
+  path: '/trip-pass/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TripsSlugRoute = TripsSlugRouteImport.update({
+  id: '/trips_/$slug',
+  path: '/trips/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -189,10 +207,13 @@ export interface FileRoutesByFullPath {
   '/admin/schedules': typeof AdminSchedulesRoute
   '/admin/student-accounts': typeof AdminStudentAccountsRoute
   '/admin/students': typeof AdminStudentsRoute
+  '/admin/trips': typeof AdminTripsRoute
   '/admin/users': typeof AdminUsersRoute
   '/guest-pass/$token': typeof GuestPassTokenRoute
   '/supervisor/collections': typeof SupervisorCollectionsRoute
   '/supervisor/students': typeof SupervisorStudentsRoute
+  '/trip-pass/$token': typeof TripPassTokenRoute
+  '/trips/$slug': typeof TripsSlugRoute
   '/admin/': typeof AdminIndexRoute
 }
 export interface FileRoutesByTo {
@@ -216,10 +237,13 @@ export interface FileRoutesByTo {
   '/admin/schedules': typeof AdminSchedulesRoute
   '/admin/student-accounts': typeof AdminStudentAccountsRoute
   '/admin/students': typeof AdminStudentsRoute
+  '/admin/trips': typeof AdminTripsRoute
   '/admin/users': typeof AdminUsersRoute
   '/guest-pass/$token': typeof GuestPassTokenRoute
   '/supervisor/collections': typeof SupervisorCollectionsRoute
   '/supervisor/students': typeof SupervisorStudentsRoute
+  '/trip-pass/$token': typeof TripPassTokenRoute
+  '/trips/$slug': typeof TripsSlugRoute
   '/admin': typeof AdminIndexRoute
 }
 export interface FileRoutesById {
@@ -245,10 +269,13 @@ export interface FileRoutesById {
   '/admin/schedules': typeof AdminSchedulesRoute
   '/admin/student-accounts': typeof AdminStudentAccountsRoute
   '/admin/students': typeof AdminStudentsRoute
+  '/admin/trips': typeof AdminTripsRoute
   '/admin/users': typeof AdminUsersRoute
   '/guest-pass/$token': typeof GuestPassTokenRoute
   '/supervisor/collections': typeof SupervisorCollectionsRoute
   '/supervisor/students': typeof SupervisorStudentsRoute
+  '/trip-pass/$token': typeof TripPassTokenRoute
+  '/trips_/$slug': typeof TripsSlugRoute
   '/admin/': typeof AdminIndexRoute
 }
 export interface FileRouteTypes {
@@ -275,10 +302,13 @@ export interface FileRouteTypes {
     | '/admin/schedules'
     | '/admin/student-accounts'
     | '/admin/students'
+    | '/admin/trips'
     | '/admin/users'
     | '/guest-pass/$token'
     | '/supervisor/collections'
     | '/supervisor/students'
+    | '/trip-pass/$token'
+    | '/trips/$slug'
     | '/admin/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -302,10 +332,13 @@ export interface FileRouteTypes {
     | '/admin/schedules'
     | '/admin/student-accounts'
     | '/admin/students'
+    | '/admin/trips'
     | '/admin/users'
     | '/guest-pass/$token'
     | '/supervisor/collections'
     | '/supervisor/students'
+    | '/trip-pass/$token'
+    | '/trips/$slug'
     | '/admin'
   id:
     | '__root__'
@@ -330,10 +363,13 @@ export interface FileRouteTypes {
     | '/admin/schedules'
     | '/admin/student-accounts'
     | '/admin/students'
+    | '/admin/trips'
     | '/admin/users'
     | '/guest-pass/$token'
     | '/supervisor/collections'
     | '/supervisor/students'
+    | '/trip-pass/$token'
+    | '/trips_/$slug'
     | '/admin/'
   fileRoutesById: FileRoutesById
 }
@@ -352,6 +388,8 @@ export interface RootRouteChildren {
   GuestPassTokenRoute: typeof GuestPassTokenRoute
   SupervisorCollectionsRoute: typeof SupervisorCollectionsRoute
   SupervisorStudentsRoute: typeof SupervisorStudentsRoute
+  TripPassTokenRoute: typeof TripPassTokenRoute
+  TripsSlugRoute: typeof TripsSlugRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -510,6 +548,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminStudentsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/trips': {
+      id: '/admin/trips'
+      path: '/trips'
+      fullPath: '/admin/trips'
+      preLoaderRoute: typeof AdminTripsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/users': {
       id: '/admin/users'
       path: '/users'
@@ -538,6 +583,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SupervisorStudentsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/trip-pass/$token': {
+      id: '/trip-pass/$token'
+      path: '/trip-pass/$token'
+      fullPath: '/trip-pass/$token'
+      preLoaderRoute: typeof TripPassTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/trips_/$slug': {
+      id: '/trips_/$slug'
+      path: '/trips/$slug'
+      fullPath: '/trips/$slug'
+      preLoaderRoute: typeof TripsSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -552,6 +611,7 @@ interface AdminRouteChildren {
   AdminSchedulesRoute: typeof AdminSchedulesRoute
   AdminStudentAccountsRoute: typeof AdminStudentAccountsRoute
   AdminStudentsRoute: typeof AdminStudentsRoute
+  AdminTripsRoute: typeof AdminTripsRoute
   AdminUsersRoute: typeof AdminUsersRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
@@ -567,6 +627,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminSchedulesRoute: AdminSchedulesRoute,
   AdminStudentAccountsRoute: AdminStudentAccountsRoute,
   AdminStudentsRoute: AdminStudentsRoute,
+  AdminTripsRoute: AdminTripsRoute,
   AdminUsersRoute: AdminUsersRoute,
   AdminIndexRoute: AdminIndexRoute,
 }
@@ -588,6 +649,8 @@ const rootRouteChildren: RootRouteChildren = {
   GuestPassTokenRoute: GuestPassTokenRoute,
   SupervisorCollectionsRoute: SupervisorCollectionsRoute,
   SupervisorStudentsRoute: SupervisorStudentsRoute,
+  TripPassTokenRoute: TripPassTokenRoute,
+  TripsSlugRoute: TripsSlugRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -5,6 +5,7 @@ import {
   Bus,
   ClipboardList,
   MessageCircle,
+  Plane,
   ScanLine,
   ShieldCheck,
   Ticket,
@@ -210,6 +211,12 @@ function AdminConsole() {
           icon={Wallet}
           title={t("admin.collectionsAuditTitle")}
           description={t("admin.collectionsAuditDesc")}
+        />
+        <ShortcutCard
+          to="/admin/trips"
+          icon={Plane}
+          title={t("tourismAdmin.title")}
+          description={t("admin.tourismTripsDesc")}
         />
         <ShortcutCard
           to="/whatsapp-live"

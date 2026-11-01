@@ -14,11 +14,21 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ALL_SLOTS, MORNING_SLOTS, cairoNow, toDateKey } from "@/lib/schedule";
+import { ALL_SLOTS, MORNING_SLOTS, cairoNow, prettyDate, toDateKey } from "@/lib/schedule";
 import { edgeFunctionErrorMessage } from "@/lib/functionsError";
+import type { TripPackageType } from "@/lib/tourismTrips";
 import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useRoutes } from "@/hooks/useRoutes";
+
+type TripPassenger = { id: string; position: number; full_name: string; boarded: boolean };
+type TripScanResult = {
+  status: "booked" | "scanned_earlier";
+  package_type: TripPackageType;
+  title: string;
+  trip_date: string;
+  passengers: TripPassenger[];
+};
 
 const SCANNER_ELEMENT_ID = "wt-qr-scanner";
 
@@ -43,6 +53,9 @@ export function ScannerPanel() {
   const [dateOverride, setDateOverride] = useState<string>("");
   const [scanning, setScanning] = useState(false);
   const [result, setResult] = useState<ScanResult | null>(null);
+  const [tripResult, setTripResult] = useState<TripScanResult | null>(null);
+  const [tripToken, setTripToken] = useState<string | null>(null);
+  const [tripBoardingBusy, setTripBoardingBusy] = useState(false);
   const [scannedToday, setScannedToday] = useState<number | null>(null);
   const [overriding, setOverriding] = useState(false);
   const [walkInDialogOpen, setWalkInDialogOpen] = useState(false);
@@ -140,6 +153,20 @@ export function ScannerPanel() {
     if (lockRef.current) return;
     lockRef.current = true;
 
+    // Tourism trip passes are a bare "trip:<uuid>" string, not JSON —
+    // dispatch them to their own RPC before the student/guest/exam
+    // JSON-payload path below, which would otherwise throw on this.
+    if (decodedText.startsWith("trip:")) {
+      try {
+        await handleTripScan(decodedText.slice("trip:".length));
+      } finally {
+        setTimeout(() => {
+          lockRef.current = false;
+        }, 1500);
+      }
+      return;
+    }
+
     try {
       const payload = JSON.parse(decodedText) as {
         token?: string;
@@ -174,6 +201,7 @@ export function ScannerPanel() {
         return;
       }
 
+      setTripResult(null);
       setResult({
         status: data.status as ScanStatus,
         fullName: data.full_name,
@@ -209,6 +237,51 @@ export function ScannerPanel() {
       setTimeout(() => {
         lockRef.current = false;
       }, 1500);
+    }
+  };
+
+  const handleTripScan = async (token: string) => {
+    setTripToken(token);
+    const { data, error } = await supabase.rpc("scan_trip_pass", { p_token: token });
+    const payload = data as
+      | (TripScanResult & { kind: "trip" })
+      | { error: string; trip_date?: string; title?: string }
+      | null;
+    if (error || !payload || "error" in payload) {
+      const err = payload && "error" in payload ? payload : null;
+      const message =
+        err?.error === "Pass not valid today"
+          ? `${t("scanner.tripNotValidTodayPrefix")} ${err.trip_date ? prettyDate(err.trip_date) : ""} ${t("scanner.tripNotValidTodaySuffix")}`
+          : err?.error === "Booking not approved"
+            ? t("scanner.tripNotApproved")
+            : err?.error === "Pass not found"
+              ? t("scanner.tripNotFound")
+              : (error?.message ?? t("scanner.scanFailed"));
+      toast.error(message);
+      return;
+    }
+    setResult(null);
+    setTripResult(payload);
+  };
+
+  const boardTripPassengers = async (passengerIds: string[] | null) => {
+    if (!tripToken) return;
+    setTripBoardingBusy(true);
+    const { data, error } = await supabase.rpc("board_trip_passengers", {
+      p_token: tripToken,
+      p_passenger_ids: passengerIds,
+    });
+    setTripBoardingBusy(false);
+    if (error || (data as { error?: string } | null)?.error) {
+      toast.error(
+        (data as { error?: string } | null)?.error ?? error?.message ?? t("scanner.scanFailed"),
+      );
+      return;
+    }
+    const res = data as { ok: boolean; boarded_now: number; passengers: TripPassenger[] };
+    setTripResult((prev) => (prev ? { ...prev, passengers: res.passengers } : prev));
+    if (passengerIds === null) {
+      toast.success(`${t("scanner.tripBoardedNowPrefix")} ${res.boarded_now}`);
     }
   };
 
@@ -442,7 +515,15 @@ export function ScannerPanel() {
 
         <section className="rounded-3xl border border-border bg-card p-6">
           <h2 className="font-semibold">{t("scanner.lastScan")}</h2>
-          {!result ? (
+          {tripResult ? (
+            <TripResultCard
+              result={tripResult}
+              t={t}
+              busy={tripBoardingBusy}
+              onBoardAll={() => void boardTripPassengers(null)}
+              onBoardOne={(id) => void boardTripPassengers([id])}
+            />
+          ) : !result ? (
             <p className="mt-4 text-sm text-muted-foreground">{t("scanner.noScansYet")}</p>
           ) : (
             <ResultCard
@@ -583,6 +664,83 @@ function ResultCard({
           {overriding ? "…" : t("scanner.checkinAnyway")}
         </Button>
       )}
+    </div>
+  );
+}
+
+function TripResultCard({
+  result,
+  t,
+  busy,
+  onBoardAll,
+  onBoardOne,
+}: {
+  result: TripScanResult;
+  t: (key: string) => string;
+  busy: boolean;
+  onBoardAll: () => void;
+  onBoardOne: (id: string) => void;
+}) {
+  const isStandard = result.package_type === "standard";
+  const passengers = [...result.passengers].sort((a, b) => a.position - b.position);
+  return (
+    <div className="mt-4 space-y-3">
+      <div className="rounded-2xl border border-border p-5">
+        <p className="text-sm text-muted-foreground">
+          {result.title} · {prettyDate(result.trip_date)}
+        </p>
+        {isStandard ? (
+          <>
+            <p className="mt-2 text-lg font-bold">{passengers[0]?.full_name}</p>
+            <Badge
+              className={
+                result.status === "scanned_earlier"
+                  ? "bg-warning text-warning-foreground mt-2"
+                  : "bg-success text-success-foreground mt-2"
+              }
+            >
+              {result.status === "scanned_earlier" ? (
+                <>
+                  <ScanLine className="me-1 size-3.5" /> {t("scanner.scannedEarlier")}
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="me-1 size-3.5" /> {t("scanner.tripSingleConfirmed")}
+                </>
+              )}
+            </Badge>
+          </>
+        ) : (
+          <div className="mt-3 space-y-2">
+            <Button className="btn-gold w-full" disabled={busy} onClick={onBoardAll}>
+              <Users className="size-4" /> {t("scanner.tripBoardAll")}
+            </Button>
+            <ul className="divide-y divide-border">
+              {passengers.map((p) => (
+                <li key={p.id} className="flex items-center justify-between gap-3 py-2">
+                  <span className="text-sm font-medium">
+                    {p.position}. {p.full_name}
+                  </span>
+                  {p.boarded ? (
+                    <Badge className="bg-success text-success-foreground">
+                      <CheckCircle2 className="me-1 size-3.5" /> {t("scanner.tripBoarded")}
+                    </Badge>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={busy}
+                      onClick={() => onBoardOne(p.id)}
+                    >
+                      {t("scanner.tripBoardOne")}
+                    </Button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -64,6 +64,13 @@ function Index() {
                 </Button>
               </Link>
             </div>
+            <div className="mt-3">
+              <Link to="/trips/$slug" params={{ slug: "cairo-2026-11-21" }}>
+                <Button size="lg" className="btn-gold">
+                  {t("landing.tourismTripsCta")}
+                </Button>
+              </Link>
+            </div>
           </div>
           <div className="justify-self-center">
             <div className="border-gilded shadow-luxe rounded-3xl bg-white/5 p-8 backdrop-blur">

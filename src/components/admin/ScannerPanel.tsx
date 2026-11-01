@@ -1,12 +1,21 @@
 import { useEffect, useRef, useState } from "react";
 import { Html5Qrcode } from "html5-qrcode";
 import { toast } from "sonner";
-import { CheckCircle2, ScanLine, UserMinus, UserPlus, Users, XCircle } from "lucide-react";
+import {
+  CheckCircle2,
+  FlaskConical,
+  ScanLine,
+  UserMinus,
+  UserPlus,
+  Users,
+  XCircle,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { SmartAvatar } from "@/components/SmartAvatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
   DialogContent,
@@ -28,6 +37,7 @@ type TripScanResult = {
   title: string;
   trip_date: string;
   passengers: TripPassenger[];
+  test_mode: boolean;
 };
 
 const SCANNER_ELEMENT_ID = "wt-qr-scanner";
@@ -56,6 +66,10 @@ export function ScannerPanel() {
   const [tripResult, setTripResult] = useState<TripScanResult | null>(null);
   const [tripToken, setTripToken] = useState<string | null>(null);
   const [tripBoardingBusy, setTripBoardingBusy] = useState(false);
+  // Admin-only, defaults off on every load (never persisted) — see
+  // scan_trip_pass_test(), a read-only preview RPC that never writes
+  // boarded_at and ignores the trip-date guard.
+  const [testMode, setTestMode] = useState(false);
   const [scannedToday, setScannedToday] = useState<number | null>(null);
   const [overriding, setOverriding] = useState(false);
   const [walkInDialogOpen, setWalkInDialogOpen] = useState(false);
@@ -101,6 +115,12 @@ export function ScannerPanel() {
       void scannerRef.current?.stop().catch(() => {});
     };
   }, []);
+
+  // A real result must never carry the test badge and vice versa —
+  // toggling the switch always clears whatever trip card is showing.
+  useEffect(() => {
+    setTripResult(null);
+  }, [testMode]);
 
   const start = async () => {
     setResult(null);
@@ -242,9 +262,12 @@ export function ScannerPanel() {
 
   const handleTripScan = async (token: string) => {
     setTripToken(token);
-    const { data, error } = await supabase.rpc("scan_trip_pass", { p_token: token });
+    const { data, error } = await supabase.rpc(
+      testMode ? "scan_trip_pass_test" : "scan_trip_pass",
+      { p_token: token },
+    );
     const payload = data as
-      | (TripScanResult & { kind: "trip" })
+      | (Omit<TripScanResult, "test_mode"> & { kind: "trip"; test_mode?: boolean })
       | { error: string; trip_date?: string; title?: string }
       | null;
     if (error || !payload || "error" in payload) {
@@ -261,9 +284,13 @@ export function ScannerPanel() {
       return;
     }
     setResult(null);
-    setTripResult(payload);
+    // Trust our own flag over the server's echo, so a stale/missing
+    // field can never show a test result without its badge or vice
+    // versa — this is what the RPC we just called actually was.
+    setTripResult({ ...payload, test_mode: testMode });
   };
 
+  // Real boarding — never called while Test Scan Mode is on.
   const boardTripPassengers = async (passengerIds: string[] | null) => {
     if (!tripToken) return;
     setTripBoardingBusy(true);
@@ -283,6 +310,27 @@ export function ScannerPanel() {
     if (passengerIds === null) {
       toast.success(`${t("scanner.tripBoardedNowPrefix")} ${res.boarded_now}`);
     }
+  };
+
+  // Test Scan Mode boarding — purely local state, no DB write, so the
+  // demo flow matches the real one without ever calling board_trip_passengers.
+  const simulateBoardTripPassengers = (passengerIds: string[] | null) => {
+    setTripResult((prev) =>
+      prev
+        ? {
+            ...prev,
+            passengers: prev.passengers.map((p) =>
+              passengerIds === null || passengerIds.includes(p.id) ? { ...p, boarded: true } : p,
+            ),
+          }
+        : prev,
+    );
+  };
+
+  const resetTripTest = () => {
+    setTripResult((prev) =>
+      prev ? { ...prev, passengers: prev.passengers.map((p) => ({ ...p, boarded: false })) } : prev,
+    );
   };
 
   const handleOverride = async () => {
@@ -503,6 +551,20 @@ export function ScannerPanel() {
             </div>
           )}
 
+          {isAdmin && (
+            <div className="mt-3 flex items-center gap-3 rounded-xl border border-dashed border-border p-3">
+              <Switch checked={testMode} onCheckedChange={setTestMode} />
+              <span className="text-sm font-medium">{t("scanner.testModeSwitchLabel")}</span>
+            </div>
+          )}
+
+          {isAdmin && testMode && (
+            <div className="mt-3 flex items-center gap-2 rounded-xl border border-amber-400/40 bg-amber-500/10 p-3 text-amber-700 dark:text-amber-300">
+              <FlaskConical className="size-5 shrink-0" />
+              <p className="text-sm font-semibold">{t("scanner.testModeBanner")}</p>
+            </div>
+          )}
+
           <div className="mt-5 overflow-hidden rounded-2xl border border-dashed border-border bg-secondary/50">
             <div id={SCANNER_ELEMENT_ID} className="mx-auto aspect-square max-w-sm" />
             {!scanning && (
@@ -520,8 +582,17 @@ export function ScannerPanel() {
               result={tripResult}
               t={t}
               busy={tripBoardingBusy}
-              onBoardAll={() => void boardTripPassengers(null)}
-              onBoardOne={(id) => void boardTripPassengers([id])}
+              onBoardAll={() =>
+                tripResult.test_mode
+                  ? simulateBoardTripPassengers(null)
+                  : void boardTripPassengers(null)
+              }
+              onBoardOne={(id) =>
+                tripResult.test_mode
+                  ? simulateBoardTripPassengers([id])
+                  : void boardTripPassengers([id])
+              }
+              onResetTest={resetTripTest}
             />
           ) : !result ? (
             <p className="mt-4 text-sm text-muted-foreground">{t("scanner.noScansYet")}</p>
@@ -674,21 +745,30 @@ function TripResultCard({
   busy,
   onBoardAll,
   onBoardOne,
+  onResetTest,
 }: {
   result: TripScanResult;
   t: (key: string) => string;
   busy: boolean;
   onBoardAll: () => void;
   onBoardOne: (id: string) => void;
+  onResetTest: () => void;
 }) {
   const isStandard = result.package_type === "standard";
   const passengers = [...result.passengers].sort((a, b) => a.position - b.position);
   return (
     <div className="mt-4 space-y-3">
       <div className="rounded-2xl border border-border p-5">
-        <p className="text-sm text-muted-foreground">
-          {result.title} · {prettyDate(result.trip_date)}
-        </p>
+        <div className="flex items-start justify-between gap-2">
+          <p className="text-sm text-muted-foreground">
+            {result.title} · {prettyDate(result.trip_date)}
+          </p>
+          {result.test_mode && (
+            <Badge className="shrink-0 bg-amber-500 text-white">
+              <FlaskConical className="me-1 size-3.5" /> {t("scanner.testBadge")}
+            </Badge>
+          )}
+        </div>
         {isStandard ? (
           <>
             <p className="mt-2 text-lg font-bold">{passengers[0]?.full_name}</p>
@@ -712,9 +792,16 @@ function TripResultCard({
           </>
         ) : (
           <div className="mt-3 space-y-2">
-            <Button className="btn-gold w-full" disabled={busy} onClick={onBoardAll}>
-              <Users className="size-4" /> {t("scanner.tripBoardAll")}
-            </Button>
+            <div className="flex gap-2">
+              <Button className="btn-gold flex-1" disabled={busy} onClick={onBoardAll}>
+                <Users className="size-4" /> {t("scanner.tripBoardAll")}
+              </Button>
+              {result.test_mode && (
+                <Button variant="outline" disabled={busy} onClick={onResetTest}>
+                  {t("scanner.testResetButton")}
+                </Button>
+              )}
+            </div>
             <ul className="divide-y divide-border">
               {passengers.map((p) => (
                 <li key={p.id} className="flex items-center justify-between gap-3 py-2">

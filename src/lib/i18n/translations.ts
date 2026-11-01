@@ -729,6 +729,10 @@ export const translations: Record<Lang, Record<string, string>> = {
     "scanner.tripNotValidTodayPrefix": "هذه التذكرة صالحة ليوم",
     "scanner.tripNotValidTodaySuffix": "فقط",
     "scanner.tripBoardedNowPrefix": "تم تسجيل صعود",
+    "scanner.testModeSwitchLabel": "وضع تجربة المسح (Test Scan Mode)",
+    "scanner.testModeBanner": "وضع التجربة — لا يتم تسجيل أي صعود فعلي",
+    "scanner.testBadge": "تجربة",
+    "scanner.testResetButton": "إعادة ضبط التجربة",
   },
   en: {
     "nav.dashboard": "Dashboard",
@@ -1445,5 +1449,9 @@ export const translations: Record<Lang, Record<string, string>> = {
     "scanner.tripNotValidTodayPrefix": "هذه التذكرة صالحة ليوم",
     "scanner.tripNotValidTodaySuffix": "فقط",
     "scanner.tripBoardedNowPrefix": "تم تسجيل صعود",
+    "scanner.testModeSwitchLabel": "وضع تجربة المسح (Test Scan Mode)",
+    "scanner.testModeBanner": "وضع التجربة — لا يتم تسجيل أي صعود فعلي",
+    "scanner.testBadge": "تجربة",
+    "scanner.testResetButton": "إعادة ضبط التجربة",
   },
 };

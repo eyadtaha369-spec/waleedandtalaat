@@ -1111,6 +1111,10 @@ export type Database = {
         Args: { p_token: string };
         Returns: Json;
       };
+      scan_trip_pass_test: {
+        Args: { p_token: string };
+        Returns: Json;
+      };
       board_trip_passengers: {
         Args: { p_token: string; p_passenger_ids?: string[] | null };
         Returns: Json;

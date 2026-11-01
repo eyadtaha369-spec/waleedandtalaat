@@ -3,23 +3,17 @@ import type { Lang } from "@/lib/i18n/translations";
 export const CAIRO_TRIP_COVER = "/images/cairo-trip-cover.jpg";
 
 export type TripPackageType = "standard" | "friends";
-export type TripPaymentMethod = "instapay" | "vodafone_cash" | "etisalat_cash" | "orange_cash";
+export type TripPaymentMethod = "instapay" | "wallet";
 export type TripBookingStatus = "pending" | "approved" | "rejected";
 
-export const PAYMENT_METHODS: TripPaymentMethod[] = [
-  "instapay",
-  "vodafone_cash",
-  "etisalat_cash",
-  "orange_cash",
-];
+export const PAYMENT_METHODS: TripPaymentMethod[] = ["instapay", "wallet"];
 
-// Brand names — identical in Arabic and English, so these are plain
-// constants rather than translation keys.
+// Arabic-first labels with the English brand/service name in
+// parentheses — plain constants rather than translation keys, like
+// the rest of this module's payment-method naming.
 export const PAYMENT_METHOD_LABELS: Record<TripPaymentMethod, string> = {
-  instapay: "InstaPay",
-  vodafone_cash: "Vodafone Cash",
-  etisalat_cash: "Etisalat Cash",
-  orange_cash: "Orange Cash",
+  instapay: "إنستا باي (InstaPay)",
+  wallet: "محفظة إلكترونية (E-Wallet)",
 };
 
 // Mirrors submit_trip_booking()'s own word-count checks server-side —

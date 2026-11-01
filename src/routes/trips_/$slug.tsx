@@ -74,7 +74,7 @@ function TripBookingPage() {
     Array.from({ length: 5 }, () => ({ ...emptyPassenger })),
   );
   const [senderPhone, setSenderPhone] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState<TripPaymentMethod>("instapay");
+  const [paymentMethod, setPaymentMethod] = useState<TripPaymentMethod | "">("");
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
@@ -102,6 +102,10 @@ function TripBookingPage() {
     if (!trip) return;
     const passengers = packageType === "standard" ? [standardPassenger] : friendsPassengers;
 
+    if (!paymentMethod) {
+      toast.error(t("tourismTrip.choosePaymentMethodFirst"));
+      return;
+    }
     if (!receiptFile) {
       toast.error(t("tourismTrip.chooseReceiptFirst"));
       return;

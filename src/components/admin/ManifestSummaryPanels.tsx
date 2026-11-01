@@ -31,6 +31,7 @@ type MorningRouteRow = {
 const EARLY_RETURN_SLOT_LABELS: Record<string, string> = {
   "08:00 AM": "08:00 AM (Alexandria Mix)",
   "09:00 AM": "09:00 AM (Borg El-Arab)",
+  "10:00 AM": "10:00 AM (Alexandria Mix)",
 };
 
 function useManifestDate() {

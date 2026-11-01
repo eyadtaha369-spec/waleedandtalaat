@@ -49,3 +49,16 @@ export function subRouteOf(row: {
     ? "seyouf_mahmoudia"
     : "el_bahr";
 }
+
+// 10:00 AM is a second shared morning bus — same idea as the 08:00 AM
+// Alexandria Mix, but no sub-route split, and it only picks up from
+// Sheraton المندرة onward (خط البحر's own stops 1–6 aren't served by
+// this bus) plus the same 3 extra stops.
+export const TEN_AM_SLOT = "10:00 AM";
+export const TEN_AM_FIRST_STOP = "Sheraton المندرة";
+
+export function tenAmStops(elBahrStops: string[]): string[] {
+  const startIndex = elBahrStops.indexOf(TEN_AM_FIRST_STOP);
+  const fromFirstStop = startIndex === -1 ? elBahrStops : elBahrStops.slice(startIndex);
+  return [...fromFirstStop, ...ALEXANDRIA_MIX_EXTRA_STOPS];
+}

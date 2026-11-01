@@ -36,6 +36,8 @@ import {
   SUB_ROUTE_LABELS,
   SUB_ROUTE_SHORT,
   subRouteStops,
+  TEN_AM_SLOT,
+  tenAmStops,
 } from "@/lib/alexandriaMix";
 
 export const Route = createFileRoute("/dashboard")({
@@ -148,11 +150,19 @@ function Dashboard() {
   // student's own route, since every route's students booking 08:00 AM
   // ride this same shared bus.
   const isAlexandriaMixSlot = morningSlot === "08:00 AM";
+  const isTenAmSlot = morningSlot === TEN_AM_SLOT;
   const morningStopOptions = isAlexandriaMixSlot
     ? subRoute
       ? subRouteStops(subRoute, stopsByRoute[ALEXANDRIA_MIX_ROUTE] ?? [])
       : []
-    : stopsForMyRoute;
+    : isTenAmSlot
+      ? tenAmStops(stopsByRoute[ALEXANDRIA_MIX_ROUTE] ?? [])
+      : stopsForMyRoute;
+  // Shared by handleMorningSlotChange and the 08:00-closure fallback
+  // effect below to pick the new slot's first stop — never called for
+  // "08:00 AM" itself, which always resets to "" pending a sub-route.
+  const resetStopOptionsForSlot = (slot: string): string[] =>
+    slot === TEN_AM_SLOT ? tenAmStops(stopsByRoute[ALEXANDRIA_MIX_ROUTE] ?? []) : stopsForMyRoute;
   // Return trips drop students off in the reverse order the morning
   // pickup runs the route, so the return dropoff dropdown uses the
   // route's stop list reversed — distinct from stopsForMyRoute, which
@@ -307,15 +317,11 @@ function Dashboard() {
   const handleMorningSlotChange = (newSlot: string) => {
     setMorningSlot(newSlot);
     // The valid stop list depends on the slot (Alexandria Mix's extra
-    // stops only apply to 08:00 AM) — reset to the new list's first
-    // option so a student can't submit a stop that's no longer valid.
-    const isNewSlotAlexandriaMix = newSlot === "08:00 AM";
-    if (!isNewSlotAlexandriaMix) {
-      setSubRoute("");
-      setStop(stopsForMyRoute[0] ?? "");
-      return;
-    }
-    setStop("");
+    // stops only apply to 08:00 AM/10:00 AM) — reset to the new list's
+    // first option so a student can't submit a stop that's no longer
+    // valid. 08:00 AM has no stops yet until a sub-route is chosen.
+    setSubRoute("");
+    setStop(newSlot === "08:00 AM" ? "" : (resetStopOptionsForSlot(newSlot)[0] ?? ""));
   };
 
   const handleSubRouteChange = (newSubRoute: MorningSubRoute) => {
@@ -330,7 +336,7 @@ function Dashboard() {
       activeMorningSlots.find((s) => s !== "08:00 AM") ?? activeMorningSlots[0] ?? MORNING_SLOTS[0];
     setMorningSlot(fallbackSlot);
     setSubRoute("");
-    setStop(stopsForMyRoute[0] ?? "");
+    setStop(resetStopOptionsForSlot(fallbackSlot)[0] ?? "");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [closed0800, morningSlot, activeMorningSlots]);
 

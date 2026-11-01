@@ -20,6 +20,10 @@ import {
 type FleetRow = {
   route: string;
   morning_scans: number;
+  morning_6am: number;
+  morning_8am: number;
+  morning_9am: number;
+  morning_10am: number;
   early_return_passengers: number;
   remaining_for_4pm: number;
   recommended_bus: string;
@@ -49,6 +53,10 @@ export function FleetPanel() {
     const csv = Papa.unparse(
       rows.map((r) => ({
         Route: r.route,
+        "06:00 AM": r.morning_6am,
+        "08:00 AM": r.morning_8am,
+        "09:00 AM": r.morning_9am,
+        "10:00 AM": r.morning_10am,
         "Morning scans": r.morning_scans,
         "Early return passengers": r.early_return_passengers,
         "Remaining for 4PM": r.remaining_for_4pm,
@@ -88,6 +96,10 @@ export function FleetPanel() {
             <TableHeader>
               <TableRow>
                 <TableHead>{t("common.route")}</TableHead>
+                <TableHead>06:00 AM</TableHead>
+                <TableHead>08:00 AM</TableHead>
+                <TableHead>09:00 AM</TableHead>
+                <TableHead>10:00 AM</TableHead>
                 <TableHead>{t("fleet.morningScans")}</TableHead>
                 <TableHead>{t("fleet.earlyReturn")}</TableHead>
                 <TableHead>{t("fleet.remaining4pm")}</TableHead>
@@ -98,6 +110,10 @@ export function FleetPanel() {
               {rows.map((r) => (
                 <TableRow key={r.route}>
                   <TableCell className="font-medium">{r.route}</TableCell>
+                  <TableCell>{r.morning_6am}</TableCell>
+                  <TableCell>{r.morning_8am}</TableCell>
+                  <TableCell>{r.morning_9am}</TableCell>
+                  <TableCell>{r.morning_10am}</TableCell>
                   <TableCell>{r.morning_scans}</TableCell>
                   <TableCell>{r.early_return_passengers}</TableCell>
                   <TableCell>{r.remaining_for_4pm}</TableCell>

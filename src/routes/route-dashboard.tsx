@@ -27,6 +27,8 @@ import {
   SECOND_BUS_MIN_PASSENGERS,
   MorningSubRoute,
   subRouteOf,
+  TEN_AM_SLOT,
+  tenAmStops,
 } from "@/lib/alexandriaMix";
 
 export const Route = createFileRoute("/route-dashboard")({
@@ -61,6 +63,7 @@ const SLOT_OPTIONS = [
   { value: "06:00 AM", label: "06:00 AM" },
   { value: "08:00 AM", label: "08:00 AM (Alexandria Mix)" },
   { value: "09:00 AM", label: "09:00 AM (Borg El-Arab)" },
+  { value: "10:00 AM", label: "10:00 AM (Alexandria Mix)" },
   { value: "12:30 PM", label: "12:30 PM" },
   { value: "01:30 PM", label: "01:30 PM" },
   { value: "02:30 PM", label: "02:30 PM" },
@@ -138,6 +141,7 @@ function RouteDashboardPage() {
   // to keep showing every stop regardless of match. With the search box
   // empty, every stop shows, including empty ones.
   const isMixMode = slotFilter === ALEXANDRIA_MIX_SLOT;
+  const is10AmMode = slotFilter === TEN_AM_SLOT;
 
   const grouped = useMemo(() => {
     const isSearching = searchQuery.length > 0;
@@ -187,6 +191,39 @@ function RouteDashboardPage() {
       const result = new Map<string, Map<string, PassengerRow[]>>();
       if (elBahrCard.size > 0) result.set("__sub_el_bahr__", elBahrCard);
       if (seyoufCard.size > 0) result.set("__sub_seyouf__", seyoufCard);
+      return result;
+    }
+
+    // 10:00 AM is a second shared morning bus — everyone's riders in
+    // one card (no sub-route split), keyed on its own stop order with
+    // any stop outside that list (older data, or a pre-10:00 stop)
+    // folded into "محطات أخرى" rather than dropped.
+    if (slotFilter === TEN_AM_SLOT) {
+      const tenAmStopList = tenAmStops(stopsByRoute[ALEXANDRIA_MIX_ROUTE] ?? []);
+      const stopSet = new Set(tenAmStopList);
+      const map = new Map<string, PassengerRow[]>();
+      for (const stopName of tenAmStopList) map.set(stopName, []);
+      const otherStops: PassengerRow[] = [];
+
+      for (const r of filteredRows) {
+        if (!r.student_id && !r.full_name) continue;
+        const stopKey = r.pickup_stop ?? "—";
+        if (stopSet.has(stopKey)) {
+          map.get(stopKey)!.push(r);
+        } else {
+          otherStops.push(r);
+        }
+      }
+
+      const stopsResult = new Map<string, PassengerRow[]>();
+      for (const [stopName, passengers] of map) {
+        if (isSearching && passengers.length === 0) continue;
+        stopsResult.set(stopName, passengers);
+      }
+      if (otherStops.length > 0) stopsResult.set(OTHER_STOPS_KEY, otherStops);
+
+      const result = new Map<string, Map<string, PassengerRow[]>>();
+      if (stopsResult.size > 0) result.set("__ten_am__", stopsResult);
       return result;
     }
 
@@ -240,6 +277,16 @@ function RouteDashboardPage() {
     }
     return { elBahr, seyouf, total: elBahr + seyouf };
   }, [isMixMode, rows]);
+
+  const tenAmBannerTotal = useMemo(() => {
+    if (!is10AmMode) return null;
+    let total = 0;
+    for (const r of rows) {
+      if (!r.student_id && !r.full_name) continue;
+      total++;
+    }
+    return total;
+  }, [is10AmMode, rows]);
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-8">
@@ -404,6 +451,15 @@ function RouteDashboardPage() {
           </div>
         )}
 
+        {is10AmMode && tenAmBannerTotal !== null && (
+          <div className="mb-4 flex items-center gap-2 rounded-2xl border border-dashed border-border p-4 text-sm">
+            <Users className="size-4 text-muted-foreground" />
+            <span>
+              {t("routeDash.tenAmTotalLabel")}: {tenAmBannerTotal}
+            </span>
+          </div>
+        )}
+
         {loading || routesLoading ? (
           <p className="mt-4 text-sm text-muted-foreground">{t("common.loading")}</p>
         ) : grouped.size === 0 ? (
@@ -414,16 +470,18 @@ function RouteDashboardPage() {
               const cardTotal = [...stops.values()].reduce((sum, arr) => sum + arr.length, 0);
               return (
                 <div key={routeName}>
-                  {(isMixMode || (routeFilter === "all" && isAdmin)) && (
+                  {(isMixMode || is10AmMode || (routeFilter === "all" && isAdmin)) && (
                     <div className="mb-2 flex items-center gap-2">
                       <p className="text-sm font-semibold text-muted-foreground">
                         {isMixMode
                           ? routeName === "__sub_el_bahr__"
                             ? t("routeDash.subRouteElBahrTitle")
                             : t("routeDash.subRouteSeyoufTitle")
-                          : routeName}
+                          : is10AmMode
+                            ? t("routeDash.tenAmCardTitle")
+                            : routeName}
                       </p>
-                      {isMixMode && (
+                      {(isMixMode || is10AmMode) && (
                         <Badge className="btn-gold">
                           {cardTotal} {t("routeDash.passengers")}
                         </Badge>
@@ -475,7 +533,7 @@ function RouteDashboardPage() {
                                       <p className="text-sm font-medium">{p.full_name}</p>
                                       <p className="text-xs text-muted-foreground">
                                         {p.phone ?? "—"} · {displayStopName}
-                                        {isMixMode && ` · ${p.route ?? "—"}`}
+                                        {(isMixMode || is10AmMode) && ` · ${p.route ?? "—"}`}
                                       </p>
                                       {p.source === "daily_pass" && (
                                         <p className="mt-1 text-xs">

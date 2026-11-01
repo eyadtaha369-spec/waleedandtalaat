@@ -681,10 +681,14 @@ export type Database = {
         Returns: {
           route: string;
           morning_scans: number;
+          morning_6am: number;
+          morning_8am: number;
+          morning_9am: number;
           early_return_passengers: number;
           opted_out_count: number;
           remaining_for_4pm: number;
           recommended_bus: string;
+          morning_10am: number;
         }[];
       };
       list_staff_users: {

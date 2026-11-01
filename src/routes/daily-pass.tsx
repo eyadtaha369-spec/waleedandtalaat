@@ -19,6 +19,8 @@ import {
   SUB_ROUTE_LABELS,
   SUB_ROUTE_SHORT,
   subRouteStops,
+  TEN_AM_SLOT,
+  tenAmStops,
 } from "@/lib/alexandriaMix";
 
 export const Route = createFileRoute("/daily-pass")({
@@ -96,11 +98,14 @@ function DailyPass() {
     sub_route: "" as MorningSubRoute | "",
   });
   const isMorningMixSlot = form.slot === "08:00 AM";
+  const isTenAmSlot = form.slot === TEN_AM_SLOT;
   const morningPickupStopOptions = isMorningMixSlot
     ? form.sub_route
       ? subRouteStops(form.sub_route, stopsByRoute[ALEXANDRIA_MIX_ROUTE] ?? [])
       : []
-    : (stopsByRoute[form.route] ?? []);
+    : isTenAmSlot
+      ? tenAmStops(stopsByRoute[ALEXANDRIA_MIX_ROUTE] ?? [])
+      : (stopsByRoute[form.route] ?? []);
   const [tripType, setTripType] = useState<TripType>("one_way");
   const [returnSlot, setReturnSlot] = useState<string>(RETURN_SLOT_CHOICES[0]!);
   const [returnSector, setReturnSector] = useState<EarlyReturnSector | "">("");
@@ -318,9 +323,10 @@ function DailyPass() {
                     setForm({
                       ...form,
                       route: e.target.value,
-                      pickup_stop: isMorningMixSlot
-                        ? form.pickup_stop
-                        : (stopsByRoute[e.target.value]?.[0] ?? ""),
+                      pickup_stop:
+                        isMorningMixSlot || isTenAmSlot
+                          ? form.pickup_stop
+                          : (stopsByRoute[e.target.value]?.[0] ?? ""),
                     })
                   }
                 >
@@ -391,11 +397,16 @@ function DailyPass() {
                     onChange={(e) => {
                       const newSlot = e.target.value;
                       const isNewSlotMix = newSlot === "08:00 AM";
+                      const isNewSlotTenAm = newSlot === TEN_AM_SLOT;
                       setForm({
                         ...form,
                         slot: newSlot,
                         sub_route: "",
-                        pickup_stop: isNewSlotMix ? "" : (stopsByRoute[form.route]?.[0] ?? ""),
+                        pickup_stop: isNewSlotMix
+                          ? ""
+                          : isNewSlotTenAm
+                            ? (tenAmStops(stopsByRoute[ALEXANDRIA_MIX_ROUTE] ?? [])[0] ?? "")
+                            : (stopsByRoute[form.route]?.[0] ?? ""),
                       });
                     }}
                   >

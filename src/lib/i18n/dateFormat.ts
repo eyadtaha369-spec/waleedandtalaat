@@ -14,6 +14,7 @@ export function formatLocalizedDate(isoDate: string, lang: Lang): string {
 const SLOT_LABELS_AR: Record<string, string> = {
   "06:00 AM": "6:00 صباحاً",
   "08:00 AM": "8:00 صباحاً",
+  "10:00 AM": "10:00 صباحاً",
   "12:30 PM": "12:30 ظهراً",
   "01:30 PM": "1:30 عصراً",
   "02:30 PM": "2:30 عصراً",

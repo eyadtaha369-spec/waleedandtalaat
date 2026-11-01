@@ -1,10 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState } from "react";
 import { BusFront, QrCode, ShieldCheck, Ticket } from "lucide-react";
 import { Logo } from "@/components/Brand";
 import { Button } from "@/components/ui/button";
 import { MORNING_SLOTS, RETURN_SLOTS } from "@/lib/schedule";
 import { useLanguage } from "@/hooks/useLanguage";
 import { formatSlotLabel } from "@/lib/i18n/dateFormat";
+import { CAIRO_TRIP_COVER, formatTripDate } from "@/lib/tourismTrips";
+
+const CAIRO_TRIP_DATE = "2026-11-21";
+const CAIRO_TRIP_PRICE = 300;
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -27,6 +32,7 @@ export const Route = createFileRoute("/")({
 
 function Index() {
   const { t, lang } = useLanguage();
+  const [tripBannerLoaded, setTripBannerLoaded] = useState(false);
 
   const features = [
     { icon: Ticket, title: t("landing.feature1Title"), body: t("landing.feature1Body") },
@@ -64,13 +70,6 @@ function Index() {
                 </Button>
               </Link>
             </div>
-            <div className="mt-3">
-              <Link to="/trips/$slug" params={{ slug: "cairo-2026-11-21" }}>
-                <Button size="lg" className="btn-gold">
-                  {t("landing.tourismTripsCta")}
-                </Button>
-              </Link>
-            </div>
           </div>
           <div className="justify-self-center">
             <div className="border-gilded shadow-luxe rounded-3xl bg-white/5 p-8 backdrop-blur">
@@ -89,6 +88,37 @@ function Index() {
             </div>
           </div>
         </div>
+      </section>
+
+      <section className="mx-auto max-w-6xl px-4 pt-8">
+        <Link
+          to="/trips/$slug"
+          params={{ slug: "cairo-2026-11-21" }}
+          className="relative block h-40 overflow-hidden rounded-3xl bg-muted sm:h-48"
+        >
+          <img
+            src={CAIRO_TRIP_COVER}
+            alt="رحلة القاهرة"
+            fetchPriority="high"
+            onLoad={() => setTripBannerLoaded(true)}
+            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ${
+              tripBannerLoaded ? "opacity-100" : "opacity-0"
+            }`}
+            style={{ objectPosition: "center 60%" }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+          <div className="absolute inset-0 flex flex-col items-start justify-end gap-2 p-5 text-white">
+            <p className="text-lg font-bold drop-shadow-lg sm:text-xl">
+              {t("landing.tourismTripsCta")}
+            </p>
+            <p className="text-sm font-medium opacity-90 drop-shadow-lg">
+              {formatTripDate(CAIRO_TRIP_DATE, lang)} · {CAIRO_TRIP_PRICE} {t("common.egp")}
+            </p>
+            <span className="btn-gold mt-1 inline-block rounded-full px-4 py-1.5 text-xs font-semibold">
+              {t("landing.tourismTripsBookNow")}
+            </span>
+          </div>
+        </Link>
       </section>
 
       <section className="mx-auto max-w-6xl px-4 py-16">

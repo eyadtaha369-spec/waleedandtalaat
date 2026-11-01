@@ -4,7 +4,6 @@ import { toast } from "sonner";
 import { CheckCircle2, Hourglass } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/hooks/useLanguage";
-import { Logo } from "@/components/Brand";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,6 +17,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  CAIRO_TRIP_COVER,
   EGYPT_MOBILE_REGEX,
   LEAD_NAME_MIN_WORDS,
   OTHER_NAME_MIN_WORDS,
@@ -35,6 +35,9 @@ export const Route = createFileRoute("/trips_/$slug")({
     meta: [
       { title: "رحلات سياحية — Waleed & Talaat" },
       { name: "description", content: "احجز مكانك في رحلاتنا السياحية." },
+      { property: "og:title", content: "رحلات سياحية — Waleed & Talaat" },
+      { property: "og:description", content: "احجز مكانك في رحلاتنا السياحية." },
+      { property: "og:image", content: CAIRO_TRIP_COVER },
     ],
   }),
   component: TripBookingPage,
@@ -75,6 +78,7 @@ function TripBookingPage() {
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
+  const [heroLoaded, setHeroLoaded] = useState(false);
 
   useEffect(() => {
     void supabase
@@ -180,17 +184,34 @@ function TripBookingPage() {
 
   return (
     <main className="min-h-[calc(100vh-64px)]">
-      <section className="surface-navy relative overflow-hidden">
-        <div className="absolute -end-24 -top-24 size-96 rounded-full bg-[var(--gold)] opacity-15 blur-3xl" />
-        <div className="relative mx-auto max-w-2xl px-4 py-14 text-center">
-          <Logo size={64} />
-          <h1 className="mt-4 text-3xl font-bold">{trip.title}</h1>
-          {trip.subtitle && <p className="mt-2 text-sm opacity-80">{trip.subtitle}</p>}
-          <p className="mt-3 text-sm font-semibold tracking-wide opacity-90">
-            {formatTripDate(trip.trip_date, lang)}
-          </p>
+      <div className="mx-auto max-w-2xl px-4 pt-6">
+        <div className="relative aspect-[4/3] overflow-hidden rounded-3xl bg-muted sm:aspect-[16/9]">
+          <img
+            src={CAIRO_TRIP_COVER}
+            alt="رحلة القاهرة"
+            fetchPriority="high"
+            onLoad={() => setHeroLoaded(true)}
+            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ${
+              heroLoaded ? "opacity-100" : "opacity-0"
+            }`}
+            style={{ objectPosition: "center 60%" }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+          <div className="absolute inset-x-0 bottom-0 p-5 text-white">
+            <h1 className="text-2xl font-bold drop-shadow-lg sm:text-3xl">{trip.title}</h1>
+            {trip.subtitle && (
+              <p className="mt-1 text-sm opacity-90 drop-shadow-lg">{trip.subtitle}</p>
+            )}
+            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-semibold drop-shadow-lg">
+              <span>{formatTripDate(trip.trip_date, lang)}</span>
+              <span className="opacity-60">•</span>
+              <span>
+                {trip.price_per_person} {t("common.egp")}
+              </span>
+            </div>
+          </div>
         </div>
-      </section>
+      </div>
 
       <div className="mx-auto max-w-2xl px-4 py-8">
         {sent ? (

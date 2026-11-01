@@ -1,5 +1,7 @@
 import type { Lang } from "@/lib/i18n/translations";
 
+export const CAIRO_TRIP_COVER = "/images/cairo-trip-cover.jpg";
+
 export type TripPackageType = "standard" | "friends";
 export type TripPaymentMethod = "instapay" | "vodafone_cash" | "etisalat_cash" | "orange_cash";
 export type TripBookingStatus = "pending" | "approved" | "rejected";

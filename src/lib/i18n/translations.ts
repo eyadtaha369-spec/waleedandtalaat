@@ -617,6 +617,7 @@ export const translations: Record<Lang, Record<string, string>> = {
 
     // Tourism Trips — public
     "landing.tourismTripsCta": "🚌 حجز الرحلات السياحية | رحلة القاهرة",
+    "landing.tourismTripsBookNow": "احجز الآن",
     "tourismTrip.notFound": "الرحلة غير متاحة حالياً",
     "tourismTrip.perPerson": "للفرد",
     "tourismTrip.termsTitle": "الشروط والأحكام",
@@ -1327,6 +1328,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     // customer base is Arabic-speaking), so the English block reuses
     // the same Arabic strings rather than real translations.
     "landing.tourismTripsCta": "🚌 حجز الرحلات السياحية | رحلة القاهرة",
+    "landing.tourismTripsBookNow": "احجز الآن",
     "tourismTrip.notFound": "الرحلة غير متاحة حالياً",
     "tourismTrip.perPerson": "للفرد",
     "tourismTrip.termsTitle": "الشروط والأحكام",

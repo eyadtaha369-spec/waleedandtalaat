@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { BusFront, QrCode, ShieldCheck, Ticket } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import { Logo } from "@/components/Brand";
 import { Button } from "@/components/ui/button";
 import { MORNING_SLOTS, RETURN_SLOTS } from "@/lib/schedule";
@@ -8,8 +9,9 @@ import { useLanguage } from "@/hooks/useLanguage";
 import { formatSlotLabel } from "@/lib/i18n/dateFormat";
 import { CAIRO_TRIP_COVER, formatTripDate } from "@/lib/tourismTrips";
 
-const CAIRO_TRIP_DATE = "2026-11-21";
-const CAIRO_TRIP_PRICE = 300;
+const CAIRO_TRIP_SLUG = "cairo-2026-11-21";
+
+type CairoTripBanner = { trip_date: string; price_per_person: number };
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -33,6 +35,17 @@ export const Route = createFileRoute("/")({
 function Index() {
   const { t, lang } = useLanguage();
   const [tripBannerLoaded, setTripBannerLoaded] = useState(false);
+  const [cairoTrip, setCairoTrip] = useState<CairoTripBanner | null>(null);
+
+  useEffect(() => {
+    void supabase
+      .from("tourism_trips")
+      .select("trip_date,price_per_person")
+      .eq("slug", CAIRO_TRIP_SLUG)
+      .eq("is_active", true)
+      .maybeSingle()
+      .then(({ data }) => setCairoTrip((data as CairoTripBanner | null) ?? null));
+  }, []);
 
   const features = [
     { icon: Ticket, title: t("landing.feature1Title"), body: t("landing.feature1Body") },
@@ -111,9 +124,12 @@ function Index() {
             <p className="text-lg font-bold drop-shadow-lg sm:text-xl">
               {t("landing.tourismTripsCta")}
             </p>
-            <p className="text-sm font-medium opacity-90 drop-shadow-lg">
-              {formatTripDate(CAIRO_TRIP_DATE, lang)} · {CAIRO_TRIP_PRICE} {t("common.egp")}
-            </p>
+            {cairoTrip && (
+              <p className="text-sm font-medium opacity-90 drop-shadow-lg">
+                {formatTripDate(cairoTrip.trip_date, lang)} · {Number(cairoTrip.price_per_person)}{" "}
+                {t("common.egp")}
+              </p>
+            )}
             <span className="btn-gold mt-1 inline-block rounded-full px-4 py-1.5 text-xs font-semibold">
               {t("landing.tourismTripsBookNow")}
             </span>

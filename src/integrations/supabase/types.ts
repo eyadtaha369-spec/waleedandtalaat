@@ -508,6 +508,7 @@ export type Database = {
           payment_instructions: string | null;
           terms: string[];
           is_active: boolean;
+          is_friends_offer_active: boolean;
           created_at: string;
         };
         Insert: {
@@ -522,6 +523,7 @@ export type Database = {
           payment_instructions?: string | null;
           terms?: string[];
           is_active?: boolean;
+          is_friends_offer_active?: boolean;
           created_at?: string;
         };
         Update: {
@@ -536,6 +538,7 @@ export type Database = {
           payment_instructions?: string | null;
           terms?: string[];
           is_active?: boolean;
+          is_friends_offer_active?: boolean;
           created_at?: string;
         };
         Relationships: [];

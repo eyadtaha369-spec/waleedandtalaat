@@ -35,6 +35,7 @@ type TripRow = {
   payment_instructions: string | null;
   terms: string[];
   is_active: boolean;
+  is_friends_offer_active: boolean;
 };
 
 type TripPassengerRow = {
@@ -88,7 +89,7 @@ export function TripsAdminPanel() {
   const loadTrip = async () => {
     const { data } = await supabase
       .from("tourism_trips")
-      .select("id,title,trip_date,payment_instructions,terms,is_active")
+      .select("id,title,trip_date,payment_instructions,terms,is_active,is_friends_offer_active")
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -297,6 +298,13 @@ export function TripsAdminPanel() {
             <Switch checked={isActive} onCheckedChange={setIsActive} />
             <Label>{t("tourismAdmin.isActiveLabel")}</Label>
           </div>
+          <FriendsOfferToggle
+            tripId={trip.id}
+            value={trip.is_friends_offer_active}
+            onChange={(next) =>
+              setTrip((prev) => (prev ? { ...prev, is_friends_offer_active: next } : prev))
+            }
+          />
           <Button className="btn-gold" disabled={settingsBusy} onClick={() => void saveSettings()}>
             {t("tourismAdmin.saveSettings")}
           </Button>
@@ -643,6 +651,54 @@ function StandardRow({
           {t("tourismAdmin.sendWhatsapp")}
         </Button>
       )}
+    </div>
+  );
+}
+
+// Saves immediately on toggle rather than through the settings card's
+// "save" button — the admin shouldn't have to remember to hit Save to
+// make the public booking page react.
+function FriendsOfferToggle({
+  tripId,
+  value,
+  onChange,
+}: {
+  tripId: string;
+  value: boolean;
+  onChange: (next: boolean) => void;
+}) {
+  const { t } = useLanguage();
+  const [busy, setBusy] = useState(false);
+
+  const toggle = async (next: boolean) => {
+    setBusy(true);
+    onChange(next);
+    const { error } = await supabase
+      .from("tourism_trips")
+      .update({ is_friends_offer_active: next })
+      .eq("id", tripId);
+    setBusy(false);
+    if (error) {
+      onChange(!next);
+      toast.error(error.message);
+      return;
+    }
+    toast.success(
+      next
+        ? t("tourismAdmin.friendsOfferEnabledToast")
+        : t("tourismAdmin.friendsOfferDisabledToast"),
+    );
+  };
+
+  return (
+    <div className="flex items-center gap-3">
+      <Switch checked={value} disabled={busy} onCheckedChange={(next) => void toggle(next)} />
+      <div>
+        <Label>{t("tourismAdmin.friendsOfferToggleLabel")}</Label>
+        <p className="text-xs text-muted-foreground">
+          {t("tourismAdmin.friendsOfferToggleHelper")}
+        </p>
+      </div>
     </div>
   );
 }

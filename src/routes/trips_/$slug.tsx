@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { CheckCircle2, Hourglass } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -54,11 +54,17 @@ type TripRow = {
   friends_group_size: number;
   payment_instructions: string | null;
   terms: string[];
+  is_friends_offer_active: boolean;
 };
 
 type PassengerForm = { fullName: string; phone: string };
 
 const emptyPassenger: PassengerForm = { fullName: "", phone: "" };
+
+// Mirrors submit_trip_booking()'s own rejection message so a stale tab
+// (admin turned the offer off while the page was open) can be told
+// apart from any other server error.
+const FRIENDS_OFFER_UNAVAILABLE_MESSAGE = "عرض الصحاب غير متاح حالياً";
 
 function TripBookingPage() {
   const { t, lang } = useLanguage();
@@ -80,17 +86,34 @@ function TripBookingPage() {
   const [sent, setSent] = useState(false);
   const [heroLoaded, setHeroLoaded] = useState(false);
 
-  useEffect(() => {
-    void supabase
+  const fetchTrip = useCallback(async () => {
+    const { data } = await supabase
       .from("tourism_trips")
       .select(
-        "id,slug,title,subtitle,trip_date,price_per_person,friends_price,friends_group_size,payment_instructions,terms",
+        "id,slug,title,subtitle,trip_date,price_per_person,friends_price,friends_group_size,payment_instructions,terms,is_friends_offer_active",
       )
       .eq("slug", slug)
       .eq("is_active", true)
-      .maybeSingle()
-      .then(({ data }) => setTrip((data as TripRow | null) ?? null));
+      .maybeSingle();
+    setTrip((data as TripRow | null) ?? null);
   }, [slug]);
+
+  useEffect(() => {
+    void fetchTrip();
+  }, [fetchTrip]);
+
+  // Keep the Friends Offer in sync with the admin's live toggle — a tab
+  // left open shouldn't keep showing (or let someone submit) a package
+  // the admin has since turned off, without a manual reload.
+  useEffect(() => {
+    const onFocus = () => void fetchTrip();
+    window.addEventListener("focus", onFocus);
+    const interval = setInterval(() => void fetchTrip(), 60_000);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      clearInterval(interval);
+    };
+  }, [fetchTrip]);
 
   const updateFriendPassenger = (index: number, field: keyof PassengerForm, value: string) => {
     setFriendsPassengers((prev) =>
@@ -100,7 +123,14 @@ function TripBookingPage() {
 
   const submit = async () => {
     if (!trip) return;
-    const passengers = packageType === "standard" ? [standardPassenger] : friendsPassengers;
+    // Never submit "friends" once the offer is off, even if stale UI
+    // state somehow still says otherwise — the server enforces this
+    // too, but there's no reason to rely on that alone.
+    const effectivePackageType: TripPackageType = trip.is_friends_offer_active
+      ? packageType
+      : "standard";
+    const passengers =
+      effectivePackageType === "standard" ? [standardPassenger] : friendsPassengers;
 
     if (!paymentMethod) {
       toast.error(t("tourismTrip.choosePaymentMethodFirst"));
@@ -150,7 +180,7 @@ function TripBookingPage() {
 
     const { error } = await supabase.rpc("submit_trip_booking", {
       p_trip_id: trip.id,
-      p_package: packageType,
+      p_package: effectivePackageType,
       p_sender_phone: normalizeDigits(senderPhone),
       p_payment_method: paymentMethod,
       p_receipt_path: path,
@@ -161,6 +191,12 @@ function TripBookingPage() {
     });
     setBusy(false);
     if (error) {
+      if (error.message === FRIENDS_OFFER_UNAVAILABLE_MESSAGE) {
+        toast.error(error.message);
+        setPackageType("standard");
+        void fetchTrip();
+        return;
+      }
       toast.error(error.message || t("tourismTrip.errorGeneric"));
       return;
     }
@@ -185,6 +221,12 @@ function TripBookingPage() {
       </main>
     );
   }
+
+  const friendsOfferActive = trip.is_friends_offer_active;
+  const effectivePackageType: TripPackageType = friendsOfferActive ? packageType : "standard";
+  const visibleTerms = friendsOfferActive
+    ? trip.terms
+    : trip.terms.filter((term) => !term.includes("الصحاب"));
 
   return (
     <main className="min-h-[calc(100vh-64px)]">
@@ -226,41 +268,43 @@ function TripBookingPage() {
           </div>
         ) : (
           <div className="shadow-luxe space-y-5 rounded-3xl bg-card p-6 text-card-foreground">
-            <div className="space-y-2">
-              <Label>{t("tourismTrip.packageTitle")}</Label>
-              <RadioGroup
-                value={packageType}
-                onValueChange={(v) => setPackageType(v as TripPackageType)}
-                className="grid gap-3"
-              >
-                <label
-                  className={`flex cursor-pointer items-center gap-3 rounded-2xl border p-4 ${
-                    packageType === "standard" ? "border-accent bg-accent/5" : "border-border"
-                  }`}
+            {friendsOfferActive && (
+              <div className="space-y-2">
+                <Label>{t("tourismTrip.packageTitle")}</Label>
+                <RadioGroup
+                  value={packageType}
+                  onValueChange={(v) => setPackageType(v as TripPackageType)}
+                  className="grid gap-3"
                 >
-                  <RadioGroupItem value="standard" />
-                  <span className="font-semibold">
-                    {t("tourismTrip.packageStandardTitle")} - {trip.price_per_person}{" "}
-                    {t("common.egp")}
-                  </span>
-                </label>
-                <label
-                  className={`flex cursor-pointer items-center gap-3 rounded-2xl border p-4 ${
-                    packageType === "friends" ? "border-accent bg-accent/5" : "border-border"
-                  }`}
-                >
-                  <RadioGroupItem value="friends" />
-                  <span className="font-semibold">
-                    {t("tourismTrip.packageFriendsTitle")} -{" "}
-                    {t("tourismTrip.packageFriendsTotalPrefix")} {trip.friends_price}{" "}
-                    {t("common.egp")} {t("tourismTrip.packageFriendsForLabel")}{" "}
-                    {trip.friends_group_size} {t("tourismTrip.packageFriendsTotalSuffix")}
-                  </span>
-                </label>
-              </RadioGroup>
-            </div>
+                  <label
+                    className={`flex cursor-pointer items-center gap-3 rounded-2xl border p-4 ${
+                      packageType === "standard" ? "border-accent bg-accent/5" : "border-border"
+                    }`}
+                  >
+                    <RadioGroupItem value="standard" />
+                    <span className="font-semibold">
+                      {t("tourismTrip.packageStandardTitle")} - {trip.price_per_person}{" "}
+                      {t("common.egp")}
+                    </span>
+                  </label>
+                  <label
+                    className={`flex cursor-pointer items-center gap-3 rounded-2xl border p-4 ${
+                      packageType === "friends" ? "border-accent bg-accent/5" : "border-border"
+                    }`}
+                  >
+                    <RadioGroupItem value="friends" />
+                    <span className="font-semibold">
+                      {t("tourismTrip.packageFriendsTitle")} -{" "}
+                      {t("tourismTrip.packageFriendsTotalPrefix")} {trip.friends_price}{" "}
+                      {t("common.egp")} {t("tourismTrip.packageFriendsForLabel")}{" "}
+                      {trip.friends_group_size} {t("tourismTrip.packageFriendsTotalSuffix")}
+                    </span>
+                  </label>
+                </RadioGroup>
+              </div>
+            )}
 
-            {packageType === "standard" ? (
+            {effectivePackageType === "standard" ? (
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label>{t("tourismTrip.fullNameLabel")}</Label>
@@ -386,7 +430,7 @@ function TripBookingPage() {
             <DialogTitle>{t("tourismTrip.termsTitle")}</DialogTitle>
           </DialogHeader>
           <ul className="max-h-64 space-y-2 overflow-y-auto text-sm">
-            {trip.terms.map((term, i) => (
+            {visibleTerms.map((term, i) => (
               <li key={i} className="flex gap-2">
                 <span>•</span>
                 <span>{term}</span>

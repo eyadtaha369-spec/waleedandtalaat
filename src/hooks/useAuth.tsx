@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { removeCurrentPushSubscription } from "@/lib/push";
 
 export type Profile = {
   id: string;
@@ -92,6 +93,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loading: !sessionResolved || profileLoading,
     refresh: async () => load(session?.user?.id),
     signOut: async () => {
+      // Best-effort — a shared-phone's next student shouldn't keep
+      // getting this one's reminders, but a failure here must never
+      // block the actual sign-out.
+      await removeCurrentPushSubscription().catch(() => undefined);
       await supabase.auth.signOut({ scope: "local" });
       setProfile(null);
       setRoles([]);

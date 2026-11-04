@@ -14,6 +14,7 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AuthProvider } from "@/hooks/useAuth";
 import { LanguageProvider } from "@/hooks/useLanguage";
 import { AppHeader } from "@/components/Brand";
+import { PushPermissionModal } from "@/components/PushPermissionModal";
 import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
@@ -142,6 +143,7 @@ function RootComponent() {
           <AppHeader />
           {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
           <Outlet />
+          <PushPermissionModal />
           <Toaster position="top-center" richColors />
         </AuthProvider>
       </LanguageProvider>

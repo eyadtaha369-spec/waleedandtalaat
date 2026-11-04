@@ -1,1 +1,4 @@
 project_id = "xnpdrampegqxwxgwhgvt"
+
+[functions.send-booking-reminders]
+verify_jwt = false

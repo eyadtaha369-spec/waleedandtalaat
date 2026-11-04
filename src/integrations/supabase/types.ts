@@ -633,6 +633,39 @@ export type Database = {
         };
         Relationships: [];
       };
+      push_subscriptions: {
+        Row: {
+          id: string;
+          user_id: string;
+          endpoint: string;
+          p256dh: string;
+          auth: string;
+          user_agent: string | null;
+          created_at: string;
+          last_seen_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          endpoint: string;
+          p256dh: string;
+          auth: string;
+          user_agent?: string | null;
+          created_at?: string;
+          last_seen_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          endpoint?: string;
+          p256dh?: string;
+          auth?: string;
+          user_agent?: string | null;
+          created_at?: string;
+          last_seen_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       [_ in never]: never;
@@ -646,6 +679,19 @@ export type Database = {
         Returns: boolean;
       };
       is_staff: { Args: { _user_id: string }; Returns: boolean };
+      save_push_subscription: {
+        Args: {
+          p_endpoint: string;
+          p_p256dh: string;
+          p_auth: string;
+          p_user_agent: string | null;
+        };
+        Returns: Json;
+      };
+      remove_push_subscription: {
+        Args: { p_endpoint: string };
+        Returns: Json;
+      };
       is_admin: { Args: { _user_id: string }; Returns: boolean };
       generate_boarding_token: {
         Args: Record<string, never>;

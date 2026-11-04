@@ -35,6 +35,26 @@ export function isIosInstallPromptEligible(): boolean {
   return !isStandalone && !("PushManager" in window);
 }
 
+/**
+ * True once that same iOS Home-Screen install has actually been opened
+ * as a standalone app — used only to pick the right wording for the
+ * "notifications are blocked" banner (iOS Settings app vs. a desktop/
+ * Android browser's own site-settings lock icon), since a standalone
+ * PWA has no URL bar to point at.
+ */
+export function isIosStandaloneApp(): boolean {
+  if (typeof navigator === "undefined" || typeof window === "undefined") return false;
+  const ua = navigator.userAgent;
+  const isIos =
+    /iPad|iPhone|iPod/.test(ua) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  if (!isIos) return false;
+  return (
+    window.matchMedia?.("(display-mode: standalone)").matches === true ||
+    (navigator as unknown as { standalone?: boolean }).standalone === true
+  );
+}
+
 // Mirrors the preview-zone detection in previewAuthStorage.ts (without
 // importing it — that file is generated and reserved for auth storage).
 // Registering a service worker and prompting for push on a Lovable

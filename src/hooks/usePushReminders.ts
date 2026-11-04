@@ -1,71 +1,103 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import {
   enablePush,
   isIosInstallPromptEligible,
+  isIosStandaloneApp,
   isPreviewOrDevEnvironment,
   isPushSupported,
   refreshPushSubscription,
   type EnablePushResult,
 } from "@/lib/push";
 
-const SNOOZE_KEY = "push_reminder_snoozed_until";
-const SNOOZE_MS = 24 * 60 * 60 * 1000;
-
-function isSnoozed(): boolean {
-  try {
-    const raw = localStorage.getItem(SNOOZE_KEY);
-    return !!raw && Number(raw) > Date.now();
-  } catch {
-    // Storage unavailable — behave as if never snoozed.
-    return false;
-  }
-}
-
-function snoozeFor24h(): void {
-  try {
-    localStorage.setItem(SNOOZE_KEY, String(Date.now() + SNOOZE_MS));
-  } catch {
-    // No persistence available; the modal will just show again next visit.
-  }
-}
+// An earlier version of this feature snoozed the modal for 24h via
+// localStorage. That's gone now — every page view re-evaluates from
+// scratch — but an existing visitor's browser may still have the old
+// key sitting around, so clear it once on mount.
+const LEGACY_SNOOZE_KEY = "push_reminder_snoozed_until";
 
 export type PushModalVariant = "enable" | "ios-install";
 
-/**
- * Decides whether the student should see the push-permission modal right
- * now, and drives the quiet background re-subscribe for students who
- * already granted permission earlier.
- */
 export function usePushReminders(): {
   variant: PushModalVariant | null;
+  showDeniedBanner: boolean;
+  iosStandalone: boolean;
+  closeModal: () => void;
+  dismissBanner: () => void;
   requestPermission: () => Promise<EnablePushResult>;
-  snooze: () => void;
 } {
   const { user, isStaff, loading } = useAuth();
+
+  useEffect(() => {
+    try {
+      localStorage.removeItem(LEGACY_SNOOZE_KEY);
+    } catch {
+      // No storage access — nothing to clean up.
+    }
+  }, []);
 
   const available = !isPreviewOrDevEnvironment();
   const supported = available && isPushSupported();
   const iosInstallEligible = available && isIosInstallPromptEligible();
 
+  // Read live, never cached — re-checked whenever this tab becomes
+  // visible again, so a permission change made in the browser's own
+  // settings while the tab was open is picked up without a refresh.
+  const [permission, setPermission] = useState<NotificationPermission | null>(() =>
+    supported ? Notification.permission : null,
+  );
+
+  useEffect(() => {
+    if (!supported) return;
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") setPermission(Notification.permission);
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, [supported]);
+
+  // In-memory only, scoped to this page view — never persisted, so a
+  // refresh or a fresh visit always starts over.
+  const [modalClosed, setModalClosed] = useState(false);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
+
   // Keep an already-granted subscription alive and re-linked to whoever
-  // is currently signed in — no modal, no prompt.
+  // is signed in right now — no modal, no prompt.
   useEffect(() => {
     if (loading || !user || isStaff) return;
-    if (!supported || Notification.permission !== "granted") return;
+    if (!supported || permission !== "granted") return;
     void refreshPushSubscription();
-  }, [loading, user, isStaff, supported]);
+  }, [loading, user, isStaff, supported, permission]);
 
-  const eligible = !loading && !!user && !isStaff && !isSnoozed();
+  const eligible = !loading && !!user && !isStaff;
 
   let variant: PushModalVariant | null = null;
-  if (eligible) {
+  if (eligible && !modalClosed) {
     if (iosInstallEligible) variant = "ios-install";
-    else if (supported && Notification.permission === "default") variant = "enable";
+    else if (supported && permission === "default") variant = "enable";
   }
 
-  const requestPermission = useCallback(() => enablePush(), []);
-  const snooze = useCallback(() => snoozeFor24h(), []);
+  const showDeniedBanner = eligible && supported && permission === "denied" && !bannerDismissed;
 
-  return { variant, requestPermission, snooze };
+  const closeModal = useCallback(() => setModalClosed(true), []);
+  const dismissBanner = useCallback(() => setBannerDismissed(true), []);
+
+  const requestPermission = useCallback(async (): Promise<EnablePushResult> => {
+    const result = await enablePush();
+    setPermission(supported ? Notification.permission : null);
+    // Covers every outcome, including "dismissed" (permission stays
+    // "default", so only this page view's modal closes — it comes
+    // back next visit, per spec).
+    setModalClosed(true);
+    return result;
+  }, [supported]);
+
+  return {
+    variant,
+    showDeniedBanner,
+    iosStandalone: available && isIosStandaloneApp(),
+    closeModal,
+    dismissBanner,
+    requestPermission,
+  };
 }

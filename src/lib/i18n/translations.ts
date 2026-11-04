@@ -17,11 +17,14 @@ export const translations: Record<Lang, Record<string, string>> = {
     "push.enableNow": "تفعيل التنبيهات الآن",
     "push.later": "لاحقاً",
     "push.enabledToast": "تم تفعيل التنبيهات ✅",
-    "push.deniedHelp": "لو غيرت رأيك، فعّل الإشعارات من إعدادات المتصفح",
     "push.genericError": "حدث خطأ، حاول مرة أخرى",
     "push.iosBody":
       "علشان توصلك التنبيهات على الآيفون، اضغط زر المشاركة ثم «إضافة إلى الشاشة الرئيسية» وافتح التطبيق من الأيقونة",
     "push.iosOk": "تمام",
+    "push.deniedBanner":
+      "التنبيهات متوقفة. لتفعيلها: اضغط على أيقونة القفل بجانب عنوان الموقع ← الإشعارات ← سماح",
+    "push.deniedBannerIos": "التنبيهات متوقفة. لتفعيلها: الإعدادات ← الإشعارات ← W&T Shuttle",
+    "common.close": "إغلاق",
     "nav.manifests": "كشوف الركاب",
     "nav.installments": "الأقساط",
     "nav.adminDailyPass": "طلبات التصريح اليومي",

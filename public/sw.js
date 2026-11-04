@@ -25,13 +25,18 @@ self.addEventListener("push", (event) => {
   event.waitUntil(
     self.registration.showNotification(title, {
       body,
-      icon: "/logo.jpg",
-      badge: "/favicon.png",
+      icon: "/icons/icon-192.png",
+      badge: "/icons/badge-96.png",
       tag,
       renotify: true,
+      requireInteraction: true,
+      silent: false,
+      vibrate: [200, 100, 200],
+      timestamp: Date.now(),
       dir: "rtl",
       lang: "ar",
       data: { url },
+      actions: [{ action: "open", title: "احجز الآن" }],
     }),
   );
 });

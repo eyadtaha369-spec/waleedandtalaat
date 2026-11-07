@@ -162,6 +162,28 @@ export function isMorning0800Closed(serviceDate: string, now = cairoNow()): bool
   return now.getTime() >= new Date(y!, m! - 1, d! - 1, 18, 0, 0).getTime();
 }
 
+export const MORNING_QR_EXPIRES_HOUR = 13; // 13:30
+export const MORNING_QR_EXPIRES_MINUTE = 30;
+
+export type MorningPassState = "upcoming" | "active" | "expired";
+
+/**
+ * Whether a student's morning QR pass for `serviceDate` should be
+ * showable right now — used by the boarding pass page, NOT the booking
+ * dashboard (that keeps using routeDashboardDefaultDate()). A pass is
+ * valid for the whole trip day, from midnight through 1:30 PM, not just
+ * until noon — the old noon cutoff was meant for picking which day's
+ * *booking* to default to on the dashboard, and reusing it here made
+ * the QR vanish mid-trip, before students had even reached campus.
+ */
+export function morningPassState(serviceDate: string, now = cairoNow()): MorningPassState {
+  const today = toDateKey(now);
+  if (serviceDate > today) return "upcoming";
+  if (serviceDate < today) return "expired";
+  const mins = now.getHours() * 60 + now.getMinutes();
+  return mins < MORNING_QR_EXPIRES_HOUR * 60 + MORNING_QR_EXPIRES_MINUTE ? "active" : "expired";
+}
+
 export function prettyDate(key: string): string {
   const [y, m, d] = key.split("-").map(Number);
   return new Date(y!, (m ?? 1) - 1, d ?? 1).toLocaleDateString("en-GB", {

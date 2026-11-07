@@ -1,12 +1,30 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { z } from "zod";
 import { ArrowLeft } from "lucide-react";
 import { AdminGuard } from "@/components/admin/AdminGuard";
 import { ScannerPanel } from "@/components/admin/ScannerPanel";
 import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/hooks/useLanguage";
 
+// Shareable view state only — slot, test date override, and whether the
+// camera should auto-resume. Every field optional and defaulted via
+// .catch() so garbage in the URL (?time=banana) can never throw; it
+// just silently falls back, same as if the param were absent.
+const scanSearchSchema = z.object({
+  time: z.string().optional().catch(undefined),
+  date: z.string().optional().catch(undefined),
+  scanner: z.literal("open").optional().catch(undefined),
+});
+
 export const Route = createFileRoute("/admin/scan")({
   head: () => ({ meta: [{ title: "Scanner — Waleed & Talaat" }] }),
+  validateSearch: (search: Record<string, unknown>) => {
+    try {
+      return scanSearchSchema.parse(search);
+    } catch {
+      return {};
+    }
+  },
   component: () => (
     <AdminGuard>
       <ScanPage />

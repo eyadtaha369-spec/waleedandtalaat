@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import { Html5Qrcode } from "html5-qrcode";
 import { toast } from "sonner";
 import {
+  Camera,
   CheckCircle2,
   FlaskConical,
   ScanLine,
@@ -29,6 +31,13 @@ import type { TripPackageType } from "@/lib/tourismTrips";
 import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useRoutes } from "@/hooks/useRoutes";
+import {
+  clearSessionState,
+  readStored,
+  useSessionState,
+  useUrlBackedState,
+  writeStored,
+} from "@/hooks/usePersistentState";
 
 type TripPassenger = { id: string; position: number; full_name: string; boarded: boolean };
 type TripScanResult = {
@@ -41,6 +50,7 @@ type TripScanResult = {
 };
 
 const SCANNER_ELEMENT_ID = "wt-qr-scanner";
+const SCANNER_OPEN_KEY = "scanner.open";
 
 type ScanStatus = "booked" | "not_booked" | "scanned_earlier" | "no_trips_left";
 
@@ -59,28 +69,67 @@ export function ScannerPanel() {
   const { isAdmin, profile } = useAuth();
   const { t } = useLanguage();
   const { routes } = useRoutes();
-  const [slot, setSlot] = useState<string>(ALL_SLOTS[0]);
-  const [dateOverride, setDateOverride] = useState<string>("");
-  const [scanning, setScanning] = useState(false);
+  const search = useSearch({ from: "/admin/scan" });
+  const navigate = useNavigate({ from: "/admin/scan" });
+
+  const setUrlParam = (patch: {
+    time?: string | undefined;
+    date?: string | undefined;
+    scanner?: "open" | undefined;
+  }) => {
+    void navigate({ search: (prev) => ({ ...prev, ...patch }), replace: true });
+  };
+
+  const slotRaw = useUrlBackedState<string>(
+    "scanner.slot",
+    search.time,
+    (v) => setUrlParam({ time: v }),
+    ALL_SLOTS[0],
+    { validate: (v): v is string => typeof v === "string" },
+  );
+  const slot = (ALL_SLOTS as readonly string[]).includes(slotRaw) ? slotRaw : ALL_SLOTS[0];
+
+  const dateOverrideRaw = useUrlBackedState(
+    "scanner.dateOverride",
+    search.date,
+    (v) => setUrlParam({ date: v || undefined }),
+    "",
+    { validate: (v): v is string => typeof v === "string" },
+  );
+  const dateOverride = dateOverrideRaw;
+
   const [result, setResult] = useState<ScanResult | null>(null);
   const [tripResult, setTripResult] = useState<TripScanResult | null>(null);
   const [tripToken, setTripToken] = useState<string | null>(null);
   const [tripBoardingBusy, setTripBoardingBusy] = useState(false);
-  // Admin-only, defaults off on every load (never persisted) — see
-  // scan_trip_pass_test(), a read-only preview RPC that never writes
-  // boarded_at and ignores the trip-date guard.
+  // Admin-only, defaults off on every load (never persisted, never put
+  // in the URL) — see scan_trip_pass_test(), a read-only preview RPC
+  // that never writes boarded_at and ignores the trip-date guard. A
+  // real scan must never silently land in this mode after a reload.
   const [testMode, setTestMode] = useState(false);
   // start() hands handleScan -> handleTripScan to scanner.start() once,
   // so that closure keeps whatever testMode was at the moment the
   // camera started — flipping the switch afterward never reaches it.
   // Read this ref inside handleTripScan instead of the state directly.
   const testModeRef = useRef(false);
+  const [scanning, setScanning] = useState(false);
+  const [resumeNeeded, setResumeNeeded] = useState(false);
   const [scannedToday, setScannedToday] = useState<number | null>(null);
   const [overriding, setOverriding] = useState(false);
-  const [walkInDialogOpen, setWalkInDialogOpen] = useState(false);
-  const [walkInMode, setWalkInMode] = useState<"add" | "undo">("add");
-  const [walkInRoute, setWalkInRoute] = useState("");
-  const [walkInNote, setWalkInNote] = useState("");
+  const [walkInDialogOpen, setWalkInDialogOpen] = useSessionState<boolean>(
+    "scanner.walkInDialogOpen",
+    false,
+    { validate: (v): v is boolean => typeof v === "boolean" },
+  );
+  const [walkInMode, setWalkInMode] = useSessionState<"add" | "undo">("scanner.walkInMode", "add", {
+    validate: (v): v is "add" | "undo" => v === "add" || v === "undo",
+  });
+  const [walkInRoute, setWalkInRoute] = useSessionState<string>("scanner.walkInRoute", "", {
+    validate: (v): v is string => typeof v === "string",
+  });
+  const [walkInNote, setWalkInNote] = useSessionState<string>("scanner.walkInNote", "", {
+    validate: (v): v is string => typeof v === "string",
+  });
   const [walkInBusy, setWalkInBusy] = useState(false);
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const lockRef = useRef(false);
@@ -113,13 +162,8 @@ export function ScannerPanel() {
     void loadScannedCount();
     const interval = setInterval(() => void loadScannedCount(), 20000);
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slot, dateOverride, profile?.assigned_route]);
-
-  useEffect(() => {
-    return () => {
-      void scannerRef.current?.stop().catch(() => {});
-    };
-  }, []);
 
   // A real result must never carry the test badge and vice versa —
   // toggling the switch always clears whatever trip card is showing.
@@ -131,7 +175,22 @@ export function ScannerPanel() {
     testModeRef.current = testMode;
   }, [testMode]);
 
+  // Idempotent: a camera already running (or mid-start) never gets a
+  // second Html5Qrcode spawned on top of it — important since the
+  // mount auto-resume, a manual tap, and the visibility listener can
+  // all end up calling this in close succession.
   const start = async () => {
+    if (scannerRef.current?.isScanning) return;
+    if (scannerRef.current) {
+      await scannerRef.current.stop().catch(() => {});
+      try {
+        scannerRef.current.clear();
+      } catch {
+        // nothing to clear
+      }
+      scannerRef.current = null;
+    }
+    setResumeNeeded(false);
     setResult(null);
     setScanning(true);
     const scanner = new Html5Qrcode(SCANNER_ELEMENT_ID);
@@ -163,20 +222,119 @@ export function ScannerPanel() {
         (decodedText) => void handleScan(decodedText),
         () => {},
       );
-    } catch {
-      toast.error(t("scanner.cameraError"));
+    } catch (err) {
+      scannerRef.current = null;
       setScanning(false);
+      // iOS Safari in particular often needs a direct tap to grant the
+      // camera, or re-prompts after a reload — that's not a real
+      // failure, so show a resume button instead of an error toast
+      // (and keep the "open" intent so the one tap is all it takes).
+      // Any other failure (no camera device, hardware busy, etc.)
+      // still gets the toast.
+      const name = err instanceof Error ? err.name : "";
+      const message = err instanceof Error ? err.message : String(err);
+      const isPermissionIssue =
+        name === "NotAllowedError" || /NotAllowedError|Permission denied/i.test(message);
+      if (isPermissionIssue) {
+        setResumeNeeded(true);
+      } else {
+        toast.error(t("scanner.cameraError"));
+      }
     }
   };
 
   const stop = async () => {
     try {
       await scannerRef.current?.stop();
+      scannerRef.current?.clear();
     } catch {
       // already stopped
     }
+    scannerRef.current = null;
     setScanning(false);
+    setResumeNeeded(false);
   };
+
+  const openCamera = () => {
+    setUrlParam({ scanner: "open" });
+    writeStored(SCANNER_OPEN_KEY, true);
+    void start();
+  };
+
+  const closeCamera = () => {
+    setUrlParam({ scanner: undefined });
+    clearSessionState(SCANNER_OPEN_KEY);
+    void stop();
+  };
+
+  // Auto-resume once on mount if the camera was left open (URL, or the
+  // sessionStorage fallback for a fresh nav that didn't carry the
+  // query string — a backgrounded-tab reload keeps the full URL on its
+  // own and never needs this fallback).
+  useEffect(() => {
+    const shouldResume =
+      search.scanner === "open" || readStored<boolean>(SCANNER_OPEN_KEY) === true;
+    if (shouldResume) void start();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Latest-callback refs so the visibility listener (registered once,
+  // on mount) never calls a stale closure — same pattern as pass.tsx's
+  // fetchBookingsRef.
+  const startRef = useRef(start);
+  const loadScannedCountRef = useRef(loadScannedCount);
+  useEffect(() => {
+    startRef.current = start;
+    loadScannedCountRef.current = loadScannedCount;
+  });
+
+  // Browsers kill the camera stream the moment a tab is backgrounded
+  // anyway — leaving a zombie Html5Qrcode instance running is exactly
+  // what causes the black viewfinder on return, so stop it cleanly on
+  // hidden (keeping the "open" intent) and restart on visible.
+  useEffect(() => {
+    const stopCleanly = async () => {
+      try {
+        await scannerRef.current?.stop();
+        scannerRef.current?.clear();
+      } catch {
+        // already stopped
+      }
+      scannerRef.current = null;
+      setScanning(false);
+    };
+    const onBecameVisible = () => {
+      if (readStored<boolean>(SCANNER_OPEN_KEY) === true) void startRef.current();
+      void loadScannedCountRef.current();
+    };
+    const onVisibilityChange = () => {
+      if (document.hidden) {
+        if (scannerRef.current?.isScanning) void stopCleanly();
+      } else {
+        onBecameVisible();
+      }
+    };
+    const onPageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) onBecameVisible();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    window.addEventListener("pageshow", onPageShow);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener("pageshow", onPageShow);
+    };
+  }, []);
+
+  // A genuine unmount means the user navigated to a different route on
+  // purpose — stop the camera and clear the "open" intent so the next
+  // voluntary visit starts closed. Only a reload (which remounts fresh
+  // with the URL/storage flag still set) should auto-resume.
+  useEffect(() => {
+    return () => {
+      void scannerRef.current?.stop().catch(() => {});
+      clearSessionState(SCANNER_OPEN_KEY);
+    };
+  }, []);
 
   const handleScan = async (decodedText: string) => {
     if (lockRef.current) return;
@@ -506,7 +664,7 @@ export function ScannerPanel() {
             <select
               className="h-10 rounded-md border border-input bg-background px-3 text-sm"
               value={slot}
-              onChange={(e) => setSlot(e.target.value)}
+              onChange={(e) => setUrlParam({ time: e.target.value })}
               disabled={scanning}
             >
               {ALL_SLOTS.map((s) => (
@@ -516,7 +674,7 @@ export function ScannerPanel() {
             <Button
               className={scanning ? "" : "btn-gold"}
               variant={scanning ? "destructive" : "default"}
-              onClick={() => void (scanning ? stop() : start())}
+              onClick={() => (scanning ? closeCamera() : openCamera())}
             >
               <ScanLine className="size-4" />{" "}
               {scanning ? t("scanner.stopScanner") : t("scanner.startScanner")}
@@ -549,11 +707,11 @@ export function ScannerPanel() {
                 type="date"
                 className="h-9 rounded-md border border-input bg-background px-3 text-sm"
                 value={dateOverride}
-                onChange={(e) => setDateOverride(e.target.value)}
+                onChange={(e) => setUrlParam({ date: e.target.value || undefined })}
                 disabled={scanning}
               />
               {dateOverride && (
-                <Button size="sm" variant="ghost" onClick={() => setDateOverride("")}>
+                <Button size="sm" variant="ghost" onClick={() => setUrlParam({ date: undefined })}>
                   {t("scanner.resetToToday")} ({todayKey})
                 </Button>
               )}
@@ -576,11 +734,19 @@ export function ScannerPanel() {
 
           <div className="mt-5 overflow-hidden rounded-2xl border border-dashed border-border bg-secondary/50">
             <div id={SCANNER_ELEMENT_ID} className="mx-auto aspect-square max-w-sm" />
-            {!scanning && (
+            {resumeNeeded ? (
+              <div className="flex flex-col items-center gap-3 p-8 text-center">
+                <Camera className="size-8 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">{t("scanner.resumeCameraHint")}</p>
+                <Button className="btn-gold" onClick={() => void start()}>
+                  <Camera className="size-4" /> {t("scanner.resumeCamera")}
+                </Button>
+              </div>
+            ) : !scanning ? (
               <p className="p-8 text-center text-sm text-muted-foreground">
                 {t("scanner.pointCamera")}
               </p>
-            )}
+            ) : null}
           </div>
         </section>
 

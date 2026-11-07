@@ -1,5 +1,6 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { z } from "zod";
 import { toast } from "sonner";
 import { Clock, Lock, MoonStar, Sun, Sunset, TicketCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -39,6 +40,20 @@ import {
   TEN_AM_SLOT,
   tenAmStops,
 } from "@/lib/alexandriaMix";
+import {
+  clearSessionState,
+  readStored,
+  useSessionState,
+  writeStored,
+} from "@/hooks/usePersistentState";
+
+// Shareable slot picks only — morning/return. Everything else on this
+// page (stop, sub-route, sector, etc.) is sessionStorage-only, since
+// it's identity-adjacent, not a "look at this" link worth sharing.
+const dashboardSearchSchema = z.object({
+  morning: z.string().optional().catch(undefined),
+  ret: z.string().optional().catch(undefined),
+});
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
@@ -53,8 +68,57 @@ export const Route = createFileRoute("/dashboard")({
       { property: "og:description", content: "Reserve your daily shuttle seat." },
     ],
   }),
+  validateSearch: (search: Record<string, unknown>) => {
+    try {
+      return dashboardSearchSchema.parse(search);
+    } catch {
+      return {};
+    }
+  },
   component: Dashboard,
 });
+
+type DatedValue<T> = { date: string; value: T };
+
+function isDatedValue<T>(v: unknown, isValue: (x: unknown) => x is T): v is DatedValue<T> {
+  return (
+    typeof v === "object" &&
+    v !== null &&
+    "date" in v &&
+    "value" in v &&
+    typeof (v as DatedValue<unknown>).date === "string" &&
+    isValue((v as DatedValue<unknown>).value)
+  );
+}
+
+const isString = (v: unknown): v is string => typeof v === "string";
+
+/**
+ * A sessionStorage-backed field that only restores if it was saved for
+ * the SAME Cairo service date as right now — a Tuesday pickup-stop pick
+ * must never silently carry into Wednesday. Builds on the shared
+ * useSessionState, tagging the stored value with its date and checking
+ * it on the way back out; nothing beyond this page needs that, so it
+ * stays local rather than in the shared hooks file.
+ */
+function useDatedSessionState<T>(
+  key: string,
+  serviceDate: string,
+  initial: T,
+  isValue: (v: unknown) => v is T,
+): [T, (v: T) => void] {
+  const [stored, setStored] = useSessionState<DatedValue<T> | null>(key, null, {
+    validate: (v): v is DatedValue<T> | null => v === null || isDatedValue<T>(v, isValue),
+  });
+  const value = stored && stored.date === serviceDate ? stored.value : initial;
+  // Stable identity (like useState's own setter) so effects that call
+  // this don't need it re-listed as a dependency on every render.
+  const setValue = useCallback(
+    (v: T) => setStored({ date: serviceDate, value: v }),
+    [serviceDate, setStored],
+  );
+  return [value, setValue];
+}
 
 const BORG_EL_ARAB_ROUTE = "خط برج العرب";
 
@@ -72,7 +136,8 @@ type Booking = {
 function Dashboard() {
   const { user, profile, loading, isStaff } = useAuth();
   const { t, lang } = useLanguage();
-  const navigate = useNavigate();
+  const navigate = Route.useNavigate();
+  const search = Route.useSearch();
   const { stopsByRoute } = useRoutes();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [optedOut, setOptedOut] = useState(false);
@@ -83,22 +148,24 @@ function Dashboard() {
   const [returnStatus, setReturnStatus] = useState<"AUTO" | "FORCE_OPEN" | "FORCE_CLOSED">("AUTO");
   const [specialSundayActive, setSpecialSundayActive] = useState(false);
 
-  useEffect(() => {
-    void supabase
+  const loadSettings = useCallback(async () => {
+    const { data } = await supabase
       .from("app_settings")
       .select("morning_departure_status, early_return_status, special_sunday_active")
       .eq("id", true)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data?.morning_departure_status) {
-          setMorningStatus(data.morning_departure_status as typeof morningStatus);
-        }
-        if (data?.early_return_status) {
-          setReturnStatus(data.early_return_status as typeof returnStatus);
-        }
-        setSpecialSundayActive(!!data?.special_sunday_active);
-      });
+      .maybeSingle();
+    if (data?.morning_departure_status) {
+      setMorningStatus(data.morning_departure_status as "AUTO" | "FORCE_OPEN" | "FORCE_CLOSED");
+    }
+    if (data?.early_return_status) {
+      setReturnStatus(data.early_return_status as "AUTO" | "FORCE_OPEN" | "FORCE_CLOSED");
+    }
+    setSpecialSundayActive(!!data?.special_sunday_active);
   }, []);
+
+  useEffect(() => {
+    void loadSettings();
+  }, [loadSettings]);
 
   const mwBase = useMemo(
     () => (specialSundayActive ? specialSundayWindow() : morningWindow()),
@@ -135,15 +202,94 @@ function Dashboard() {
   const closed0800 =
     !isStaff && morningStatus !== "FORCE_OPEN" && isMorning0800Closed(morningServiceDate, nowTick);
 
-  const [stop, setStop] = useState<string>("");
-  const [subRoute, setSubRoute] = useState<MorningSubRoute | "">("");
+  const isMorningSubRouteValue = (v: unknown): v is MorningSubRoute | "" =>
+    v === "" || v === "el_bahr" || v === "seyouf_mahmoudia";
+  const isEarlyReturnSectorValue = (v: unknown): v is EarlyReturnSector | "" =>
+    v === "" || (Object.keys(SECTOR_LABELS) as string[]).includes(v as string);
+
+  // stop/subRoute/returnSector/returnStop/fourPmStop survive a tab
+  // discard via sessionStorage, but only for the SAME service date —
+  // see useDatedSessionState's own doc comment. morningSlot/returnSlot
+  // are shareable view state, so they live in the URL instead (with
+  // the same date guard applied by hand below, since a plain value in
+  // the URL carries no date of its own to check).
+  const [stop, setStop] = useDatedSessionState<string>(
+    "dashboard.stop",
+    morningServiceDate,
+    "",
+    isString,
+  );
+  const [subRoute, setSubRoute] = useDatedSessionState<MorningSubRoute | "">(
+    "dashboard.subRoute",
+    morningServiceDate,
+    "",
+    isMorningSubRouteValue,
+  );
   const [activeMorningSlots, setActiveMorningSlots] = useState<string[]>([...MORNING_SLOTS]);
   const [activeReturnSlots, setActiveReturnSlots] = useState<string[]>([...RETURN_SLOTS]);
-  const [morningSlot, setMorningSlot] = useState<string>(MORNING_SLOTS[0]);
-  const [returnSlot, setReturnSlot] = useState<string>(RETURN_SLOTS[0]);
-  const [returnSector, setReturnSector] = useState<EarlyReturnSector | "">("");
-  const [returnStop, setReturnStop] = useState<string>("");
-  const [fourPmStop, setFourPmStop] = useState<string>("");
+  const [morningSlot, setMorningSlotState] = useState<string>(MORNING_SLOTS[0]);
+  const [returnSlot, setReturnSlotState] = useState<string>(RETURN_SLOTS[0]);
+  const [returnSector, setReturnSector] = useDatedSessionState<EarlyReturnSector | "">(
+    "dashboard.returnSector",
+    rw.serviceDate,
+    "",
+    isEarlyReturnSectorValue,
+  );
+  const [returnStop, setReturnStop] = useDatedSessionState<string>(
+    "dashboard.returnStop",
+    rw.serviceDate,
+    "",
+    isString,
+  );
+  const [fourPmStop, setFourPmStop] = useDatedSessionState<string>(
+    "dashboard.fourPmStop",
+    rw.serviceDate,
+    "",
+    isString,
+  );
+
+  const persistMorningSlot = (newSlot: string) => {
+    setMorningSlotState(newSlot);
+    void navigate({ search: (p) => ({ ...p, morning: newSlot }), replace: true });
+    writeStored("dashboard.morningSlot", { date: morningServiceDate, value: newSlot });
+  };
+  const persistReturnSlot = (newSlot: string) => {
+    setReturnSlotState(newSlot);
+    void navigate({ search: (p) => ({ ...p, ret: newSlot }), replace: true });
+    writeStored("dashboard.returnSlot", { date: rw.serviceDate, value: newSlot });
+  };
+
+  // Restore the slot picks once on mount: URL -> dated sessionStorage ->
+  // default. A backgrounded tab keeps its full URL (query string
+  // included) on its own, so this also covers that case — but only
+  // when the dated mirror agrees it's still for today; a mirror on
+  // record for a DIFFERENT date means the URL value is stale (the tab
+  // sat open across a day boundary) and gets dropped along with it. No
+  // mirror at all (fresh share-link, or storage blocked) means trust
+  // the URL as a best effort.
+  useEffect(() => {
+    const storedMorning = readStored<DatedValue<string>>("dashboard.morningSlot", {
+      validate: (v): v is DatedValue<string> => isDatedValue(v, isString),
+    });
+    const restoredMorning = storedMorning
+      ? storedMorning.date === morningServiceDate
+        ? storedMorning.value
+        : undefined
+      : search.morning;
+    if (restoredMorning) persistMorningSlot(restoredMorning);
+
+    const storedReturn = readStored<DatedValue<string>>("dashboard.returnSlot", {
+      validate: (v): v is DatedValue<string> => isDatedValue(v, isString),
+    });
+    const restoredReturn = storedReturn
+      ? storedReturn.date === rw.serviceDate
+        ? storedReturn.value
+        : undefined
+      : search.ret;
+    if (restoredReturn) persistReturnSlot(restoredReturn);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const stopsForMyRoute = profile?.route ? (stopsByRoute[profile.route] ?? []) : [];
   // The 08:00 AM slot is always the Alexandria Mix bus, running خط
   // البحر's route with three extra pickup points — regardless of the
@@ -182,23 +328,31 @@ function Dashboard() {
   // the page isn't empty on first render.
   const RETURN_SLOT_CHOICES = [...activeReturnSlots, "04:00 PM"];
 
-  useEffect(() => {
+  const loadActiveSlots = useCallback(async () => {
     if (!profile?.route) return;
-    void supabase
-      .rpc("list_active_slots_for_route", { p_route: profile.route })
-      .then(({ data }) => {
-        const rows = (data as { time_slot: string; kind: string }[] | null) ?? [];
-        const morning = rows.filter((r) => r.kind === "morning").map((r) => r.time_slot);
-        const ret = rows.filter((r) => r.kind === "return").map((r) => r.time_slot);
-        if (morning.length > 0) {
-          setActiveMorningSlots(morning);
-          setMorningSlot((prev) => (morning.includes(prev) ? prev : morning[0]!));
-        }
-        if (ret.length > 0) {
-          setActiveReturnSlots(ret);
-          setReturnSlot((prev) => (ret.includes(prev) || prev === "04:00 PM" ? prev : ret[0]!));
-        }
-      });
+    const { data } = await supabase.rpc("list_active_slots_for_route", {
+      p_route: profile.route,
+    });
+    const rows = (data as { time_slot: string; kind: string }[] | null) ?? [];
+    const morning = rows.filter((r) => r.kind === "morning").map((r) => r.time_slot);
+    const ret = rows.filter((r) => r.kind === "return").map((r) => r.time_slot);
+    if (morning.length > 0) {
+      setActiveMorningSlots(morning);
+      if (!morning.includes(morningSlot)) persistMorningSlot(morning[0]!);
+    }
+    if (ret.length > 0) {
+      setActiveReturnSlots(ret);
+      if (!ret.includes(returnSlot) && returnSlot !== "04:00 PM") persistReturnSlot(ret[0]!);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.route, morningSlot, returnSlot]);
+
+  useEffect(() => {
+    void loadActiveSlots();
+    // Deliberately only re-runs when the student's route changes — see
+    // loadActiveSlots' own deps for why morningSlot/returnSlot aren't
+    // listed here too (it would re-fire on every slot pick).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.route]);
 
   useEffect(() => {
@@ -213,19 +367,21 @@ function Dashboard() {
   }, [loading, user, profile, navigate]);
 
   useEffect(() => {
-    if (profile?.route) {
-      const stops = stopsByRoute[profile.route] ?? [];
-      setStop(
-        profile.pickup_stop && stops.includes(profile.pickup_stop)
-          ? profile.pickup_stop
-          : (stops[0] ?? ""),
-      );
-      setFourPmStop(
-        profile.pickup_stop && stops.includes(profile.pickup_stop)
-          ? profile.pickup_stop
-          : (stops[0] ?? ""),
-      );
-    }
+    if (!profile?.route) return;
+    const stops = stopsByRoute[profile.route] ?? [];
+    const fallback =
+      profile.pickup_stop && stops.includes(profile.pickup_stop)
+        ? profile.pickup_stop
+        : (stops[0] ?? "");
+    // Never clobber an already-valid selection — whether restored from
+    // a previous session or just picked by the student — with the
+    // profile default; only correct it when it's actually missing or
+    // no longer valid for the currently relevant option list (which
+    // varies by morning slot for `stop`, e.g. an Alexandria Mix stop
+    // outside the student's own route).
+    if (!stop || !morningStopOptions.includes(stop)) setStop(fallback);
+    if (!fourPmStop || !returnDropoffStops.includes(fourPmStop)) setFourPmStop(fallback);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile, stopsByRoute]);
 
   const reload = async () => {
@@ -251,7 +407,7 @@ function Dashboard() {
     if (mb?.sub_route === "el_bahr" || mb?.sub_route === "seyouf_mahmoudia") {
       setSubRoute(mb.sub_route);
     }
-  }, [bookings, morningServiceDate]);
+  }, [bookings, morningServiceDate, setSubRoute]);
 
   const morningBooking = bookings.find(
     (b) => b.kind === "morning" && b.service_date === morningServiceDate,
@@ -315,7 +471,7 @@ function Dashboard() {
   };
 
   const handleMorningSlotChange = (newSlot: string) => {
-    setMorningSlot(newSlot);
+    persistMorningSlot(newSlot);
     // The valid stop list depends on the slot (Alexandria Mix's extra
     // stops only apply to 08:00 AM/10:00 AM) — reset to the new list's
     // first option so a student can't submit a stop that's no longer
@@ -334,7 +490,7 @@ function Dashboard() {
     if (morningSlot !== "08:00 AM" || !closed0800) return;
     const fallbackSlot =
       activeMorningSlots.find((s) => s !== "08:00 AM") ?? activeMorningSlots[0] ?? MORNING_SLOTS[0];
-    setMorningSlot(fallbackSlot);
+    persistMorningSlot(fallbackSlot);
     setSubRoute("");
     setStop(resetStopOptionsForSlot(fallbackSlot)[0] ?? "");
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -357,6 +513,44 @@ function Dashboard() {
     setBusy(false);
     void reload();
   };
+
+  // Latest-callback refs so the visibility listener below (registered
+  // once, on mount) never calls a stale closure — same pattern as
+  // pass.tsx's fetchBookingsRef.
+  const reloadRef = useRef(reload);
+  const loadSettingsRef = useRef(loadSettings);
+  const loadActiveSlotsRef = useRef(loadActiveSlots);
+  useEffect(() => {
+    reloadRef.current = reload;
+    loadSettingsRef.current = loadSettings;
+    loadActiveSlotsRef.current = loadActiveSlots;
+  });
+
+  // A tab that's just sitting open can go stale — bookings change,
+  // the admin flips a FORCE_OPEN/CLOSED switch, a route's active slots
+  // change. Refetch all three on return without touching any selection
+  // the student already made; a selection only changes if it's no
+  // longer valid (handled inside loadActiveSlots / the closed0800
+  // effect above), never unconditionally reset.
+  useEffect(() => {
+    const onVisible = () => {
+      void reloadRef.current();
+      void loadSettingsRef.current();
+      void loadActiveSlotsRef.current();
+    };
+    const onVisibilityChange = () => {
+      if (!document.hidden) onVisible();
+    };
+    const onPageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) onVisible();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    window.addEventListener("pageshow", onPageShow);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener("pageshow", onPageShow);
+    };
+  }, []);
 
   if (loading || !profile) {
     return (
@@ -524,7 +718,7 @@ function Dashboard() {
                 label={t("dashboard.timeSlot")}
                 options={RETURN_SLOT_CHOICES}
                 value={returnSlot}
-                onChange={setReturnSlot}
+                onChange={persistReturnSlot}
                 lang={lang}
               />
 

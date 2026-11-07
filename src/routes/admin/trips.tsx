@@ -1,11 +1,24 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { z } from "zod";
 import { ArrowLeft } from "lucide-react";
 import { AdminGuard } from "@/components/admin/AdminGuard";
 import { TripsAdminPanel } from "@/components/admin/TripsAdminPanel";
 import { useLanguage } from "@/hooks/useLanguage";
 
+const tripsSearchSchema = z.object({
+  package: z.string().optional().catch(undefined),
+  status: z.string().optional().catch(undefined),
+});
+
 export const Route = createFileRoute("/admin/trips")({
   head: () => ({ meta: [{ title: "الرحلات السياحية — Waleed & Talaat" }] }),
+  validateSearch: (search: Record<string, unknown>) => {
+    try {
+      return tripsSearchSchema.parse(search);
+    } catch {
+      return {};
+    }
+  },
   component: () => (
     <AdminGuard requireAdmin>
       <TripsAdminPage />

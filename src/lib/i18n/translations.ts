@@ -334,6 +334,8 @@ export const translations: Record<Lang, Record<string, string>> = {
     "scanner.startScanner": "بدء المسح",
     "scanner.stopScanner": "إيقاف المسح",
     "scanner.pointCamera": 'اضغط "بدء المسح" ووجّه الكاميرا نحو رمز تصريح الركوب الخاص بالطالب.',
+    "scanner.resumeCamera": "استئناف الكاميرا",
+    "scanner.resumeCameraHint": "توقفت الكاميرا، اضغط لاستئنافها",
     "scanner.lastScan": "آخر عملية مسح",
     "scanner.noScansYet": "لا توجد عمليات مسح في هذه الجلسة بعد.",
     "scanner.testDateOverride": "تجاوز التاريخ للاختبار (للإدارة فقط)",
@@ -625,6 +627,8 @@ export const translations: Record<Lang, Record<string, string>> = {
     "collections.amountRequired": "المبلغ يجب أن يكون أكبر من صفر",
     "collections.routeRequired": "الخط مطلوب",
     "collections.receiptRequired": "صورة إيصال الـ InstaPay مطلوبة",
+    "collections.reattachReceiptHint":
+      "البيانات رجعت بعد انقطاع — من فضلك أرفق صورة الإيصال من جديد",
     "collections.auditTitle": "مراجعة تحصيل السائقين",
     "collections.totalCashToday": "إجمالي النقدي اليوم",
     "collections.totalInstapayToday": "إجمالي InstaPay اليوم",
@@ -1069,6 +1073,8 @@ export const translations: Record<Lang, Record<string, string>> = {
     "scanner.stopScanner": "Stop scanner",
     "scanner.pointCamera":
       'Press "Start scanner" and point the camera at a student\'s boarding pass QR code.',
+    "scanner.resumeCamera": "Resume camera",
+    "scanner.resumeCameraHint": "The camera stopped — tap to resume it",
     "scanner.lastScan": "Last scan",
     "scanner.noScansYet": "No scans yet this session.",
     "scanner.testDateOverride": "Test date override (admin only)",
@@ -1355,6 +1361,8 @@ export const translations: Record<Lang, Record<string, string>> = {
     "collections.amountRequired": "Amount must be greater than 0",
     "collections.routeRequired": "Route is required",
     "collections.receiptRequired": "InstaPay receipt screenshot is required",
+    "collections.reattachReceiptHint":
+      "This form was restored after a reload — please reattach the receipt image",
     "collections.auditTitle": "Collections Audit",
     "collections.totalCashToday": "Total Cash Collected Today",
     "collections.totalInstapayToday": "Total InstaPay Collected Today",

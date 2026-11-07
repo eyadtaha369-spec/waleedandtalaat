@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { Check, ChevronDown, ChevronUp, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -27,6 +28,7 @@ import {
   type TripPackageType,
   type TripPaymentMethod,
 } from "@/lib/tourismTrips";
+import { useSessionState, useUrlBackedState } from "@/hooks/usePersistentState";
 
 type TripRow = {
   id: string;
@@ -74,9 +76,41 @@ export function TripsAdminPanel() {
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
 
-  const [packageFilter, setPackageFilter] = useState<PackageFilter>("all");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
-  const [search, setSearch] = useState("");
+  const urlSearch = useSearch({ from: "/admin/trips" });
+  const navigate = useNavigate({ from: "/admin/trips" });
+  const setUrlParam = (patch: { package?: string | undefined; status?: string | undefined }) =>
+    void navigate({ search: (p) => ({ ...p, ...patch }), replace: true });
+
+  const packageFilterRaw = useUrlBackedState<string>(
+    "tripsAdmin.packageFilter",
+    urlSearch.package,
+    (v) => setUrlParam({ package: v }),
+    "all",
+    { validate: (v): v is string => typeof v === "string" },
+  );
+  const packageFilter: PackageFilter =
+    packageFilterRaw === "standard" || packageFilterRaw === "friends" ? packageFilterRaw : "all";
+  const setPackageFilter = (v: PackageFilter) => setUrlParam({ package: v });
+
+  const statusFilterRaw = useUrlBackedState<string>(
+    "tripsAdmin.statusFilter",
+    urlSearch.status,
+    (v) => setUrlParam({ status: v }),
+    "all",
+    { validate: (v): v is string => typeof v === "string" },
+  );
+  const statusFilter: StatusFilter =
+    statusFilterRaw === "pending" ||
+    statusFilterRaw === "approved" ||
+    statusFilterRaw === "rejected"
+      ? statusFilterRaw
+      : "all";
+  const setStatusFilter = (v: StatusFilter) => setUrlParam({ status: v });
+
+  // Never in the URL — could contain a searched student name/phone.
+  const [search, setSearch] = useSessionState<string>("tripsAdmin.search", "", {
+    validate: (v): v is string => typeof v === "string",
+  });
   const [grouped, setGrouped] = useState(false);
 
   const [settingsOpen, setSettingsOpen] = useState(false);

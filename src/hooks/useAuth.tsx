@@ -2,6 +2,16 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { removeCurrentPushSubscription } from "@/lib/push";
+import { clearSessionState } from "@/hooks/usePersistentState";
+
+// A shared-device collections form shouldn't hand the next person who
+// logs in whatever name/amount the previous one typed.
+const COLLECTIONS_SESSION_KEYS = [
+  "collections.studentName",
+  "collections.amount",
+  "collections.paymentMethod",
+  "collections.route",
+];
 
 export type Profile = {
   id: string;
@@ -97,6 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // getting this one's reminders, but a failure here must never
       // block the actual sign-out.
       await removeCurrentPushSubscription().catch(() => undefined);
+      for (const key of COLLECTIONS_SESSION_KEYS) clearSessionState(key);
       await supabase.auth.signOut({ scope: "local" });
       setProfile(null);
       setRoles([]);

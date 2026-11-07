@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import { z } from "zod";
 import { toast } from "sonner";
 import { ArrowLeft, MessageCircle, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -30,9 +31,25 @@ import {
   TEN_AM_SLOT,
   tenAmStops,
 } from "@/lib/alexandriaMix";
+import { useSessionState, useUrlBackedState } from "@/hooks/usePersistentState";
+
+// Shareable view selection only — a student name/phone search stays in
+// sessionStorage (see CollectionsPanel-style fields), never the URL.
+const routeDashboardSearchSchema = z.object({
+  date: z.string().optional().catch(undefined),
+  route: z.string().optional().catch(undefined),
+  slot: z.string().optional().catch(undefined),
+});
 
 export const Route = createFileRoute("/route-dashboard")({
   head: () => ({ meta: [{ title: "Route Dashboard — Waleed & Talaat" }] }),
+  validateSearch: (search: Record<string, unknown>) => {
+    try {
+      return routeDashboardSearchSchema.parse(search);
+    } catch {
+      return {};
+    }
+  },
   component: () => (
     <AdminGuard>
       <RouteDashboardPage />
@@ -90,13 +107,53 @@ function RouteDashboardPage() {
   // local time throughout (cairoNow()), never UTC/server time.
   const todayKey = useMemo(() => toDateKey(cairoNow()), []);
   const defaultDate = useMemo(() => routeDashboardDefaultDate(), []);
-  const [serviceDate, setServiceDate] = useState<string>(defaultDate);
 
-  const [routeFilter, setRouteFilter] = useState<string>("all");
-  const [slotFilter, setSlotFilter] = useState<string>("all");
+  const urlSearch = Route.useSearch();
+  const navigate = Route.useNavigate();
+  const setUrlParam = (patch: {
+    date?: string | undefined;
+    route?: string | undefined;
+    slot?: string | undefined;
+  }) => void navigate({ search: (p) => ({ ...p, ...patch }), replace: true });
+
+  const serviceDate = useUrlBackedState<string>(
+    "routeDash.serviceDate",
+    urlSearch.date,
+    (v) => setUrlParam({ date: v }),
+    defaultDate,
+    { validate: (v): v is string => typeof v === "string" },
+  );
+  const setServiceDate = (v: string) => setUrlParam({ date: v });
+
+  const routeFilterRaw = useUrlBackedState<string>(
+    "routeDash.routeFilter",
+    urlSearch.route,
+    (v) => setUrlParam({ route: v }),
+    "all",
+    { validate: (v): v is string => typeof v === "string" },
+  );
+  const setRouteFilter = (v: string) => setUrlParam({ route: v });
+
+  const slotFilterRaw = useUrlBackedState<string>(
+    "routeDash.slotFilter",
+    urlSearch.slot,
+    (v) => setUrlParam({ slot: v }),
+    "all",
+    { validate: (v): v is string => typeof v === "string" },
+  );
+  const setSlotFilter = (v: string) => setUrlParam({ slot: v });
+  // Garbage in the URL (an unknown slot value) falls back to "all"
+  // instead of silently filtering to nothing.
+  const slotFilter = SLOT_OPTIONS.some((o) => o.value === slotFilterRaw) ? slotFilterRaw : "all";
+  const routeFilter = routeFilterRaw;
+
   const [rows, setRows] = useState<PassengerRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
+  // A name/phone search is never put in the URL (see the task note on
+  // not leaking names/phones there) — sessionStorage only.
+  const [search, setSearch] = useSessionState<string>("routeDash.search", "", {
+    validate: (v): v is string => typeof v === "string",
+  });
 
   const effectiveRoute = isAdmin ? routeFilter : (profile?.assigned_route ?? "");
   const isReturnSlotFilter = (RETURN_SLOT_VALUES as readonly string[]).includes(slotFilter);

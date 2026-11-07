@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
+import { z } from "zod";
 import { ArrowLeft, Bus, Ticket, Users } from "lucide-react";
 import { AdminGuard } from "@/components/admin/AdminGuard";
 import { ManifestsPanel } from "@/components/admin/ManifestsPanel";
@@ -10,8 +11,22 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/hooks/useLanguage";
 
+const manifestsSearchSchema = z.object({
+  date: z.string().optional().catch(undefined),
+  slot: z.string().optional().catch(undefined),
+  route: z.string().optional().catch(undefined),
+  payment: z.string().optional().catch(undefined),
+});
+
 export const Route = createFileRoute("/admin/manifests")({
   head: () => ({ meta: [{ title: "Fleet manifests — Waleed & Talaat" }] }),
+  validateSearch: (search: Record<string, unknown>) => {
+    try {
+      return manifestsSearchSchema.parse(search);
+    } catch {
+      return {};
+    }
+  },
   component: () => (
     <AdminGuard>
       <ManifestsPage />

@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useRoutes } from "@/hooks/useRoutes";
+import { useSessionState } from "@/hooks/usePersistentState";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,12 +15,30 @@ export function CollectionsPanel() {
   const { t } = useLanguage();
   const { profile, isAdmin } = useAuth();
   const { routes } = useRoutes();
-  const [studentName, setStudentName] = useState("");
-  const [amount, setAmount] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
-  const [route, setRoute] = useState(profile?.assigned_route ?? routes[0] ?? "");
+  // Plain form fields survive a tab discard via sessionStorage — but
+  // receiptFile can't be (a File object isn't serialisable), so a
+  // restored form may need the receipt reattached; see the hint below.
+  const [studentName, setStudentName] = useSessionState<string>("collections.studentName", "", {
+    validate: (v): v is string => typeof v === "string",
+  });
+  const [amount, setAmount] = useSessionState<string>("collections.amount", "", {
+    validate: (v): v is string => typeof v === "string",
+  });
+  const [paymentMethod, setPaymentMethod] = useSessionState<PaymentMethod>(
+    "collections.paymentMethod",
+    "cash",
+    { validate: (v): v is PaymentMethod => v === "cash" || v === "instapay" },
+  );
+  const [route, setRoute] = useSessionState<string>(
+    "collections.route",
+    profile?.assigned_route ?? routes[0] ?? "",
+    { validate: (v): v is string => typeof v === "string" },
+  );
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
+  // A restored instapay submission needs its receipt reattached — the
+  // file itself can never survive a tab discard.
+  const needsReceiptReattach = paymentMethod === "instapay" && !receiptFile && !!studentName;
 
   const submit = async () => {
     if (!studentName.trim()) {
@@ -145,6 +164,11 @@ export function CollectionsPanel() {
               accept="image/*,.pdf"
               onChange={(e) => setReceiptFile(e.target.files?.[0] ?? null)}
             />
+            {needsReceiptReattach && (
+              <p className="text-xs text-warning-foreground">
+                {t("collections.reattachReceiptHint")}
+              </p>
+            )}
           </div>
         )}
         <Button className="btn-gold w-full" disabled={busy} onClick={() => void submit()}>

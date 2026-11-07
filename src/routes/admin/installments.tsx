@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import { z } from "zod";
 import { toast } from "sonner";
 import { ArrowLeft, CheckCircle2, MessageCircle, Wallet } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,11 +20,24 @@ import {
 } from "@/components/ui/table";
 import { installmentReminderLink } from "@/lib/subscription";
 import { edgeFunctionErrorMessage } from "@/lib/functionsError";
+import { useSessionState, useUrlBackedState } from "@/hooks/usePersistentState";
+
+const installmentsSearchSchema = z.object({
+  route: z.string().optional().catch(undefined),
+  status: z.string().optional().catch(undefined),
+});
 
 export const Route = createFileRoute("/admin/installments")({
   head: () => ({
     meta: [{ title: "Installments — Waleed & Talaat" }],
   }),
+  validateSearch: (search: Record<string, unknown>) => {
+    try {
+      return installmentsSearchSchema.parse(search);
+    } catch {
+      return {};
+    }
+  },
   component: () => (
     <AdminGuard requireAdmin>
       <InstallmentsPage />
@@ -51,9 +65,38 @@ function InstallmentsPage() {
   const [students, setStudents] = useState<Student[]>([]);
   const [loadingList, setLoadingList] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [routeFilter, setRouteFilter] = useState<string>("all");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
-  const [search, setSearch] = useState("");
+
+  const urlSearch = Route.useSearch();
+  const navigate = Route.useNavigate();
+  const setUrlParam = (patch: { route?: string | undefined; status?: string | undefined }) =>
+    void navigate({ search: (p) => ({ ...p, ...patch }), replace: true });
+
+  const routeFilter = useUrlBackedState<string>(
+    "installments.routeFilter",
+    urlSearch.route,
+    (v) => setUrlParam({ route: v }),
+    "all",
+    { validate: (v): v is string => typeof v === "string" },
+  );
+  const setRouteFilter = (v: string) => setUrlParam({ route: v });
+
+  const statusFilterRaw = useUrlBackedState<string>(
+    "installments.statusFilter",
+    urlSearch.status,
+    (v) => setUrlParam({ status: v }),
+    "all",
+    { validate: (v): v is string => typeof v === "string" },
+  );
+  const statusFilter: StatusFilter =
+    statusFilterRaw === "pending_second" || statusFilterRaw === "completed"
+      ? statusFilterRaw
+      : "all";
+  const setStatusFilter = (v: StatusFilter) => setUrlParam({ status: v });
+
+  // Never in the URL — could contain a searched student name/phone.
+  const [search, setSearch] = useSessionState<string>("installments.search", "", {
+    validate: (v): v is string => typeof v === "string",
+  });
 
   const load = async () => {
     setLoadingList(true);

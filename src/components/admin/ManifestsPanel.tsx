@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import { Users, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +18,7 @@ import { SECTOR_LABELS, type EarlyReturnSector } from "@/lib/earlyReturnSectors"
 import { matchesQuery } from "@/lib/searchNormalize";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useRoutes } from "@/hooks/useRoutes";
+import { useSessionState, useUrlBackedState } from "@/hooks/usePersistentState";
 
 type Row = {
   student_id: string;
@@ -34,13 +36,64 @@ export function ManifestsPanel() {
   const { t } = useLanguage();
   const { routes, stopsByRoute } = useRoutes();
   const todayKey = useMemo(() => toDateKey(cairoNow()), []);
-  const [date, setDate] = useState<string>(todayKey);
-  const [slot, setSlot] = useState<string>(ALL_SLOTS[0]);
+
+  const urlSearch = useSearch({ from: "/admin/manifests" });
+  const navigate = useNavigate({ from: "/admin/manifests" });
+  const setUrlParam = (patch: {
+    date?: string | undefined;
+    slot?: string | undefined;
+    route?: string | undefined;
+    payment?: string | undefined;
+  }) => void navigate({ search: (p) => ({ ...p, ...patch }), replace: true });
+
+  const date = useUrlBackedState<string>(
+    "manifests.date",
+    urlSearch.date,
+    (v) => setUrlParam({ date: v }),
+    todayKey,
+    { validate: (v): v is string => typeof v === "string" },
+  );
+  const setDate = (v: string) => setUrlParam({ date: v });
+
+  const slotRaw = useUrlBackedState<string>(
+    "manifests.slot",
+    urlSearch.slot,
+    (v) => setUrlParam({ slot: v }),
+    ALL_SLOTS[0],
+    { validate: (v): v is string => typeof v === "string" },
+  );
+  const slot = (ALL_SLOTS as readonly string[]).includes(slotRaw) ? slotRaw : ALL_SLOTS[0];
+  const setSlot = (v: string) => setUrlParam({ slot: v });
+
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
-  const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>("all");
-  const [routeFilter, setRouteFilter] = useState<string>("all");
-  const [search, setSearch] = useState("");
+
+  const paymentFilterRaw = useUrlBackedState<string>(
+    "manifests.paymentFilter",
+    urlSearch.payment,
+    (v) => setUrlParam({ payment: v }),
+    "all",
+    { validate: (v): v is string => typeof v === "string" },
+  );
+  const paymentFilter: PaymentFilter =
+    paymentFilterRaw === "paid_full" || paymentFilterRaw === "installment_pending"
+      ? paymentFilterRaw
+      : "all";
+  const setPaymentFilter = (v: PaymentFilter) => setUrlParam({ payment: v });
+
+  const routeFilter = useUrlBackedState<string>(
+    "manifests.routeFilter",
+    urlSearch.route,
+    (v) => setUrlParam({ route: v }),
+    "all",
+    { validate: (v): v is string => typeof v === "string" },
+  );
+  const setRouteFilter = (v: string) => setUrlParam({ route: v });
+
+  // Never in the URL — could contain a searched student name/phone.
+  const [search, setSearch] = useSessionState<string>("manifests.search", "", {
+    validate: (v): v is string => typeof v === "string",
+  });
   const [slotTotals, setSlotTotals] = useState<{ kind: string; slot: string; total: number }[]>([]);
 
   const isEarlyReturn = (RETURN_SLOTS as readonly string[]).includes(slot);

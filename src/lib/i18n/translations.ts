@@ -228,10 +228,8 @@ export const translations: Record<Lang, Record<string, string>> = {
     "pass.goToBookings": "الذهاب للحجز",
     "pass.standardReturn": "العودة القياسية",
     "pass.noBookingNeeded": "لا حاجة للحجز",
-    "pass.morningExpiredHeading": "انتهت صلاحية التذكرة",
-    "pass.morningExpiredBody": "انتهت صلاحية رحلة الصباح الساعة 1:30 ظهراً",
-    "pass.morningActivatesAt": "تفعّل التذكرة الساعة 12:00 ص يوم الرحلة",
-    "pass.morningExpiredBadge": "منتهية الصلاحية (Expired)",
+    "pass.boarded": "✅ تم تسجيل الصعود",
+    "pass.boardedAt": "تم الصعود الساعة",
 
     // Daily pass (guest)
     "dailyPass.title": "طلب تصريح يومي",
@@ -970,10 +968,8 @@ export const translations: Record<Lang, Record<string, string>> = {
     "pass.goToBookings": "Go to bookings",
     "pass.standardReturn": "Standard return",
     "pass.noBookingNeeded": "no booking needed",
-    "pass.morningExpiredHeading": "Ticket expired",
-    "pass.morningExpiredBody": "Your morning trip ticket expired at 1:30 PM",
-    "pass.morningActivatesAt": "Activates at 12:00 AM on the trip day",
-    "pass.morningExpiredBadge": "Expired",
+    "pass.boarded": "✅ Boarded",
+    "pass.boardedAt": "Boarded at",
 
     "dailyPass.title": "Daily pass request",
     "dailyPass.subtitle": "For non-subscribers. No account or password needed.",

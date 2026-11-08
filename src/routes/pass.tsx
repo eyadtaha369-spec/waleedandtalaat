@@ -12,11 +12,10 @@ import { Button } from "@/components/ui/button";
 import {
   addDays,
   cairoNow,
-  morningPassState,
   returnWindow,
   specialSundayWindow,
+  TIMEZONE,
   toDateKey,
-  type MorningPassState,
 } from "@/lib/schedule";
 import { subscriptionBadge } from "@/lib/subscription";
 import { formatLocalizedDate, formatSlotLabel } from "@/lib/i18n/dateFormat";
@@ -37,6 +36,7 @@ export const Route = createFileRoute("/pass")({
 });
 
 type Booking = { kind: string; slot: string; service_date: string; pickup_stop: string | null };
+type Scan = { slot: string; service_date: string; scanned_at: string };
 
 const TOKEN_LIFETIME_SECONDS = 60;
 // Refresh a bit before actual expiry so there's never a dead window
@@ -90,7 +90,6 @@ function PassPage() {
   // new Date().getHours() or a UTC-sliced ISO string.
   const cairo = useMemo(() => cairoNow(new Date(now)), [now]);
   const today = toDateKey(cairo);
-  const tomorrow = toDateKey(addDays(cairo, 1));
   // Must match dashboard.tsx's own computation, or a student who booked
   // the special Sunday trip would see the wrong date (or no booking at
   // all) here on their own pass.
@@ -99,41 +98,58 @@ function PassPage() {
     : null;
   const rw = returnWindow(cairo);
 
-  // Only changes identity when the actual calendar dates involved
-  // change (midnight rollover, or the special-Sunday toggle) — never
-  // every second — so it's safe to use as an effect/callback
-  // dependency below without re-fetching on every clock tick.
+  // Today through the next 7 days (plus the special Sunday if it's
+  // further out) — wide enough that a student who booked ahead, or
+  // right after Thursday for the following Sunday, still sees their
+  // QR the moment they book it, not just once "tomorrow" arrives. Only
+  // changes identity when the actual calendar date rolls over (not
+  // every second) or the special-Sunday toggle flips, so it's safe as
+  // an effect/callback dependency without re-fetching on every tick.
   const fetchDates = useMemo(() => {
-    const dates = new Set([today, tomorrow]);
+    const dates = new Set<string>();
+    for (let i = 0; i <= 7; i++) dates.add(toDateKey(addDays(cairo, i)));
     if (specialSundayServiceDate) dates.add(specialSundayServiceDate);
     return Array.from(dates);
-  }, [today, tomorrow, specialSundayServiceDate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [today, specialSundayServiceDate]);
 
   useEffect(() => {
     if (!loading && !user) void navigate({ to: "/auth" });
   }, [loading, user, navigate]);
 
+  const [scans, setScans] = useState<Scan[]>([]);
+
   // No caching anywhere in this fetch — a stale "no booking yet", or a
-  // stale active/expired status, must never linger past its moment.
-  const fetchBookings = useCallback(async () => {
+  // QR that should already say "Boarded", must never linger past its
+  // moment. A booking's own existence (bookings has no status column)
+  // is what "active" means; scans tells us whether it's been used yet.
+  const fetchData = useCallback(async () => {
     if (!user) return;
-    const { data } = await supabase
-      .from("bookings")
-      .select("kind,slot,service_date,pickup_stop")
-      .in("service_date", fetchDates);
-    setBookings((data as Booking[]) ?? []);
+    const [{ data: b }, { data: s }] = await Promise.all([
+      supabase
+        .from("bookings")
+        .select("kind,slot,service_date,pickup_stop")
+        .in("service_date", fetchDates),
+      supabase
+        .from("scans")
+        .select("slot,service_date,scanned_at")
+        .eq("student_id", user.id)
+        .in("service_date", fetchDates),
+    ]);
+    setBookings((b as Booking[]) ?? []);
+    setScans((s as Scan[]) ?? []);
   }, [user, fetchDates]);
 
   useEffect(() => {
-    void fetchBookings();
-  }, [fetchBookings]);
+    void fetchData();
+  }, [fetchData]);
 
-  // Keep bookings fresh on a tab that's just sitting open — e.g. an
-  // admin edit elsewhere, or the trip simply crossing into tomorrow.
+  // Keep bookings/scans fresh on a tab that's just sitting open — e.g.
+  // the student gets scanned, or an admin edit elsewhere.
   useEffect(() => {
-    const interval = setInterval(() => void fetchBookings(), 60_000);
+    const interval = setInterval(() => void fetchData(), 60_000);
     return () => clearInterval(interval);
-  }, [fetchBookings]);
+  }, [fetchData]);
 
   // Rotating boarding token: generate one immediately, then again every
   // ~45s. This is the real security layer — see the note above.
@@ -209,10 +225,10 @@ function PassPage() {
   // was still null, so returning to the tab silently never refreshed
   // anything.
   const refreshTokenRef = useRef(refreshToken);
-  const fetchBookingsRef = useRef(fetchBookings);
+  const fetchDataRef = useRef(fetchData);
   useEffect(() => {
     refreshTokenRef.current = refreshToken;
-    fetchBookingsRef.current = fetchBookings;
+    fetchDataRef.current = fetchData;
   });
 
   // Hide the QR while the tab/app is actually backgrounded (not just
@@ -222,8 +238,8 @@ function PassPage() {
   // the note above — but does stop a QR sitting visible while the
   // student is doing something else with the phone unlocked. A
   // backgrounded tab can also be holding an expired token, or a stale
-  // booking/expiry status, by the time it's shown again, so refresh
-  // both immediately on return.
+  // booking/scan status, by the time it's shown again, so refresh both
+  // immediately on return.
   useEffect(() => {
     const onVisibility = () => {
       if (document.hidden) {
@@ -231,14 +247,14 @@ function PassPage() {
       } else {
         setLocked(false);
         void refreshTokenRef.current();
-        void fetchBookingsRef.current();
+        void fetchDataRef.current();
       }
     };
     // Covers back/forward-cache restores, which don't always fire a
     // visibilitychange event on their own.
     const onPageShow = () => {
       setLocked(false);
-      void fetchBookingsRef.current();
+      void fetchDataRef.current();
     };
     document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("pageshow", onPageShow);
@@ -256,28 +272,23 @@ function PassPage() {
     );
   }
 
-  // Today's own morning booking wins; otherwise the nearest future one
-  // (tomorrow, or the special Sunday trip) so a student who booked
-  // ahead still sees it, just in its "upcoming" state below.
-  const todayMorningBooking = bookings.find(
-    (b) => b.kind === "morning" && b.service_date === today,
-  );
-  const upcomingMorningBooking = bookings
-    .filter((b) => b.kind === "morning" && b.service_date > today)
-    .sort((a, b) => a.service_date.localeCompare(b.service_date))[0];
-  const morningBooking = todayMorningBooking ?? upcomingMorningBooking ?? null;
-  const morningState: MorningPassState | null = morningBooking
-    ? morningPassState(morningBooking.service_date, cairo)
-    : null;
+  // Every morning booking in the fetch window is a real, active trip —
+  // bookings has no status column, so a row existing IS "booked." Show
+  // each as its own QR immediately (nearest date first), capped at 2.
+  const morningBookings = bookings
+    .filter((b) => b.kind === "morning")
+    .sort((a, b) => a.service_date.localeCompare(b.service_date))
+    .slice(0, 2);
   const returnBooking = bookings.find(
     (b) => b.kind === "return" && b.service_date === rw.serviceDate,
   );
-  // An expired morning booking with no return booking to fall back on
-  // gets the full locked state (with its own message) rather than a
-  // card nobody can act on.
-  const morningExpiredOnly = morningState === "expired" && !returnBooking;
-  const noBookingAtAll = !morningBooking && !returnBooking;
+  const noBookingAtAll = morningBookings.length === 0 && !returnBooking;
   const payload = token ? JSON.stringify({ v: 2, token, name: profile.full_name }) : null;
+  // "Visible until scanned": a booking with a matching scans row (same
+  // service_date + slot) has already boarded — show that instead of the
+  // QR, forever, rather than hiding the QR on any kind of timer.
+  const findScan = (serviceDate: string, slot: string) =>
+    scans.find((s) => s.service_date === serviceDate && s.slot === slot);
   const secondsLeft = expiresAt ? Math.max(0, Math.ceil((expiresAt - now) / 1000)) : null;
   const clockLabel = new Date(now).toLocaleTimeString(lang === "ar" ? "ar-EG" : "en-GB", {
     hour: "2-digit",
@@ -327,67 +338,66 @@ function PassPage() {
               </Button>
             </Link>
           </div>
-        ) : morningExpiredOnly ? (
-          <div className="flex flex-col items-center gap-3 border-y border-dashed border-border bg-secondary/60 p-8 text-center">
-            <Lock className="text-muted-foreground size-6" />
-            <p className="text-sm font-medium">{t("pass.morningExpiredHeading")}</p>
-            <p className="text-xs text-muted-foreground">{t("pass.morningExpiredBody")}</p>
-            <Link to="/dashboard">
-              <Button size="sm" className="btn-gold mt-1">
-                {t("pass.goToBookings")}
-              </Button>
-            </Link>
-          </div>
         ) : (
           <div className="divide-y divide-dashed divide-border border-y border-dashed border-border">
-            {morningBooking && morningState === "active" && (
-              <PassQr
-                title={t("dashboard.morningDeparture")}
-                detail={`${formatSlotLabel(morningBooking.slot, lang)}${morningBooking.pickup_stop ? ` · ${morningBooking.pickup_stop}` : ""}`}
-                payload={payload}
-                locked={locked}
-                tokenState={tokenState}
-                onRetry={() => void refreshToken()}
-                onUnlock={() => setLocked(false)}
-                secondsLeft={secondsLeft}
-                clockLabel={clockLabel}
-                studentName={profile.full_name}
-                studentPhone={profile.phone}
-                t={t}
-              />
-            )}
-            {morningBooking && morningState === "upcoming" && (
-              <MorningStatusCard
-                title={t("dashboard.morningDeparture")}
-                detail={`${formatLocalizedDate(morningBooking.service_date, lang)} · ${formatSlotLabel(morningBooking.slot, lang)}${morningBooking.pickup_stop ? ` · ${morningBooking.pickup_stop}` : ""}`}
-                badgeLabel={t("pass.morningActivatesAt")}
-                badgeClassName="bg-muted text-muted-foreground"
-              />
-            )}
-            {morningBooking && morningState === "expired" && (
-              <MorningStatusCard
-                title={t("dashboard.morningDeparture")}
-                detail={`${formatLocalizedDate(morningBooking.service_date, lang)} · ${formatSlotLabel(morningBooking.slot, lang)}${morningBooking.pickup_stop ? ` · ${morningBooking.pickup_stop}` : ""}`}
-                badgeLabel={t("pass.morningExpiredBadge")}
-                badgeClassName="bg-destructive/15 text-destructive"
-              />
-            )}
-            {returnBooking && (
-              <PassQr
-                title={t("dashboard.earlyReturn")}
-                detail={formatSlotLabel(returnBooking.slot, lang)}
-                payload={payload}
-                locked={locked}
-                tokenState={tokenState}
-                onRetry={() => void refreshToken()}
-                onUnlock={() => setLocked(false)}
-                secondsLeft={secondsLeft}
-                clockLabel={clockLabel}
-                studentName={profile.full_name}
-                studentPhone={profile.phone}
-                t={t}
-              />
-            )}
+            {morningBookings.map((b) => {
+              const scan = findScan(b.service_date, b.slot);
+              const detail = `${b.service_date !== today ? `${formatLocalizedDate(b.service_date, lang)} · ` : ""}${formatSlotLabel(b.slot, lang)}${b.pickup_stop ? ` · ${b.pickup_stop}` : ""}`;
+              return scan ? (
+                <BoardedCard
+                  key={`morning-${b.service_date}-${b.slot}`}
+                  title={t("dashboard.morningDeparture")}
+                  detail={detail}
+                  scannedAt={scan.scanned_at}
+                  lang={lang}
+                  t={t}
+                />
+              ) : (
+                <PassQr
+                  key={`morning-${b.service_date}-${b.slot}`}
+                  title={t("dashboard.morningDeparture")}
+                  detail={detail}
+                  payload={payload}
+                  locked={locked}
+                  tokenState={tokenState}
+                  onRetry={() => void refreshToken()}
+                  onUnlock={() => setLocked(false)}
+                  secondsLeft={secondsLeft}
+                  clockLabel={clockLabel}
+                  studentName={profile.full_name}
+                  studentPhone={profile.phone}
+                  t={t}
+                />
+              );
+            })}
+            {returnBooking &&
+              (() => {
+                const scan = findScan(returnBooking.service_date, returnBooking.slot);
+                return scan ? (
+                  <BoardedCard
+                    title={t("dashboard.earlyReturn")}
+                    detail={formatSlotLabel(returnBooking.slot, lang)}
+                    scannedAt={scan.scanned_at}
+                    lang={lang}
+                    t={t}
+                  />
+                ) : (
+                  <PassQr
+                    title={t("dashboard.earlyReturn")}
+                    detail={formatSlotLabel(returnBooking.slot, lang)}
+                    payload={payload}
+                    locked={locked}
+                    tokenState={tokenState}
+                    onRetry={() => void refreshToken()}
+                    onUnlock={() => setLocked(false)}
+                    secondsLeft={secondsLeft}
+                    clockLabel={clockLabel}
+                    studentName={profile.full_name}
+                    studentPhone={profile.phone}
+                    t={t}
+                  />
+                );
+              })()}
           </div>
         )}
 
@@ -541,22 +551,32 @@ function PassQr({
   );
 }
 
-function MorningStatusCard({
+function BoardedCard({
   title,
   detail,
-  badgeLabel,
-  badgeClassName,
+  scannedAt,
+  lang,
+  t,
 }: {
   title: string;
   detail: string;
-  badgeLabel: string;
-  badgeClassName: string;
+  scannedAt: string;
+  lang: "ar" | "en";
+  t: (key: string) => string;
 }) {
+  const scannedAtLabel = new Date(scannedAt).toLocaleTimeString(lang === "ar" ? "ar-EG" : "en-GB", {
+    timeZone: TIMEZONE,
+    hour: "2-digit",
+    minute: "2-digit",
+  });
   return (
     <div className="flex flex-col items-center gap-2 bg-secondary/60 p-6 text-center">
       <p className="text-xs tracking-widest text-muted-foreground uppercase">{title}</p>
       <p className="text-sm font-semibold">{detail}</p>
-      <Badge className={`mt-1 ${badgeClassName}`}>{badgeLabel}</Badge>
+      <Badge className="mt-1 bg-success text-success-foreground">{t("pass.boarded")}</Badge>
+      <p className="text-xs text-muted-foreground">
+        {t("pass.boardedAt")} {scannedAtLabel}
+      </p>
     </div>
   );
 }

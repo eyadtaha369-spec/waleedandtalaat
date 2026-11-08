@@ -109,12 +109,14 @@ export function subscriptionBadge(subscriptionType: string, paymentStatus: strin
 export function installmentReminderLink(opts: {
   full_name: string;
   phone: string;
+  route: string;
   amount: number;
 }): string {
   const message =
-    `مرحباً ${opts.full_name} 👋\n` +
-    `هذه رسالة تذكير بخصوص القسط الثاني المتبقي (${opts.amount} ج.م) لاشتراك النقل مع وليد وطلعت.\n` +
-    `برجاء سداد القسط في أقرب وقت لضمان استمرار الخدمة. شكراً لتعاونكم 🙏`;
+    `السلام عليكم ${opts.full_name} 🌹\n` +
+    `تذكرة من شركة وليد وطلعت للنقل بشأن القسط الثاني لاشتراك [${opts.route}].\n` +
+    `المبلغ المتبقي للاستكمال: ${opts.amount.toLocaleString("en-US")} جنيه.\n` +
+    `برجاء تحويل المبلغ عبر InstaPay / فودافون كاش لضمان استمرار تفعيل الـ Boarding Pass دون انقطاع.\n`;
   const digits = opts.phone.replace(/\D/g, "");
   const number = digits.startsWith("20")
     ? digits

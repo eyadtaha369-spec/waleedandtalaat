@@ -4,10 +4,8 @@ import { z } from "zod";
 import { toast } from "sonner";
 import { ArrowLeft, CheckCircle2, MessageCircle, Wallet } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useRoutes } from "@/hooks/useRoutes";
 import { useLanguage } from "@/hooks/useLanguage";
 import { AdminGuard } from "@/components/admin/AdminGuard";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -24,12 +22,11 @@ import { useSessionState, useUrlBackedState } from "@/hooks/usePersistentState";
 
 const installmentsSearchSchema = z.object({
   route: z.string().optional().catch(undefined),
-  status: z.string().optional().catch(undefined),
 });
 
 export const Route = createFileRoute("/admin/installments")({
   head: () => ({
-    meta: [{ title: "Installments — Waleed & Talaat" }],
+    meta: [{ title: "Second installment collection — Waleed & Talaat" }],
   }),
   validateSearch: (search: Record<string, unknown>) => {
     try {
@@ -45,53 +42,37 @@ export const Route = createFileRoute("/admin/installments")({
   ),
 });
 
-type Student = {
-  user_id: string;
+// Matches get_pending_second_installment_students()'s exact return
+// shape — every row here is, by definition, still pending_second; the
+// RPC itself already excludes anyone confirm_second_installment() has
+// cleared, so there's no separate status to filter on anymore.
+type Row = {
+  student_id: string;
   full_name: string;
   phone: string | null;
   route: string | null;
-  initial_amount_paid: number;
-  second_installment_amount: number | null;
-  payment_method: string | null;
-  installment_status: "pending_second" | "completed";
+  amount_paid: number;
+  remaining_balance: number;
 };
 
-type StatusFilter = "all" | "pending_second" | "completed";
-
 function InstallmentsPage() {
-  const { routes } = useRoutes();
   const { t } = useLanguage();
 
-  const [students, setStudents] = useState<Student[]>([]);
+  const [rows, setRows] = useState<Row[]>([]);
   const [loadingList, setLoadingList] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const urlSearch = Route.useSearch();
   const navigate = Route.useNavigate();
-  const setUrlParam = (patch: { route?: string | undefined; status?: string | undefined }) =>
-    void navigate({ search: (p) => ({ ...p, ...patch }), replace: true });
-
+  const setRouteFilter = (v: string) =>
+    void navigate({ search: (p) => ({ ...p, route: v }), replace: true });
   const routeFilter = useUrlBackedState<string>(
     "installments.routeFilter",
     urlSearch.route,
-    (v) => setUrlParam({ route: v }),
+    setRouteFilter,
     "all",
     { validate: (v): v is string => typeof v === "string" },
   );
-  const setRouteFilter = (v: string) => setUrlParam({ route: v });
-
-  const statusFilterRaw = useUrlBackedState<string>(
-    "installments.statusFilter",
-    urlSearch.status,
-    (v) => setUrlParam({ status: v }),
-    "all",
-    { validate: (v): v is string => typeof v === "string" },
-  );
-  const statusFilter: StatusFilter =
-    statusFilterRaw === "pending_second" || statusFilterRaw === "completed"
-      ? statusFilterRaw
-      : "all";
-  const setStatusFilter = (v: StatusFilter) => setUrlParam({ status: v });
 
   // Never in the URL — could contain a searched student name/phone.
   const [search, setSearch] = useSessionState<string>("installments.search", "", {
@@ -100,34 +81,56 @@ function InstallmentsPage() {
 
   const load = async () => {
     setLoadingList(true);
-    const { data, error } = await supabase.rpc("list_installment_students");
+    const { data, error } = await supabase.rpc("get_pending_second_installment_students");
     setLoadingList(false);
     if (error) {
       toast.error(error.message);
       return;
     }
-    setStudents((data as Student[]) ?? []);
+    setRows((data as Row[]) ?? []);
   };
 
   useEffect(() => {
     void load();
   }, []);
 
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return students.filter((s) => {
-      if (routeFilter !== "all" && s.route !== routeFilter) return false;
-      if (statusFilter !== "all" && s.installment_status !== statusFilter) return false;
-      if (q && !s.full_name.toLowerCase().includes(q) && !(s.phone ?? "").includes(q)) return false;
-      return true;
-    });
-  }, [students, routeFilter, statusFilter, search]);
+  // Distinct routes actually present in the data, not the full route
+  // list — a route with nobody pending shouldn't show up as a filter.
+  const routeOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const r of rows) if (r.route) set.add(r.route);
+    return [...set].sort((a, b) => a.localeCompare(b));
+  }, [rows]);
 
-  const totalStudents = students.length;
-  const totalCollected = students.reduce((sum, s) => sum + (s.initial_amount_paid || 0), 0);
-  const totalOutstanding = students
-    .filter((s) => s.installment_status === "pending_second")
-    .reduce((sum, s) => sum + (s.second_installment_amount ?? s.initial_amount_paid ?? 0), 0);
+  const routeSummary = useMemo(() => {
+    const map = new Map<string, { count: number; remaining: number }>();
+    for (const r of rows) {
+      const key = r.route ?? t("manifests.noRouteAssigned");
+      const entry = map.get(key) ?? { count: 0, remaining: 0 };
+      entry.count += 1;
+      entry.remaining += r.remaining_balance;
+      map.set(key, entry);
+    }
+    return [...map.entries()].sort((a, b) => b[1].count - a[1].count);
+  }, [rows, t]);
+
+  const filtered = useMemo(() => {
+    const q = search.trim();
+    // "numeric" query (digits, spaces, +) is treated as a phone
+    // fragment and matched digit-only; anything else matches the name.
+    const isNumericQuery = q.length > 0 && /^[\d\s+]+$/.test(q);
+    const qDigits = q.replace(/\D/g, "");
+    const qLower = q.toLowerCase();
+    return rows.filter((r) => {
+      if (routeFilter !== "all" && r.route !== routeFilter) return false;
+      if (!q) return true;
+      if (isNumericQuery) return (r.phone ?? "").replace(/\D/g, "").includes(qDigits);
+      return r.full_name.toLowerCase().includes(qLower);
+    });
+  }, [rows, routeFilter, search]);
+
+  const totalRemaining = rows.reduce((sum, r) => sum + (r.remaining_balance || 0), 0);
+  const totalPaid = rows.reduce((sum, r) => sum + (r.amount_paid || 0), 0);
 
   const confirmPayment = async (studentId: string) => {
     setBusyId(studentId);
@@ -146,6 +149,13 @@ function InstallmentsPage() {
     void load();
   };
 
+  const handleConfirmClick = (row: Row) => {
+    const message = `${t("installments.confirmPrefix")} ${row.full_name}${t("installments.confirmSuffix")}`;
+    // An accidental tap must never remove a student from the list.
+    if (!window.confirm(message)) return;
+    void confirmPayment(row.student_id);
+  };
+
   return (
     <main className="mx-auto max-w-6xl px-4 py-8">
       <div className="surface-navy shadow-luxe flex flex-wrap items-center justify-between gap-4 rounded-3xl p-6">
@@ -159,17 +169,43 @@ function InstallmentsPage() {
       </div>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-3">
-        <KpiCard label={t("installments.totalStudents")} value={String(totalStudents)} />
-        <KpiCard
-          label={t("installments.totalCollected")}
-          value={`${totalCollected.toLocaleString()} ج.م`}
-        />
+        <KpiCard label={t("installments.totalStudents")} value={String(rows.length)} />
         <KpiCard
           label={t("installments.outstanding")}
-          value={`${totalOutstanding.toLocaleString()} ج.م`}
+          value={`${totalRemaining.toLocaleString()} ج.م`}
           accent
         />
+        <KpiCard
+          label={t("installments.totalCollected")}
+          value={`${totalPaid.toLocaleString()} ج.م`}
+        />
       </div>
+
+      {routeSummary.length > 0 && (
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {routeSummary.map(([route, s]) => {
+            const active = routeFilter === route;
+            return (
+              <button
+                key={route}
+                type="button"
+                onClick={() => setRouteFilter(active ? "all" : route)}
+                className={`rounded-2xl border p-4 text-start transition-colors ${
+                  active
+                    ? "border-gilded bg-accent/5"
+                    : "border-border bg-card hover:bg-secondary/50"
+                }`}
+              >
+                <p className="truncate text-sm font-semibold">{route}</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {s.count} {t("installments.studentsUnit")}
+                </p>
+                <p className="text-xs text-muted-foreground">{s.remaining.toLocaleString()} ج.م</p>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       <div className="mt-6 rounded-3xl border border-border bg-card p-6">
         <div className="flex flex-wrap items-center gap-3">
@@ -185,21 +221,16 @@ function InstallmentsPage() {
             onChange={(e) => setRouteFilter(e.target.value)}
           >
             <option value="all">{t("installments.allRoutes")}</option>
-            {routes.map((r) => (
+            {routeOptions.map((r) => (
               <option key={r} value={r}>
                 {r}
               </option>
             ))}
           </select>
-          <select
-            className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-          >
-            <option value="all">{t("common.all")}</option>
-            <option value="pending_second">{t("installments.pendingSecond")}</option>
-            <option value="completed">{t("installments.completed")}</option>
-          </select>
+          <span className="text-xs text-muted-foreground">
+            {t("installments.showingCount")} {filtered.length} {t("installments.ofCount")}{" "}
+            {rows.length}
+          </span>
         </div>
 
         {loadingList ? (
@@ -207,70 +238,61 @@ function InstallmentsPage() {
         ) : filtered.length === 0 ? (
           <p className="mt-4 text-sm text-muted-foreground">{t("installments.noStudentsMatch")}</p>
         ) : (
-          <Table className="mt-4">
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t("common.name")}</TableHead>
-                <TableHead>{t("common.phone")}</TableHead>
-                <TableHead>{t("common.route")}</TableHead>
-                <TableHead>{t("installments.initialPaid")}</TableHead>
-                <TableHead>{t("installments.method")}</TableHead>
-                <TableHead>{t("common.status")}</TableHead>
-                <TableHead className="text-end">{t("common.actions")}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.map((s) => (
-                <TableRow key={s.user_id}>
-                  <TableCell className="font-medium">{s.full_name}</TableCell>
-                  <TableCell className="whitespace-nowrap">{s.phone ?? "—"}</TableCell>
-                  <TableCell>{s.route ?? "—"}</TableCell>
-                  <TableCell>{s.initial_amount_paid.toLocaleString()} ج.م</TableCell>
-                  <TableCell>{s.payment_method ?? "—"}</TableCell>
-                  <TableCell>
-                    {s.installment_status === "completed" ? (
-                      <Badge className="bg-success text-success-foreground">
-                        🟢 {t("installments.completed")}
-                      </Badge>
-                    ) : (
-                      <Badge className="bg-warning text-warning-foreground">
-                        🟡 {t("installments.pendingSecond")}
-                      </Badge>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-end">
-                    <div className="flex justify-end gap-1">
-                      {s.installment_status === "pending_second" && s.phone && (
-                        <a
-                          href={installmentReminderLink({
-                            full_name: s.full_name,
-                            phone: s.phone,
-                            amount: s.second_installment_amount ?? s.initial_amount_paid,
-                          })}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          <Button size="sm" variant="outline">
-                            <MessageCircle className="size-4" /> {t("installments.remind")}
-                          </Button>
-                        </a>
-                      )}
-                      {s.installment_status === "pending_second" && (
+          <div className="mt-4 overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t("installments.rowNumber")}</TableHead>
+                  <TableHead>{t("common.name")}</TableHead>
+                  <TableHead>{t("common.phone")}</TableHead>
+                  <TableHead>{t("common.route")}</TableHead>
+                  <TableHead>{t("installments.amountPaid")}</TableHead>
+                  <TableHead>{t("installments.remainingBalance")}</TableHead>
+                  <TableHead className="text-end">{t("common.actions")}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtered.map((r, i) => (
+                  <TableRow key={r.student_id}>
+                    <TableCell className="text-xs text-muted-foreground">{i + 1}</TableCell>
+                    <TableCell className="font-medium">{r.full_name}</TableCell>
+                    <TableCell className="whitespace-nowrap">{r.phone ?? "—"}</TableCell>
+                    <TableCell>{r.route ?? "—"}</TableCell>
+                    <TableCell>{r.amount_paid.toLocaleString()} ج.م</TableCell>
+                    <TableCell>{r.remaining_balance.toLocaleString()} ج.م</TableCell>
+                    <TableCell className="text-end">
+                      <div className="flex justify-end gap-1">
+                        {r.phone && (
+                          <a
+                            href={installmentReminderLink({
+                              full_name: r.full_name,
+                              phone: r.phone,
+                              route: r.route ?? "",
+                              amount: r.remaining_balance,
+                            })}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            <Button size="sm" variant="outline">
+                              <MessageCircle className="size-4" /> {t("installments.remind")}
+                            </Button>
+                          </a>
+                        )}
                         <Button
                           size="sm"
                           className="btn-gold"
-                          disabled={busyId === s.user_id}
-                          onClick={() => void confirmPayment(s.user_id)}
+                          disabled={busyId === r.student_id}
+                          onClick={() => handleConfirmClick(r)}
                         >
                           <CheckCircle2 className="size-4" /> {t("installments.markPaid")}
                         </Button>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         )}
       </div>
     </main>

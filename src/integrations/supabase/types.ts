@@ -779,6 +779,17 @@ export type Database = {
         Args: { p_student_id: string };
         Returns: Json;
       };
+      get_pending_second_installment_students: {
+        Args: Record<string, never>;
+        Returns: {
+          student_id: string;
+          full_name: string;
+          phone: string | null;
+          route: string | null;
+          amount_paid: number;
+          remaining_balance: number;
+        }[];
+      };
       apply_4pm_noshow_deduction: {
         Args: { p_date: string | null };
         Returns: Json;

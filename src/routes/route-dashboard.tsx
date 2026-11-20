@@ -154,6 +154,15 @@ function RouteDashboardPage() {
   const [search, setSearch] = useSessionState<string>("routeDash.search", "", {
     validate: (v): v is string => typeof v === "string",
   });
+  const [blockedIds, setBlockedIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    void supabase
+      .from("payment_blocks")
+      .select("student_id")
+      .eq("is_blocked", true)
+      .then(({ data }) => setBlockedIds(new Set((data ?? []).map((r) => r.student_id))));
+  }, []);
 
   const effectiveRoute = isAdmin ? routeFilter : (profile?.assigned_route ?? "");
   const isReturnSlotFilter = (RETURN_SLOT_VALUES as readonly string[]).includes(slotFilter);
@@ -587,7 +596,14 @@ function RouteDashboardPage() {
                                       />
                                     </div>
                                     <div className="min-w-0 flex-1">
-                                      <p className="text-sm font-medium">{p.full_name}</p>
+                                      <p className="flex items-center gap-2 text-sm font-medium">
+                                        {p.full_name}
+                                        {p.student_id && blockedIds.has(p.student_id) && (
+                                          <Badge className="bg-destructive text-destructive-foreground">
+                                            {t("scanner.paymentBlocked")}
+                                          </Badge>
+                                        )}
+                                      </p>
                                       <p className="text-xs text-muted-foreground">
                                         {p.phone ?? "—"} · {displayStopName}
                                         {(isMixMode || is10AmMode) && ` · ${p.route ?? "—"}`}

@@ -3,6 +3,7 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { Html5Qrcode } from "html5-qrcode";
 import { toast } from "sonner";
 import {
+  Ban,
   Camera,
   CheckCircle2,
   FlaskConical,
@@ -52,7 +53,7 @@ type TripScanResult = {
 const SCANNER_ELEMENT_ID = "wt-qr-scanner";
 const SCANNER_OPEN_KEY = "scanner.open";
 
-type ScanStatus = "booked" | "not_booked" | "scanned_earlier" | "no_trips_left";
+type ScanStatus = "booked" | "not_booked" | "scanned_earlier" | "no_trips_left" | "payment_blocked";
 
 type ScanResult = {
   status: ScanStatus;
@@ -771,6 +772,8 @@ export function ScannerPanel() {
             />
           ) : !result ? (
             <p className="mt-4 text-sm text-muted-foreground">{t("scanner.noScansYet")}</p>
+          ) : result.status === "payment_blocked" ? (
+            <PaymentBlockedCard result={result} t={t} />
           ) : (
             <ResultCard
               result={result}
@@ -869,6 +872,14 @@ function ResultCard({
       className: "bg-destructive text-destructive-foreground",
       icon: XCircle,
     },
+    // Never actually rendered through this card — payment_blocked gets
+    // its own full-screen PaymentBlockedCard — but Record<ScanStatus, ...>
+    // still needs an entry for every status.
+    payment_blocked: {
+      label: t("scanner.paymentBlocked"),
+      className: "bg-destructive text-destructive-foreground",
+      icon: Ban,
+    },
   };
   const c = config[result.status];
   const Icon = c.icon;
@@ -910,6 +921,29 @@ function ResultCard({
           {overriding ? "…" : t("scanner.checkinAnyway")}
         </Button>
       )}
+    </div>
+  );
+}
+
+function PaymentBlockedCard({ result, t }: { result: ScanResult; t: (key: string) => string }) {
+  return (
+    <div className="mt-4 flex flex-col items-center gap-4 rounded-2xl border-2 border-destructive bg-destructive p-8 text-center text-destructive-foreground">
+      <Ban className="size-14 shrink-0" />
+      <p className="text-2xl font-extrabold">{t("scanner.paymentBlocked")}</p>
+      <div className="flex items-center gap-4">
+        <div className="size-16 shrink-0 overflow-hidden rounded-xl border-2 border-destructive-foreground/40">
+          <SmartAvatar
+            photoUrl={result.photoUrl}
+            name={result.fullName}
+            className="size-full text-xl"
+          />
+        </div>
+        <div className="text-start">
+          <p className="text-lg font-bold">{result.fullName}</p>
+          <p className="text-sm opacity-90">{result.route ?? "—"}</p>
+        </div>
+      </div>
+      <p className="text-sm font-semibold">{t("scanner.paymentBlockedHint")}</p>
     </div>
   );
 }

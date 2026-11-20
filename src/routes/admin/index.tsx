@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
+  Ban,
   Bus,
   ClipboardList,
   MessageCircle,
@@ -181,6 +182,12 @@ function AdminConsole() {
           icon={Wallet}
           title={t("admin.installmentsTitle")}
           description={t("admin.installmentsDesc")}
+        />
+        <ShortcutCard
+          to="/admin/payment-blocks"
+          icon={Ban}
+          title={t("admin.paymentBlocksTitle")}
+          description={t("admin.paymentBlocksDesc")}
         />
         <ShortcutCard
           to="/admin/requests"

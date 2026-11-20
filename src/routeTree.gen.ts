@@ -26,6 +26,7 @@ import { Route as AdminDailyPassesRouteImport } from './routes/admin/daily-passe
 import { Route as AdminImportRouteImport } from './routes/admin/import'
 import { Route as AdminInstallmentsRouteImport } from './routes/admin/installments'
 import { Route as AdminManifestsRouteImport } from './routes/admin/manifests'
+import { Route as AdminPaymentBlocksRouteImport } from './routes/admin/payment-blocks'
 import { Route as AdminRequestsRouteImport } from './routes/admin/requests'
 import { Route as AdminScanRouteImport } from './routes/admin/scan'
 import { Route as AdminSchedulesRouteImport } from './routes/admin/schedules'
@@ -124,6 +125,11 @@ const AdminManifestsRoute = AdminManifestsRouteImport.update({
   path: '/manifests',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminPaymentBlocksRoute = AdminPaymentBlocksRouteImport.update({
+  id: '/payment-blocks',
+  path: '/payment-blocks',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminRequestsRoute = AdminRequestsRouteImport.update({
   id: '/requests',
   path: '/requests',
@@ -202,6 +208,7 @@ export interface FileRoutesByFullPath {
   '/admin/import': typeof AdminImportRoute
   '/admin/installments': typeof AdminInstallmentsRoute
   '/admin/manifests': typeof AdminManifestsRoute
+  '/admin/payment-blocks': typeof AdminPaymentBlocksRoute
   '/admin/requests': typeof AdminRequestsRoute
   '/admin/scan': typeof AdminScanRoute
   '/admin/schedules': typeof AdminSchedulesRoute
@@ -232,6 +239,7 @@ export interface FileRoutesByTo {
   '/admin/import': typeof AdminImportRoute
   '/admin/installments': typeof AdminInstallmentsRoute
   '/admin/manifests': typeof AdminManifestsRoute
+  '/admin/payment-blocks': typeof AdminPaymentBlocksRoute
   '/admin/requests': typeof AdminRequestsRoute
   '/admin/scan': typeof AdminScanRoute
   '/admin/schedules': typeof AdminSchedulesRoute
@@ -264,6 +272,7 @@ export interface FileRoutesById {
   '/admin/import': typeof AdminImportRoute
   '/admin/installments': typeof AdminInstallmentsRoute
   '/admin/manifests': typeof AdminManifestsRoute
+  '/admin/payment-blocks': typeof AdminPaymentBlocksRoute
   '/admin/requests': typeof AdminRequestsRoute
   '/admin/scan': typeof AdminScanRoute
   '/admin/schedules': typeof AdminSchedulesRoute
@@ -297,6 +306,7 @@ export interface FileRouteTypes {
     | '/admin/import'
     | '/admin/installments'
     | '/admin/manifests'
+    | '/admin/payment-blocks'
     | '/admin/requests'
     | '/admin/scan'
     | '/admin/schedules'
@@ -327,6 +337,7 @@ export interface FileRouteTypes {
     | '/admin/import'
     | '/admin/installments'
     | '/admin/manifests'
+    | '/admin/payment-blocks'
     | '/admin/requests'
     | '/admin/scan'
     | '/admin/schedules'
@@ -358,6 +369,7 @@ export interface FileRouteTypes {
     | '/admin/import'
     | '/admin/installments'
     | '/admin/manifests'
+    | '/admin/payment-blocks'
     | '/admin/requests'
     | '/admin/scan'
     | '/admin/schedules'
@@ -513,6 +525,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminManifestsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/payment-blocks': {
+      id: '/admin/payment-blocks'
+      path: '/payment-blocks'
+      fullPath: '/admin/payment-blocks'
+      preLoaderRoute: typeof AdminPaymentBlocksRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/requests': {
       id: '/admin/requests'
       path: '/requests'
@@ -606,6 +625,7 @@ interface AdminRouteChildren {
   AdminImportRoute: typeof AdminImportRoute
   AdminInstallmentsRoute: typeof AdminInstallmentsRoute
   AdminManifestsRoute: typeof AdminManifestsRoute
+  AdminPaymentBlocksRoute: typeof AdminPaymentBlocksRoute
   AdminRequestsRoute: typeof AdminRequestsRoute
   AdminScanRoute: typeof AdminScanRoute
   AdminSchedulesRoute: typeof AdminSchedulesRoute
@@ -622,6 +642,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminImportRoute: AdminImportRoute,
   AdminInstallmentsRoute: AdminInstallmentsRoute,
   AdminManifestsRoute: AdminManifestsRoute,
+  AdminPaymentBlocksRoute: AdminPaymentBlocksRoute,
   AdminRequestsRoute: AdminRequestsRoute,
   AdminScanRoute: AdminScanRoute,
   AdminSchedulesRoute: AdminSchedulesRoute,

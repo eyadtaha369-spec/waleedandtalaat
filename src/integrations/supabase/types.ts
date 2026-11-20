@@ -666,11 +666,76 @@ export type Database = {
         };
         Relationships: [];
       };
+      payment_blocks: {
+        Row: {
+          student_id: string;
+          is_blocked: boolean;
+          reason: string;
+          note: string | null;
+          blocked_at: string;
+          blocked_by: string | null;
+          unblocked_at: string | null;
+          unblocked_by: string | null;
+          unblock_count: number;
+        };
+        Insert: {
+          student_id: string;
+          is_blocked?: boolean;
+          reason?: string;
+          note?: string | null;
+          blocked_at?: string;
+          blocked_by?: string | null;
+          unblocked_at?: string | null;
+          unblocked_by?: string | null;
+          unblock_count?: number;
+        };
+        Update: {
+          student_id?: string;
+          is_blocked?: boolean;
+          reason?: string;
+          note?: string | null;
+          blocked_at?: string;
+          blocked_by?: string | null;
+          unblocked_at?: string | null;
+          unblocked_by?: string | null;
+          unblock_count?: number;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       [_ in never]: never;
     };
     Functions: {
+      list_payment_blocks: {
+        Args: Record<string, never>;
+        Returns: {
+          student_id: string;
+          full_name: string;
+          phone: string | null;
+          route: string | null;
+          is_blocked: boolean;
+          reason: string;
+          note: string | null;
+          blocked_at: string;
+          unblocked_at: string | null;
+          unblock_count: number;
+        }[];
+      };
+      set_payment_block: {
+        Args: { p_student_id: string; p_blocked: boolean; p_note?: string | null };
+        Returns: Json;
+      };
+      search_students_for_block: {
+        Args: { p_query: string };
+        Returns: {
+          student_id: string;
+          full_name: string;
+          phone: string | null;
+          route: string | null;
+          is_blocked: boolean;
+        }[];
+      };
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"];

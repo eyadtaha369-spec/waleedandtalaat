@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Clock, Lock, MoonStar, Sun, Sunset, TicketCheck } from "lucide-react";
+import { AlertTriangle, Clock, Lock, MoonStar, Sun, Sunset, TicketCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/hooks/useLanguage";
@@ -46,6 +46,7 @@ import {
   useSessionState,
   writeStored,
 } from "@/hooks/usePersistentState";
+import { useMyPaymentBlock } from "@/hooks/useMyPaymentBlock";
 
 // Shareable slot picks only — morning/return. Everything else on this
 // page (stop, sub-route, sector, etc.) is sessionStorage-only, since
@@ -136,6 +137,7 @@ type Booking = {
 function Dashboard() {
   const { user, profile, loading, isStaff } = useAuth();
   const { t, lang } = useLanguage();
+  const paymentBlocked = useMyPaymentBlock();
   const navigate = Route.useNavigate();
   const search = Route.useSearch();
   const { stopsByRoute } = useRoutes();
@@ -418,6 +420,7 @@ function Dashboard() {
 
   const book = async (kind: "morning" | "return") => {
     if (!user) return;
+    if (paymentBlocked) return;
     if (kind === "morning" && morningSlot === "08:00 AM" && closed0800) {
       toast.error(
         "عفواً، تم إغلاق حجز ميعاد 8:00 صباحاً لهذا اليوم (الحد الأقصى للحجز الساعة 6:00 مساءً).",
@@ -607,6 +610,13 @@ function Dashboard() {
         </Link>
       </div>
 
+      {paymentBlocked && (
+        <div className="mt-6 flex items-center gap-3 rounded-2xl border-2 border-destructive bg-destructive p-4 text-center text-destructive-foreground">
+          <AlertTriangle className="size-6 shrink-0" />
+          <p className="font-bold">{t("dashboard.paymentBlockedBanner")}</p>
+        </div>
+      )}
+
       {specialSundayActive && (
         <div className="mt-6 rounded-2xl border-2 border-accent/60 bg-accent/10 p-4 text-center">
           <p className="font-semibold">{t("dashboard.specialSundayBanner")}</p>
@@ -685,6 +695,7 @@ function Dashboard() {
                 className="btn-gold w-full"
                 disabled={
                   busy ||
+                  paymentBlocked ||
                   !profile.route ||
                   (isAlexandriaMixSlot && !subRoute) ||
                   (morningSlot === "08:00 AM" && closed0800)
@@ -795,6 +806,7 @@ function Dashboard() {
                 className="btn-gold w-full"
                 disabled={
                   busy ||
+                  paymentBlocked ||
                   (isFourPmReturn
                     ? !fourPmStop || !profile.route
                     : isBorgElArabReturn

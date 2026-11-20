@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
-import { AlertCircle, Loader2, Lock, ShieldAlert } from "lucide-react";
+import { AlertCircle, AlertTriangle, Ban, Loader2, Lock, ShieldAlert } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/hooks/useLanguage";
@@ -19,6 +19,7 @@ import {
 } from "@/lib/schedule";
 import { subscriptionBadge } from "@/lib/subscription";
 import { formatLocalizedDate, formatSlotLabel } from "@/lib/i18n/dateFormat";
+import { useMyPaymentBlock } from "@/hooks/useMyPaymentBlock";
 
 export const Route = createFileRoute("/pass")({
   head: () => ({
@@ -61,6 +62,7 @@ function PassPage() {
   const { user, profile, loading } = useAuth();
   const { t, lang } = useLanguage();
   const navigate = useNavigate();
+  const paymentBlocked = useMyPaymentBlock();
   const [specialSundayActive, setSpecialSundayActive] = useState(false);
 
   useEffect(() => {
@@ -160,7 +162,7 @@ function PassPage() {
   // placeholders when there's no payload yet, so an existing token
   // simply stays displayed while tokenState flips to "error" behind it.
   const refreshToken = async (attempt = 0, didRefreshSession = false): Promise<void> => {
-    if (!user) return;
+    if (!user || paymentBlocked) return;
     if (attempt === 0) {
       if (retryTimerRef.current) {
         clearTimeout(retryTimerRef.current);
@@ -203,7 +205,7 @@ function PassPage() {
   };
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || paymentBlocked) return;
     void refreshToken();
     refreshTimerRef.current = setInterval(() => void refreshToken(), REFRESH_EVERY_SECONDS * 1000);
     return () => {
@@ -211,7 +213,7 @@ function PassPage() {
       if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, [user, paymentBlocked]);
 
   // Live ticking clock, used both for the countdown and the watermark.
   useEffect(() => {
@@ -327,7 +329,19 @@ function PassPage() {
           </div>
         </div>
 
-        {noBookingAtAll ? (
+        {paymentBlocked && (
+          <div className="flex items-center gap-3 border-y-2 border-destructive bg-destructive px-5 py-4 text-destructive-foreground">
+            <AlertTriangle className="size-6 shrink-0" />
+            <p className="text-sm font-bold">{t("dashboard.paymentBlockedBanner")}</p>
+          </div>
+        )}
+
+        {paymentBlocked ? (
+          <div className="flex flex-col items-center gap-3 border-y border-dashed border-destructive bg-destructive/10 p-8 text-center">
+            <Ban className="text-destructive size-10" />
+            <p className="text-lg font-bold text-destructive">{t("scanner.paymentBlocked")}</p>
+          </div>
+        ) : noBookingAtAll ? (
           <div className="flex flex-col items-center gap-3 border-y border-dashed border-border bg-secondary/60 p-8 text-center">
             <Lock className="text-muted-foreground size-6" />
             <p className="text-sm font-medium">{t("pass.noBookingYet")}</p>

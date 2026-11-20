@@ -67,6 +67,15 @@ export function ManifestsPanel() {
 
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
+  const [blockedIds, setBlockedIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    void supabase
+      .from("payment_blocks")
+      .select("student_id")
+      .eq("is_blocked", true)
+      .then(({ data }) => setBlockedIds(new Set((data ?? []).map((r) => r.student_id))));
+  }, []);
 
   const paymentFilterRaw = useUrlBackedState<string>(
     "manifests.paymentFilter",
@@ -424,7 +433,7 @@ export function ManifestsPanel() {
                         {t("manifests.noPassengersSector")}
                       </p>
                     ) : (
-                      <ManifestTable rows={group} />
+                      <ManifestTable rows={group} blockedIds={blockedIds} />
                     )}
                   </div>
                 );
@@ -436,7 +445,7 @@ export function ManifestsPanel() {
                       {routeName} — {group.length}
                     </Badge>
                   </div>
-                  <ManifestTable rows={group} />
+                  <ManifestTable rows={group} blockedIds={blockedIds} />
                 </div>
               ))}
             </div>
@@ -449,12 +458,12 @@ export function ManifestsPanel() {
                       {routeName} — {group.length}
                     </Badge>
                   </div>
-                  <ManifestTable rows={group} />
+                  <ManifestTable rows={group} blockedIds={blockedIds} />
                 </div>
               ))}
             </div>
           ) : (
-            <ManifestTable rows={searchedRows} />
+            <ManifestTable rows={searchedRows} blockedIds={blockedIds} />
           )}
         </TabsContent>
       </Tabs>
@@ -462,7 +471,7 @@ export function ManifestsPanel() {
   );
 }
 
-function ManifestTable({ rows }: { rows: Row[] }) {
+function ManifestTable({ rows, blockedIds }: { rows: Row[]; blockedIds: Set<string> }) {
   const { t } = useLanguage();
   return (
     <Table>
@@ -477,7 +486,16 @@ function ManifestTable({ rows }: { rows: Row[] }) {
       <TableBody>
         {rows.map((r) => (
           <TableRow key={r.student_id}>
-            <TableCell className="font-medium">{r.full_name}</TableCell>
+            <TableCell className="font-medium">
+              <span className="flex items-center gap-2">
+                {r.full_name}
+                {blockedIds.has(r.student_id) && (
+                  <Badge className="bg-destructive text-destructive-foreground">
+                    {t("scanner.paymentBlocked")}
+                  </Badge>
+                )}
+              </span>
+            </TableCell>
             <TableCell>{r.route ?? "—"}</TableCell>
             <TableCell>{r.pickup_stop ?? "—"}</TableCell>
             <TableCell>

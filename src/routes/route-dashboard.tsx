@@ -22,12 +22,7 @@ import { addDays, cairoNow, routeDashboardDefaultDate, toDateKey } from "@/lib/s
 import {
   ALEXANDRIA_MIX_ROUTE,
   ALEXANDRIA_MIX_SLOT,
-  ALEXANDRIA_MIX_EXTRA_STOPS,
-  SEYOUF_MAHMOUDIA_STOPS,
-  SUB_ROUTE_SHORT,
-  SECOND_BUS_MIN_PASSENGERS,
-  MorningSubRoute,
-  subRouteOf,
+  morning0800Stops,
   TEN_AM_SLOT,
   tenAmStops,
 } from "@/lib/alexandriaMix";
@@ -70,7 +65,6 @@ type PassengerRow = {
   source: string;
   payment_method: string | null;
   slot: string | null;
-  sub_route: string | null;
 };
 
 const OTHER_STOPS_KEY = "__sub_other_stops__";
@@ -213,50 +207,39 @@ function RouteDashboardPage() {
     const isSearching = searchQuery.length > 0;
 
     // 08:00 AM (Alexandria Mix) is one shared bus that every route's
-    // riders board, regardless of their own route, now split into two
-    // sub-routes (خط البحر vs خط السيوف والمحمودية) — one card each,
-    // keyed on each sub-route's own physical stop order, with any stop
+    // riders board, regardless of their own route — a single list,
+    // keyed on خط البحر's own physical stop order, with any stop
     // outside that list folded into an "other stops" group at the
-    // bottom of that same card rather than silently dropped.
+    // bottom rather than silently dropped. Same shape as the 10:00 AM
+    // block below.
     if (slotFilter === ALEXANDRIA_MIX_SLOT) {
-      const buildSubRouteCard = (stopList: string[], sub: MorningSubRoute) => {
-        const stopSet = new Set(stopList);
-        const map = new Map<string, PassengerRow[]>();
-        for (const stopName of stopList) map.set(stopName, []);
-        const otherStops: PassengerRow[] = [];
+      const mixStopList = morning0800Stops(stopsByRoute[ALEXANDRIA_MIX_ROUTE] ?? []);
+      const stopSet = new Set(mixStopList);
+      const map = new Map<string, PassengerRow[]>();
+      for (const stopName of mixStopList) map.set(stopName, []);
+      const otherStops: PassengerRow[] = [];
 
-        for (const r of filteredRows) {
-          // Placeholder rows (empty stops with nobody booked) exist
-          // only to put the stop on the map — not a real passenger.
-          if (!r.student_id && !r.full_name) continue;
-          if (subRouteOf(r) !== sub) continue;
-          const stopKey = r.pickup_stop ?? "—";
-          if (stopSet.has(stopKey)) {
-            map.get(stopKey)!.push(r);
-          } else {
-            otherStops.push(r);
-          }
+      for (const r of filteredRows) {
+        // Placeholder rows (empty stops with nobody booked) exist only
+        // to put the stop on the map — not a real passenger.
+        if (!r.student_id && !r.full_name) continue;
+        const stopKey = r.pickup_stop ?? "—";
+        if (stopSet.has(stopKey)) {
+          map.get(stopKey)!.push(r);
+        } else {
+          otherStops.push(r);
         }
+      }
 
-        const result = new Map<string, PassengerRow[]>();
-        for (const [stopName, passengers] of map) {
-          if (isSearching && passengers.length === 0) continue;
-          result.set(stopName, passengers);
-        }
-        if (otherStops.length > 0) result.set(OTHER_STOPS_KEY, otherStops);
-        return result;
-      };
-
-      const elBahrStops = [
-        ...(stopsByRoute[ALEXANDRIA_MIX_ROUTE] ?? []),
-        ...ALEXANDRIA_MIX_EXTRA_STOPS,
-      ];
-      const elBahrCard = buildSubRouteCard(elBahrStops, "el_bahr");
-      const seyoufCard = buildSubRouteCard(SEYOUF_MAHMOUDIA_STOPS, "seyouf_mahmoudia");
+      const stopsResult = new Map<string, PassengerRow[]>();
+      for (const [stopName, passengers] of map) {
+        if (isSearching && passengers.length === 0) continue;
+        stopsResult.set(stopName, passengers);
+      }
+      if (otherStops.length > 0) stopsResult.set(OTHER_STOPS_KEY, otherStops);
 
       const result = new Map<string, Map<string, PassengerRow[]>>();
-      if (elBahrCard.size > 0) result.set("__sub_el_bahr__", elBahrCard);
-      if (seyoufCard.size > 0) result.set("__sub_seyouf__", seyoufCard);
+      if (stopsResult.size > 0) result.set("__mix__", stopsResult);
       return result;
     }
 
@@ -330,20 +313,8 @@ function RouteDashboardPage() {
     return result;
   }, [filteredRows, stopsByRoute, routes, effectiveRoute, searchQuery, slotFilter]);
 
-  // Banner totals ignore the search box (unlike the cards above) — they
-  // reflect the full, route/date/slot-scoped fetch, not a narrowed view.
-  const mixBannerCounts = useMemo(() => {
-    if (!isMixMode) return null;
-    let elBahr = 0;
-    let seyouf = 0;
-    for (const r of rows) {
-      if (!r.student_id && !r.full_name) continue;
-      if (subRouteOf(r) === "seyouf_mahmoudia") seyouf++;
-      else elBahr++;
-    }
-    return { elBahr, seyouf, total: elBahr + seyouf };
-  }, [isMixMode, rows]);
-
+  // Banner total ignores the search box (unlike the cards above) — it
+  // reflects the full, route/date/slot-scoped fetch, not a narrowed view.
   const tenAmBannerTotal = useMemo(() => {
     if (!is10AmMode) return null;
     let total = 0;
@@ -473,50 +444,6 @@ function RouteDashboardPage() {
           </Badge>
         </div>
 
-        {isMixMode && mixBannerCounts && (
-          <div className="mb-4 space-y-2 rounded-2xl border border-dashed border-border p-4">
-            <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
-              <span>
-                {t("routeDash.summaryTotalLabel")}: {mixBannerCounts.total}
-              </span>
-              <span>
-                {SUB_ROUTE_SHORT.el_bahr}: {mixBannerCounts.elBahr}
-              </span>
-              <span>
-                {SUB_ROUTE_SHORT.seyouf_mahmoudia}: {mixBannerCounts.seyouf}
-              </span>
-            </div>
-            <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-              <div
-                className={`h-full rounded-full ${
-                  mixBannerCounts.seyouf >= SECOND_BUS_MIN_PASSENGERS ? "bg-success" : "bg-warning"
-                }`}
-                style={{
-                  width: `${Math.min(100, (mixBannerCounts.seyouf / SECOND_BUS_MIN_PASSENGERS) * 100)}%`,
-                }}
-              />
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {mixBannerCounts.seyouf} / {SECOND_BUS_MIN_PASSENGERS}
-            </p>
-            {mixBannerCounts.seyouf === 0 ? (
-              <p className="text-sm text-muted-foreground">{t("routeDash.secondBusNone")}</p>
-            ) : mixBannerCounts.seyouf >= SECOND_BUS_MIN_PASSENGERS ? (
-              <p className="rounded-lg bg-success/15 p-2 text-sm font-medium text-success-foreground">
-                {SUB_ROUTE_SHORT.seyouf_mahmoudia} {t("routeDash.secondBusReady")} (
-                {mixBannerCounts.seyouf}/{SECOND_BUS_MIN_PASSENGERS}) —{" "}
-                {t("routeDash.secondBusReadyAdvice")}
-              </p>
-            ) : (
-              <p className="rounded-lg bg-warning/15 p-2 text-sm font-medium text-warning-foreground">
-                {SUB_ROUTE_SHORT.seyouf_mahmoudia} {t("routeDash.secondBusNotReady")} (
-                {mixBannerCounts.seyouf}/{SECOND_BUS_MIN_PASSENGERS}) —{" "}
-                {t("routeDash.secondBusNotReadyAdvice")}
-              </p>
-            )}
-          </div>
-        )}
-
         {is10AmMode && tenAmBannerTotal !== null && (
           <div className="mb-4 flex items-center gap-2 rounded-2xl border border-dashed border-border p-4 text-sm">
             <Users className="size-4 text-muted-foreground" />
@@ -540,9 +467,7 @@ function RouteDashboardPage() {
                     <div className="mb-2 flex items-center gap-2">
                       <p className="text-sm font-semibold text-muted-foreground">
                         {isMixMode
-                          ? routeName === "__sub_el_bahr__"
-                            ? t("routeDash.subRouteElBahrTitle")
-                            : t("routeDash.subRouteSeyoufTitle")
+                          ? t("routeDash.mixCardTitle")
                           : is10AmMode
                             ? t("routeDash.tenAmCardTitle")
                             : routeName}

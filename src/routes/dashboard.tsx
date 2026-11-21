@@ -28,15 +28,10 @@ import {
   optOutWindow,
   returnWindow,
   cairoNow,
-  isMorning0800Closed,
 } from "@/lib/schedule";
 import {
   ALEXANDRIA_MIX_ROUTE,
-  ALEXANDRIA_MIX_EXTRA_STOPS,
-  MorningSubRoute,
-  SUB_ROUTE_LABELS,
-  SUB_ROUTE_SHORT,
-  subRouteStops,
+  morning0800Stops,
   TEN_AM_SLOT,
   tenAmStops,
 } from "@/lib/alexandriaMix";
@@ -131,11 +126,10 @@ type Booking = {
   pickup_stop: string | null;
   route: string | null;
   sector: string | null;
-  sub_route: string | null;
 };
 
 function Dashboard() {
-  const { user, profile, loading, isStaff } = useAuth();
+  const { user, profile, loading } = useAuth();
   const { t, lang } = useLanguage();
   const paymentBlocked = useMyPaymentBlock();
   const navigate = Route.useNavigate();
@@ -196,36 +190,20 @@ function Dashboard() {
   // pinned mw.serviceDate to a fixed target date.
   const morningServiceDate = specialSundayActive ? mw.serviceDate : routeDashboardDefaultDate();
 
-  const [nowTick, setNowTick] = useState<Date>(() => cairoNow());
-  useEffect(() => {
-    const id = setInterval(() => setNowTick(cairoNow()), 30_000);
-    return () => clearInterval(id);
-  }, []);
-  const closed0800 =
-    !isStaff && morningStatus !== "FORCE_OPEN" && isMorning0800Closed(morningServiceDate, nowTick);
-
-  const isMorningSubRouteValue = (v: unknown): v is MorningSubRoute | "" =>
-    v === "" || v === "el_bahr" || v === "seyouf_mahmoudia";
   const isEarlyReturnSectorValue = (v: unknown): v is EarlyReturnSector | "" =>
     v === "" || (Object.keys(SECTOR_LABELS) as string[]).includes(v as string);
 
-  // stop/subRoute/returnSector/returnStop/fourPmStop survive a tab
-  // discard via sessionStorage, but only for the SAME service date —
-  // see useDatedSessionState's own doc comment. morningSlot/returnSlot
-  // are shareable view state, so they live in the URL instead (with
-  // the same date guard applied by hand below, since a plain value in
-  // the URL carries no date of its own to check).
+  // stop/returnSector/returnStop/fourPmStop survive a tab discard via
+  // sessionStorage, but only for the SAME service date — see
+  // useDatedSessionState's own doc comment. morningSlot/returnSlot are
+  // shareable view state, so they live in the URL instead (with the
+  // same date guard applied by hand below, since a plain value in the
+  // URL carries no date of its own to check).
   const [stop, setStop] = useDatedSessionState<string>(
     "dashboard.stop",
     morningServiceDate,
     "",
     isString,
-  );
-  const [subRoute, setSubRoute] = useDatedSessionState<MorningSubRoute | "">(
-    "dashboard.subRoute",
-    morningServiceDate,
-    "",
-    isMorningSubRouteValue,
   );
   const [activeMorningSlots, setActiveMorningSlots] = useState<string[]>([...MORNING_SLOTS]);
   const [activeReturnSlots, setActiveReturnSlots] = useState<string[]>([...RETURN_SLOTS]);
@@ -300,17 +278,17 @@ function Dashboard() {
   const isAlexandriaMixSlot = morningSlot === "08:00 AM";
   const isTenAmSlot = morningSlot === TEN_AM_SLOT;
   const morningStopOptions = isAlexandriaMixSlot
-    ? subRoute
-      ? subRouteStops(subRoute, stopsByRoute[ALEXANDRIA_MIX_ROUTE] ?? [])
-      : []
+    ? morning0800Stops(stopsByRoute[ALEXANDRIA_MIX_ROUTE] ?? [])
     : isTenAmSlot
       ? tenAmStops(stopsByRoute[ALEXANDRIA_MIX_ROUTE] ?? [])
       : stopsForMyRoute;
-  // Shared by handleMorningSlotChange and the 08:00-closure fallback
-  // effect below to pick the new slot's first stop — never called for
-  // "08:00 AM" itself, which always resets to "" pending a sub-route.
+  // Shared by handleMorningSlotChange to pick the new slot's first stop.
   const resetStopOptionsForSlot = (slot: string): string[] =>
-    slot === TEN_AM_SLOT ? tenAmStops(stopsByRoute[ALEXANDRIA_MIX_ROUTE] ?? []) : stopsForMyRoute;
+    slot === "08:00 AM"
+      ? morning0800Stops(stopsByRoute[ALEXANDRIA_MIX_ROUTE] ?? [])
+      : slot === TEN_AM_SLOT
+        ? tenAmStops(stopsByRoute[ALEXANDRIA_MIX_ROUTE] ?? [])
+        : stopsForMyRoute;
   // Return trips drop students off in the reverse order the morning
   // pickup runs the route, so the return dropoff dropdown uses the
   // route's stop list reversed — distinct from stopsForMyRoute, which
@@ -391,7 +369,7 @@ function Dashboard() {
     const [{ data: b }, { data: o }] = await Promise.all([
       supabase
         .from("bookings")
-        .select("id,kind,slot,service_date,pickup_stop,route,sector,sub_route")
+        .select("id,kind,slot,service_date,pickup_stop,route,sector")
         .in("service_date", [morningServiceDate, rw.serviceDate]),
       supabase.from("opt_outs").select("id").eq("service_date", ow.serviceDate),
     ]);
@@ -404,13 +382,6 @@ function Dashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, morningServiceDate]);
 
-  useEffect(() => {
-    const mb = bookings.find((b) => b.kind === "morning" && b.service_date === morningServiceDate);
-    if (mb?.sub_route === "el_bahr" || mb?.sub_route === "seyouf_mahmoudia") {
-      setSubRoute(mb.sub_route);
-    }
-  }, [bookings, morningServiceDate, setSubRoute]);
-
   const morningBooking = bookings.find(
     (b) => b.kind === "morning" && b.service_date === morningServiceDate,
   );
@@ -421,16 +392,6 @@ function Dashboard() {
   const book = async (kind: "morning" | "return") => {
     if (!user) return;
     if (paymentBlocked) return;
-    if (kind === "morning" && morningSlot === "08:00 AM" && closed0800) {
-      toast.error(
-        "عفواً، تم إغلاق حجز ميعاد 8:00 صباحاً لهذا اليوم (الحد الأقصى للحجز الساعة 6:00 مساءً).",
-      );
-      return;
-    }
-    if (kind === "morning" && isAlexandriaMixSlot && !subRoute) {
-      toast.error(t("subRoute.chooseFirst"));
-      return;
-    }
     if (kind === "return") {
       if (isFourPmReturn && !fourPmStop) {
         toast.error(t("dashboard.chooseStopFirst"));
@@ -457,14 +418,12 @@ function Dashboard() {
           : EARLY_RETURN_ROUTE_NAME,
       pickup_stop: kind === "morning" ? stop : isFourPmReturn ? fourPmStop : returnStop,
       sector: kind === "return" && !isFourPmReturn && !isBorgElArabReturn ? returnSector : null,
-      sub_route: kind === "morning" && morningSlot === "08:00 AM" ? subRoute : null,
     };
     const { error } = await supabase
       .from("bookings")
       .upsert(payload, { onConflict: "student_id,service_date,kind" });
     setBusy(false);
     if (error) {
-      if (error.code === "23514") return toast.error(t("subRoute.mismatch"));
       return toast.error(error.message);
     }
     toast.success(
@@ -478,26 +437,9 @@ function Dashboard() {
     // The valid stop list depends on the slot (Alexandria Mix's extra
     // stops only apply to 08:00 AM/10:00 AM) — reset to the new list's
     // first option so a student can't submit a stop that's no longer
-    // valid. 08:00 AM has no stops yet until a sub-route is chosen.
-    setSubRoute("");
-    setStop(newSlot === "08:00 AM" ? "" : (resetStopOptionsForSlot(newSlot)[0] ?? ""));
+    // valid.
+    setStop(resetStopOptionsForSlot(newSlot)[0] ?? "");
   };
-
-  const handleSubRouteChange = (newSubRoute: MorningSubRoute) => {
-    setSubRoute(newSubRoute);
-    const newOptions = subRouteStops(newSubRoute, stopsByRoute[ALEXANDRIA_MIX_ROUTE] ?? []);
-    setStop(newOptions[0] ?? "");
-  };
-
-  useEffect(() => {
-    if (morningSlot !== "08:00 AM" || !closed0800) return;
-    const fallbackSlot =
-      activeMorningSlots.find((s) => s !== "08:00 AM") ?? activeMorningSlots[0] ?? MORNING_SLOTS[0];
-    persistMorningSlot(fallbackSlot);
-    setSubRoute("");
-    setStop(resetStopOptionsForSlot(fallbackSlot)[0] ?? "");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [closed0800, morningSlot, activeMorningSlots]);
 
   const cancel = async (id: string) => {
     await supabase.from("bookings").delete().eq("id", id);
@@ -533,8 +475,8 @@ function Dashboard() {
   // the admin flips a FORCE_OPEN/CLOSED switch, a route's active slots
   // change. Refetch all three on return without touching any selection
   // the student already made; a selection only changes if it's no
-  // longer valid (handled inside loadActiveSlots / the closed0800
-  // effect above), never unconditionally reset.
+  // longer valid (handled inside loadActiveSlots), never unconditionally
+  // reset.
   useEffect(() => {
     const onVisible = () => {
       void reloadRef.current();
@@ -634,12 +576,7 @@ function Dashboard() {
           {morningBooking ? (
             <Confirmed
               t={t}
-              text={`${formatSlotLabel(morningBooking.slot, lang)} · ${morningBooking.pickup_stop ?? ""}${
-                morningBooking.sub_route === "el_bahr" ||
-                morningBooking.sub_route === "seyouf_mahmoudia"
-                  ? ` · ${SUB_ROUTE_SHORT[morningBooking.sub_route]}`
-                  : ""
-              }`}
+              text={`${formatSlotLabel(morningBooking.slot, lang)} · ${morningBooking.pickup_stop ?? ""}`}
               onCancel={mw.open ? () => void cancel(morningBooking.id) : undefined}
             />
           ) : mw.open ? (
@@ -652,31 +589,11 @@ function Dashboard() {
                   {profile.route ?? t("dashboard.noRouteContactAdmin")}
                 </p>
               </div>
-              {isAlexandriaMixSlot && (
-                <div className="space-y-2">
-                  <Label>{t("subRoute.chooseLabel")}</Label>
-                  <select
-                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                    value={subRoute}
-                    onChange={(e) => handleSubRouteChange(e.target.value as MorningSubRoute)}
-                  >
-                    <option value="" disabled>
-                      {t("subRoute.chooseLabel")}
-                    </option>
-                    {(Object.keys(SUB_ROUTE_LABELS) as MorningSubRoute[]).map((sr) => (
-                      <option key={sr} value={sr}>
-                        {SUB_ROUTE_LABELS[sr]}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
               <SelectField
                 label={t("dashboard.departureStopLabel")}
                 value={stop}
                 options={morningStopOptions}
                 onChange={setStop}
-                disabled={isAlexandriaMixSlot && !subRoute}
               />
               <SlotPicker
                 label={t("dashboard.timeSlot")}
@@ -684,22 +601,10 @@ function Dashboard() {
                 value={morningSlot}
                 onChange={handleMorningSlotChange}
                 lang={lang}
-                isOptionDisabled={(o) => o === "08:00 AM" && closed0800}
-                optionLabel={(o) =>
-                  o === "08:00 AM" && closed0800
-                    ? `${formatSlotLabel(o, lang)} ${t("schedule.slot0800Closed")}`
-                    : formatSlotLabel(o, lang)
-                }
               />
               <Button
                 className="btn-gold w-full"
-                disabled={
-                  busy ||
-                  paymentBlocked ||
-                  !profile.route ||
-                  (isAlexandriaMixSlot && !subRoute) ||
-                  (morningSlot === "08:00 AM" && closed0800)
-                }
+                disabled={busy || paymentBlocked || !profile.route}
                 onClick={() => void book("morning")}
               >
                 {t("dashboard.reserveSeat")}

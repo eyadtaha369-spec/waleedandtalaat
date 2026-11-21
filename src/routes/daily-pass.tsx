@@ -5,20 +5,16 @@ import { toast } from "sonner";
 import { CheckCircle2, Hourglass } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/hooks/useLanguage";
-import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useRoutes } from "@/hooks/useRoutes";
-import { MORNING_SLOTS, cairoNow, isMorning0800Closed, toDateKey } from "@/lib/schedule";
+import { MORNING_SLOTS } from "@/lib/schedule";
 import { formatSlotLabel } from "@/lib/i18n/dateFormat";
 import { EarlyReturnSector, SECTOR_LABELS, stopsForSector } from "@/lib/earlyReturnSectors";
 import {
   ALEXANDRIA_MIX_ROUTE,
-  MorningSubRoute,
-  SUB_ROUTE_LABELS,
-  SUB_ROUTE_SHORT,
-  subRouteStops,
+  morning0800Stops,
   TEN_AM_SLOT,
   tenAmStops,
 } from "@/lib/alexandriaMix";
@@ -55,13 +51,8 @@ const baseSchema = {
   route: z.string().min(1),
   pickup_stop: z.string().min(1, "Select your pickup stop"),
   slot: z.string().min(1),
-  sub_route: z.string().optional(),
 };
-const schema = z.object(baseSchema).superRefine((data, ctx) => {
-  if (data.slot === "08:00 AM" && !data.sub_route) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "اختر الخط", path: ["sub_route"] });
-  }
-});
+const schema = z.object(baseSchema);
 const returnOnlySchema = z.object({
   full_name: baseSchema.full_name,
   phone: baseSchema.phone,
@@ -70,39 +61,18 @@ const returnOnlySchema = z.object({
 
 function DailyPass() {
   const { t, lang } = useLanguage();
-  const { isStaff } = useAuth();
   const { routes, stopsByRoute } = useRoutes();
-  // Daily passes are always dated today by the database, so the 6:00 PM
-  // day-before cutoff has already passed for every moment of today —
-  // 08:00 AM is effectively unreachable here for non-staff guests, unless
-  // an admin has forced the morning window open.
-  const [forceOpen, setForceOpen] = useState(false);
-  useEffect(() => {
-    void supabase
-      .from("app_settings")
-      .select("morning_departure_status")
-      .eq("id", true)
-      .maybeSingle()
-      .then(
-        ({ data }) => setForceOpen(data?.morning_departure_status === "FORCE_OPEN"),
-        () => setForceOpen(false),
-      );
-  }, []);
-  const closed0800 = !isStaff && !forceOpen && isMorning0800Closed(toDateKey(cairoNow()));
   const [form, setForm] = useState({
     full_name: "",
     phone: "",
     route: "",
     pickup_stop: "",
     slot: MORNING_SLOTS[0] as string,
-    sub_route: "" as MorningSubRoute | "",
   });
   const isMorningMixSlot = form.slot === "08:00 AM";
   const isTenAmSlot = form.slot === TEN_AM_SLOT;
   const morningPickupStopOptions = isMorningMixSlot
-    ? form.sub_route
-      ? subRouteStops(form.sub_route, stopsByRoute[ALEXANDRIA_MIX_ROUTE] ?? [])
-      : []
+    ? morning0800Stops(stopsByRoute[ALEXANDRIA_MIX_ROUTE] ?? [])
     : isTenAmSlot
       ? tenAmStops(stopsByRoute[ALEXANDRIA_MIX_ROUTE] ?? [])
       : (stopsByRoute[form.route] ?? []);
@@ -134,19 +104,6 @@ function DailyPass() {
       setReturnStop(stopsByRoute[form.route]?.[0] ?? "");
     }
   }, [isFourPmReturn, form.route, stopsByRoute]);
-
-  // 08:00 AM is unreachable for non-staff — never leave it selected.
-  useEffect(() => {
-    if (closed0800 && form.slot === "08:00 AM") {
-      setForm((f) => ({
-        ...f,
-        slot: "06:00 AM",
-        sub_route: "",
-        pickup_stop: stopsByRoute[f.route]?.[0] ?? "",
-      }));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [closed0800, form.slot]);
 
   const submit = async () => {
     const parsed =
@@ -192,8 +149,6 @@ function DailyPass() {
       pickup_stop:
         tripType === "return_only" ? null : (parsed.data as z.infer<typeof schema>).pickup_stop,
       slot: tripType === "return_only" ? null : (parsed.data as z.infer<typeof schema>).slot,
-      sub_route:
-        tripType !== "return_only" && form.slot === "08:00 AM" ? form.sub_route || null : null,
       trip_type: tripType,
       return_slot: tripType === "round_trip" || tripType === "return_only" ? returnSlot : null,
       return_pickup_stop:
@@ -206,11 +161,8 @@ function DailyPass() {
       if (error.code === "23505") {
         return toast.error("هذا الطلب مسجل بالفعل — لديك طلب مماثل قيد المراجعة اليوم");
       }
-      if (error.code === "23514") {
-        return toast.error(t("subRoute.mismatch"));
-      }
-      // P0001 (08:00 AM cutoff) and any other server error already carry
-      // user-facing Arabic text in error.message — show it as-is.
+      // Any other server error already carries user-facing Arabic text
+      // in error.message — show it as-is.
       return toast.error(error.message);
     }
     setSent(true);
@@ -230,10 +182,6 @@ function DailyPass() {
                 {form.route}
                 {tripType !== "return_only" &&
                   ` · ${form.pickup_stop} · ${formatSlotLabel(form.slot, lang)}`}
-                {tripType !== "return_only" &&
-                  form.slot === "08:00 AM" &&
-                  form.sub_route &&
-                  ` · ${SUB_ROUTE_SHORT[form.sub_route]}`}
                 {(tripType === "round_trip" || tripType === "return_only") &&
                   ` · ${formatSlotLabel(returnSlot, lang)} · ${returnStop}`}
               </p>
@@ -335,36 +283,6 @@ function DailyPass() {
                   ))}
                 </select>
               </div>
-              {tripType !== "return_only" && isMorningMixSlot && (
-                <div className="space-y-2">
-                  <Label>{t("subRoute.chooseLabel")}</Label>
-                  <select
-                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                    value={form.sub_route}
-                    onChange={(e) => {
-                      const newSubRoute = e.target.value as MorningSubRoute;
-                      const newOptions = subRouteStops(
-                        newSubRoute,
-                        stopsByRoute[ALEXANDRIA_MIX_ROUTE] ?? [],
-                      );
-                      setForm({
-                        ...form,
-                        sub_route: newSubRoute,
-                        pickup_stop: newOptions[0] ?? "",
-                      });
-                    }}
-                  >
-                    <option value="" disabled>
-                      {t("subRoute.chooseLabel")}
-                    </option>
-                    {(Object.keys(SUB_ROUTE_LABELS) as MorningSubRoute[]).map((sr) => (
-                      <option key={sr} value={sr}>
-                        {SUB_ROUTE_LABELS[sr]}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
               {tripType !== "return_only" && (
                 <div className="space-y-2">
                   <Label>
@@ -376,7 +294,6 @@ function DailyPass() {
                     className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                     value={form.pickup_stop}
                     onChange={(e) => setForm({ ...form, pickup_stop: e.target.value })}
-                    disabled={isMorningMixSlot && !form.sub_route}
                   >
                     {morningPickupStopOptions.map((s) => (
                       <option key={s}>{s}</option>
@@ -401,9 +318,8 @@ function DailyPass() {
                       setForm({
                         ...form,
                         slot: newSlot,
-                        sub_route: "",
                         pickup_stop: isNewSlotMix
-                          ? ""
+                          ? (morning0800Stops(stopsByRoute[ALEXANDRIA_MIX_ROUTE] ?? [])[0] ?? "")
                           : isNewSlotTenAm
                             ? (tenAmStops(stopsByRoute[ALEXANDRIA_MIX_ROUTE] ?? [])[0] ?? "")
                             : (stopsByRoute[form.route]?.[0] ?? ""),
@@ -411,10 +327,8 @@ function DailyPass() {
                     }}
                   >
                     {MORNING_SLOTS.map((s) => (
-                      <option key={s} value={s} disabled={s === "08:00 AM" && closed0800}>
-                        {s === "08:00 AM" && closed0800
-                          ? `${formatSlotLabel(s, lang)} ${t("schedule.slot0800Closed")}`
-                          : formatSlotLabel(s, lang)}
+                      <option key={s} value={s}>
+                        {formatSlotLabel(s, lang)}
                       </option>
                     ))}
                   </select>

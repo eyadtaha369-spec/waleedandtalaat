@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { ArrowLeft, Minus, Plus } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Minus, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/hooks/useLanguage";
@@ -10,6 +10,7 @@ import { AdminGuard } from "@/components/admin/AdminGuard";
 import { SmartAvatar } from "@/components/SmartAvatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -46,6 +47,24 @@ function statusColor(remaining: number): string {
   return "bg-destructive text-destructive-foreground";
 }
 
+type SetTotalUsedResult =
+  | { error: string }
+  | {
+      warning: "already_deducted";
+      current_used: number;
+      trips_remaining: number;
+      trips_total: number;
+    }
+  | {
+      student_id: string;
+      trips_remaining: number;
+      trips_total: number;
+      previous_used: number;
+      delta: number;
+    };
+
+type DeductMode = "setTotal" | "amount";
+
 function TripsBalancePage() {
   const { isAdmin, profile } = useAuth();
   const { t } = useLanguage();
@@ -58,6 +77,13 @@ function TripsBalancePage() {
   const [addModalFor, setAddModalFor] = useState<PackageStudent | null>(null);
   const [addAmount, setAddAmount] = useState("1");
   const [addReason, setAddReason] = useState("");
+
+  const [deductModalFor, setDeductModalFor] = useState<PackageStudent | null>(null);
+  const [deductMode, setDeductMode] = useState<DeductMode>("setTotal");
+  const [targetTotalUsed, setTargetTotalUsed] = useState("0");
+  const [forceConfirmed, setForceConfirmed] = useState(false);
+  const [deductAmount, setDeductAmount] = useState("1");
+  const [deductReason, setDeductReason] = useState("");
 
   const effectiveRoute = isAdmin ? routeFilter : (profile?.assigned_route ?? "");
 
@@ -117,6 +143,91 @@ function TripsBalancePage() {
     }
     await applyDelta(addModalFor.user_id, amount, addReason.trim() || undefined);
     setAddModalFor(null);
+  };
+
+  const liveDeductStudent = deductModalFor
+    ? (students.find((s) => s.user_id === deductModalFor.user_id) ?? deductModalFor)
+    : null;
+  const currentUsed = liveDeductStudent
+    ? liveDeductStudent.trips_total - liveDeductStudent.trips_remaining
+    : 0;
+
+  const openDeductModal = (s: PackageStudent) => {
+    setDeductModalFor(s);
+    setDeductMode("setTotal");
+    setTargetTotalUsed(String(s.trips_total - s.trips_remaining));
+    setForceConfirmed(false);
+    setDeductAmount("1");
+    setDeductReason("");
+  };
+
+  const targetNum = Number(targetTotalUsed);
+  const isValidTarget =
+    targetTotalUsed.trim() !== "" &&
+    Number.isInteger(targetNum) &&
+    targetNum >= 0 &&
+    !!liveDeductStudent &&
+    targetNum <= liveDeductStudent.trips_total;
+  const isAlreadyDeducted = isValidTarget && targetNum <= currentUsed;
+
+  const amountNum = Number(deductAmount);
+  const isValidAmount =
+    deductAmount.trim() !== "" &&
+    Number.isInteger(amountNum) &&
+    amountNum >= 1 &&
+    !!liveDeductStudent &&
+    amountNum <= liveDeductStudent.trips_remaining;
+
+  const confirmSetTotal = async () => {
+    if (!liveDeductStudent || !isValidTarget) return;
+    if (isAlreadyDeducted && !forceConfirmed) return;
+    setBusyId(liveDeductStudent.user_id);
+    const { data, error } = await supabase.rpc("set_student_total_used", {
+      p_student_id: liveDeductStudent.user_id,
+      p_target_total_used: targetNum,
+      p_force: isAlreadyDeducted ? forceConfirmed : false,
+    });
+    setBusyId(null);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    const result = data as SetTotalUsedResult;
+    if ("error" in result) {
+      toast.error(result.error);
+      return;
+    }
+    if ("warning" in result) {
+      // Race: someone else changed the balance between the keystroke and
+      // the click. Refresh this row's numbers from the server's own
+      // authoritative figures and let the (now up to date) warning +
+      // checkbox UI take over instead of failing silently.
+      setStudents((prev) =>
+        prev.map((s) =>
+          s.user_id === liveDeductStudent.user_id
+            ? { ...s, trips_remaining: result.trips_remaining, trips_total: result.trips_total }
+            : s,
+        ),
+      );
+      return;
+    }
+    setStudents((prev) =>
+      prev.map((s) =>
+        s.user_id === result.student_id
+          ? { ...s, trips_remaining: result.trips_remaining, trips_total: result.trips_total }
+          : s,
+      ),
+    );
+    toast.success(
+      `${t("tripsBalance.setTotalSuccessPrefix")} ${targetNum} ${t("tripsBalance.setTotalSuccessSuffix")}`,
+    );
+    setDeductModalFor(null);
+  };
+
+  const confirmDeductAmount = async () => {
+    if (!liveDeductStudent || !isValidAmount) return;
+    await applyDelta(liveDeductStudent.user_id, -amountNum, deductReason.trim() || undefined);
+    setDeductModalFor(null);
   };
 
   return (
@@ -185,8 +296,8 @@ function TripsBalancePage() {
                   <Button
                     size="sm"
                     variant="destructive"
-                    disabled={busyId === s.user_id || s.trips_remaining <= 0}
-                    onClick={() => void applyDelta(s.user_id, -1)}
+                    disabled={busyId === s.user_id}
+                    onClick={() => openDeductModal(s)}
                   >
                     <Minus className="size-4" /> {t("tripsBalance.deduct")}
                   </Button>
@@ -240,6 +351,155 @@ function TripsBalancePage() {
               {t("tripsBalance.confirmAdd")}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!deductModalFor} onOpenChange={(o) => !o && setDeductModalFor(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {t("tripsBalance.deductModalTitle")} — {deductModalFor?.full_name}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setDeductMode("setTotal")}
+              className={`rounded-md border px-3 py-2 text-sm ${
+                deductMode === "setTotal"
+                  ? "border-accent bg-accent text-accent-foreground"
+                  : "border-input bg-background"
+              }`}
+            >
+              {t("tripsBalance.modeSetTotal")}
+            </button>
+            <button
+              type="button"
+              onClick={() => setDeductMode("amount")}
+              className={`rounded-md border px-3 py-2 text-sm ${
+                deductMode === "amount"
+                  ? "border-accent bg-accent text-accent-foreground"
+                  : "border-input bg-background"
+              }`}
+            >
+              {t("tripsBalance.modeAmount")}
+            </button>
+          </div>
+
+          {liveDeductStudent && deductMode === "setTotal" && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>{t("tripsBalance.targetLabel")}</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={liveDeductStudent.trips_total}
+                  value={targetTotalUsed}
+                  onChange={(e) => {
+                    setTargetTotalUsed(e.target.value);
+                    setForceConfirmed(false);
+                  }}
+                />
+                {!isValidTarget && (
+                  <p className="text-xs text-destructive">{t("tripsBalance.invalidTargetRange")}</p>
+                )}
+              </div>
+
+              <div className="space-y-1 rounded-xl border border-border bg-secondary/50 p-3 text-sm">
+                <p>
+                  {t("tripsBalance.previewPackage")}: {liveDeductStudent.trips_total}{" "}
+                  {t("tripsBalance.trip")}
+                </p>
+                <p>
+                  {t("tripsBalance.previewCurrentUsed")}: {currentUsed} —{" "}
+                  {t("tripsBalance.previewCurrentRemaining")}: {liveDeductStudent.trips_remaining}
+                </p>
+                <p>
+                  {t("tripsBalance.previewTargetEntered")}: {isValidTarget ? targetNum : "—"}
+                </p>
+                <p>
+                  {t("tripsBalance.previewDeltaNow")}:{" "}
+                  {isValidTarget ? targetNum - currentUsed : "—"}
+                </p>
+                <p>
+                  {t("tripsBalance.previewNewRemaining")}:{" "}
+                  {isValidTarget ? liveDeductStudent.trips_total - targetNum : "—"}
+                </p>
+              </div>
+
+              {isAlreadyDeducted && (
+                <div className="space-y-3 rounded-xl border border-warning/40 bg-warning/15 p-3">
+                  <p className="flex items-center gap-2 text-sm font-medium text-warning-foreground">
+                    <AlertTriangle className="size-4 shrink-0" />
+                    {t("tripsBalance.alreadyDeductedPrefix")} {currentUsed}{" "}
+                    {t("tripsBalance.alreadyDeductedSuffix")}
+                  </p>
+                  <label className="flex items-center gap-2 text-sm">
+                    <Checkbox
+                      checked={forceConfirmed}
+                      onCheckedChange={(v) => setForceConfirmed(v === true)}
+                    />
+                    {t("tripsBalance.forceCheckboxLabel")}
+                  </label>
+                </div>
+              )}
+
+              <Button
+                className="btn-gold w-full"
+                disabled={
+                  busyId === liveDeductStudent.user_id ||
+                  !isValidTarget ||
+                  (isAlreadyDeducted && !forceConfirmed)
+                }
+                onClick={() => void confirmSetTotal()}
+              >
+                {t("tripsBalance.confirmSetTotal")}
+              </Button>
+            </div>
+          )}
+
+          {liveDeductStudent && deductMode === "amount" && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>{t("tripsBalance.amount")}</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={liveDeductStudent.trips_remaining}
+                  value={deductAmount}
+                  onChange={(e) => setDeductAmount(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>{t("tripsBalance.reason")}</Label>
+                <Input
+                  placeholder={t("tripsBalance.reasonPlaceholder")}
+                  value={deductReason}
+                  onChange={(e) => setDeductReason(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-1 rounded-xl border border-border bg-secondary/50 p-3 text-sm">
+                <p>
+                  {t("tripsBalance.previewRemainingNow")}: {liveDeductStudent.trips_remaining}
+                </p>
+                <p>
+                  {t("tripsBalance.previewRemainingAfter")}:{" "}
+                  {isValidAmount ? liveDeductStudent.trips_remaining - amountNum : "—"}
+                </p>
+              </div>
+
+              <Button
+                className="w-full"
+                variant="destructive"
+                disabled={busyId === liveDeductStudent.user_id || !isValidAmount}
+                onClick={() => void confirmDeductAmount()}
+              >
+                {t("tripsBalance.confirmDeductAmount")}
+              </Button>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </main>

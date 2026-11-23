@@ -1030,6 +1030,14 @@ export type Database = {
         Args: { p_student_id: string; p_delta: number; p_reason: string | null };
         Returns: Json;
       };
+      set_student_total_used: {
+        Args: {
+          p_student_id: string;
+          p_target_total_used: number;
+          p_force?: boolean;
+        };
+        Returns: Json;
+      };
       get_route_stop_breakdown: {
         Args: { p_route: string | null; p_service_date: string | null };
         Returns: {
